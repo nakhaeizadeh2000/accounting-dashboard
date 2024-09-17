@@ -51,7 +51,8 @@
         "teamchilla.blueprint",
         "shinriyo.ionic-switch",
         "wayou.vscode-todo-highlight",
-        "Gruntfuggly.todo-tree"
+        "Gruntfuggly.todo-tree",
+        "PKief.material-icon-theme"
       ]
     }
   },
