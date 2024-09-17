@@ -3,7 +3,7 @@
 import { SignInFormData, SignInSchema } from '@/schemas/validations/auth/sign-in.shcema';
 import { setAccessTokenCookie } from '@/shared/functions/access-token-cookie';
 import { useSignInMutation } from '@/store/features/sign-in/sign-in.api';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 type ErrorState = {
@@ -12,7 +12,6 @@ type ErrorState = {
 };
 
 export default function SignInForm() {
-  const pathname = usePathname();
   const router = useRouter();
   const [signIn, { isLoading }] = useSignInMutation();
   const [errors, setErrors] = useState<ErrorState>({
@@ -59,45 +58,58 @@ export default function SignInForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="mb-4 text-lg font-medium">ورود</p>
+      <p className="text-lg font-medium">ورود</p>
 
       {/* Email input */}
-      <div className="relative mb-4" data-twe-input-wrapper-init>
-        <input
-          type="text"
-          className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:autofill:shadow-autofill dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
-          id="exampleFormControlInput1"
-          placeholder="ایمیل"
-        />
-        <label
-          htmlFor="exampleFormControlInput1"
-          className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary peer-data-[twe-input-state-active]:-translate-y-[0.9rem] peer-data-[twe-input-state-active]:scale-[0.8] motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
-        >
-          ایمیل
-        </label>
-        {/* {errors.fieldErrors.email && (
+      <div>
+        <div className="relative mt-4" data-twe-input-wrapper-init>
+          <input
+            type="text"
+            name="email"
+            className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:autofill:shadow-autofill dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
+            id="exampleFormControlInput1"
+            placeholder="ایمیل"
+          />
+          <label
+            htmlFor="email"
+            className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary peer-data-[twe-input-state-active]:-translate-y-[0.9rem] peer-data-[twe-input-state-active]:scale-[0.8] motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
+          >
+            ایمیل
+          </label>
+        </div>
+        {errors.fieldErrors.email && (
           <ul className="mt-1 text-sm text-red-600">
             {errors.fieldErrors.email.map((error, index) => (
               <li key={index}>{error}</li>
-            ))} */}
-        {/* </ul>
-        )} */}
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Password input */}
-      <div className="relative mb-4" data-twe-input-wrapper-init>
-        <input
-          type="password"
-          className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:autofill:shadow-autofill dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
-          id="exampleFormControlInput11"
-          placeholder="رمزعبور"
-        />
-        <label
-          htmlFor="exampleFormControlInput11"
-          className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary peer-data-[twe-input-state-active]:-translate-y-[0.9rem] peer-data-[twe-input-state-active]:scale-[0.8] motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
-        >
-          رمزعبور
-        </label>
+      <div>
+        <div className="relative mt-4" data-twe-input-wrapper-init>
+          <input
+            type="password"
+            name="password"
+            className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:autofill:shadow-autofill dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
+            id="exampleFormControlInput11"
+            placeholder="رمزعبور"
+          />
+          <label
+            htmlFor="password"
+            className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary peer-data-[twe-input-state-active]:-translate-y-[0.9rem] peer-data-[twe-input-state-active]:scale-[0.8] motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
+          >
+            رمزعبور
+          </label>
+        </div>
+        {errors.fieldErrors.password && (
+          <ul className="mt-1 text-sm text-red-600">
+            {errors.fieldErrors.password.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Submit button */}
