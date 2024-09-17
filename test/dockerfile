@@ -1,0 +1,24 @@
+# Use an official Node.js image as the base image
+FROM cypress/included:latest
+
+RUN apt update && apt install lsb-release curl gnupg2 -y
+# Set the working directory
+WORKDIR /home/app/test
+
+# Copy package.json and package-lock.json
+COPY package*.json  ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the application code
+COPY . .
+
+# Install Cypress separately to ensure the latest version
+RUN npm install cypress --save-dev
+
+# Verify Cypress installation
+RUN npx cypress verify
+
+# Provide default command to run Cypress tests
+CMD ["npx", "cypress", "run"]

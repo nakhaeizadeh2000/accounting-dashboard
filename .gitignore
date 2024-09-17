@@ -1,0 +1,12 @@
+api/node_modules
+api/storage/s3-data
+api/storage/mail-tata
+api/database/redis-database
+api/database/postgres-db
+client/node_modules
+client/analyze
+client/.next
+test/node_modules
+.idea
+.vscode-server
+client/Heap.*

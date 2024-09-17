@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "path": ".",
+    },
+  ],
+  "settings": {
+    "typescript.tsdk": "node_modules/typescript/lib",
+  },
+  "extensions": {
+    "recommendations": ["gruntfuggly.todo-tree", "pmneo.tsimporter"],
+  },
+}
