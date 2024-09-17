@@ -14,3 +14,7 @@ export const getAccessTokenCookie = () => {
   const cookie = Cookies.get('access_token_client');
   return cookie;
 };
+
+export const removeAccessTokenCookie = () => {
+  Cookies.remove('access_token_client', { path: '/' }); // Ensure you specify the path if it was set
+};

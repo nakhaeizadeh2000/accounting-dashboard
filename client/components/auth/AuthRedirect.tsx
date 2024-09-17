@@ -18,7 +18,7 @@ const AuthRedirectToSignIn = () => {
   return null; // This component does not render anything
 };
 
-export const AuthRedirectFromSignIn = () => {
+export const AuthRedirectFromSignIn = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export const AuthRedirectFromSignIn = () => {
     }
   }, [router]);
 
-  return null; // This component does not render anything
+  return <>{!getAccessTokenCookie() ? children : null}</>; // This component does not render anything
 };
 
 export default AuthRedirectToSignIn;

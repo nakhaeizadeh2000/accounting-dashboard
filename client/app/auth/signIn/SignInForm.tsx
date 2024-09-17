@@ -2,19 +2,18 @@
 
 import { SignInFormData, SignInSchema } from '@/schemas/validations/auth/sign-in.shcema';
 import { setAccessTokenCookie } from '@/shared/functions/access-token-cookie';
+import { FormValidationsErrorState } from '@/shared/types/form-validations-error-state.type';
+import { isResponseCatchError, ResponseCatchError } from '@/store/features/base-response.model';
 import { useSignInMutation } from '@/store/features/sign-in/sign-in.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-type ErrorState = {
-  fieldErrors: Partial<Record<keyof SignInFormData, string[]>>;
-  formErrors: string[];
-};
+type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 
 export default function SignInForm() {
   const router = useRouter();
   const [signIn, { isLoading }] = useSignInMutation();
-  const [errors, setErrors] = useState<ErrorState>({
+  const [errors, setErrors] = useState<SignInErrorState>({
     fieldErrors: {},
     formErrors: [],
   });
@@ -30,7 +29,7 @@ export default function SignInForm() {
     if (!validationResult.success) {
       const flattenedErrors = validationResult.error.flatten();
       setErrors({
-        fieldErrors: flattenedErrors.fieldErrors as ErrorState['fieldErrors'],
+        fieldErrors: flattenedErrors.fieldErrors as SignInErrorState['fieldErrors'],
         formErrors: flattenedErrors.formErrors,
       });
       return;
@@ -39,7 +38,7 @@ export default function SignInForm() {
     setErrors({ fieldErrors: {}, formErrors: [] });
 
     try {
-      const result = await signIn(validationResult.data).unwrap();
+      const result = await signIn(data).unwrap();
       if (result.success) {
         setAccessTokenCookie(result.data.access_token, result.data.cookie_expires_in);
         if (window.history.length > 1) {
@@ -48,11 +47,20 @@ export default function SignInForm() {
           router.push('/'); // Redirect to home if no back page
         }
       }
-    } catch (error) {
-      setErrors({
-        fieldErrors: {},
-        formErrors: ['An unexpected error occurred. Please try again.'],
-      });
+    } catch (error: unknown) {
+      if (isResponseCatchError(error)) {
+        // Handle ResponseCatchError specifically
+        setErrors({
+          fieldErrors: {},
+          formErrors: error.data.message,
+        });
+      } else {
+        // Handle other types of errors
+        setErrors({
+          fieldErrors: {},
+          formErrors: ['یک خطای غیرمنتظره رخ داده است. لطفا به پشتیبانی اطلاع دهید.'],
+        });
+      }
     }
   };
 
@@ -78,7 +86,7 @@ export default function SignInForm() {
           </label>
         </div>
         {errors.fieldErrors.email && (
-          <ul className="mt-1 text-sm text-red-600">
+          <ul className="mt-1 text-xs text-red-600">
             {errors.fieldErrors.email.map((error, index) => (
               <li key={index}>{error}</li>
             ))}
@@ -104,7 +112,7 @@ export default function SignInForm() {
           </label>
         </div>
         {errors.fieldErrors.password && (
-          <ul className="mt-1 text-sm text-red-600">
+          <ul className="mt-1 text-xs text-red-600">
             {errors.fieldErrors.password.map((error, index) => (
               <li key={index}>{error}</li>
             ))}
@@ -118,6 +126,8 @@ export default function SignInForm() {
           type="submit"
           disabled={isLoading}
           className="w-full rounded-md px-6 py-2 text-sm font-medium text-white transition duration-150 ease-in-out"
+          data-twe-ripple-init
+          data-twe-ripple-color="light"
           style={{
             background: 'linear-gradient(to right, #ee7724, #d8363a, #dd3675, #b44593)',
           }}
@@ -127,15 +137,18 @@ export default function SignInForm() {
 
         {/* Forgot password link */}
         {/* TODO: handle forgot password section in login form */}
-        <a href="#!" className="mt-2 block text-sm text-blue-600 hover:underline">
+        <a
+          href="#!"
+          className="dark:text- mt-2 block text-xs text-neutral-600 hover:underline dark:text-neutral-400 sm:text-sm"
+        >
           رمزعبور خود را فراموش کرده اید؟
         </a>
       </div>
 
       {/* Register button */}
       {/* TODO: handle 'register if you did not before' in login form */}
-      <div className="flex items-center justify-between pb-6">
-        <p className="mb-0 me-2">ثبت نام نکرده اید؟</p>
+      <div className="flex items-center justify-between pb-2">
+        <p className="mb-0 me-2 text-xs sm:text-sm">ثبت نام نکرده اید؟</p>
         <button
           type="button"
           className="inline-block rounded border-2 border-danger px-6 pb-[6px] pt-2 text-xs font-medium uppercase leading-normal text-danger transition duration-150 ease-in-out hover:border-danger-600 hover:bg-danger-50/50 hover:text-danger-600 focus:border-danger-600 focus:bg-danger-50/50 focus:text-danger-600 focus:outline-none focus:ring-0 active:border-danger-700 active:text-danger-700 dark:hover:bg-rose-950 dark:focus:bg-rose-950"
@@ -148,7 +161,7 @@ export default function SignInForm() {
 
       {/* Form errors */}
       {errors.formErrors.length > 0 && (
-        <ul className="mt-4 text-sm text-red-600">
+        <ul className="flex justify-center pb-4 text-xs text-red-600">
           {errors.formErrors.map((error, index) => (
             <li key={index}>{error}</li>
           ))}

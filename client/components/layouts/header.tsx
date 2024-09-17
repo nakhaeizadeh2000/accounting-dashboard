@@ -33,6 +33,7 @@ import IconMenuPages from '@/components/icon/menu/icon-menu-pages';
 import IconMenuMore from '@/components/icon/menu/icon-menu-more';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTranslation } from '@/i18n';
+import { removeAccessTokenCookie } from '@/shared/functions/access-token-cookie';
 
 const Header = () => {
   const pathname = usePathname();
@@ -151,6 +152,11 @@ const Header = () => {
 
   const removeNotification = (value: number) => {
     setNotifications(notifications.filter((user) => user.id !== value));
+  };
+
+  const handleLogout = () => {
+    // Replace 'your_cookie_name' with the actual name of your cookie
+    removeAccessTokenCookie();
   };
 
   const [search, setSearch] = useState(false);
@@ -539,7 +545,7 @@ const Header = () => {
                     </Link>
                   </li>
                   <li className="border-t border-white-light dark:border-white-light/10">
-                    <Link href="/" className="!py-3 text-danger">
+                    <Link href="/auth/signIn" onClick={handleLogout} className="!py-3 text-danger">
                       <IconLogout className="h-4.5 w-4.5 shrink-0 rotate-90 ltr:mr-2 rtl:ml-2" />
                       {t('Sign Out')}
                     </Link>
