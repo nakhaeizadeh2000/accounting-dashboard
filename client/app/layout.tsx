@@ -29,7 +29,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <FontAwesome />
         <ProviderComponent>
-          <AuthRedirectToSignIn />
           {children}
           <TWEInitializer />
         </ProviderComponent>

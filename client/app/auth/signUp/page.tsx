@@ -1,3 +1,5 @@
+import AuthTemplate from '@/components/auth/AuthTemplate';
+import SignUpForm from '@/components/auth/SignUpForm';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -6,10 +8,10 @@ export const metadata: Metadata = {
 
 const SignUpPage = () => {
   return (
-    <div>
-      <h1 className="text-white">Sign Up</h1>
-      {/* Your sign-up form goes here */}
-    </div>
+    <AuthTemplate>
+      {/* Sign Up Form */}
+      <SignUpForm />
+    </AuthTemplate>
   );
 };
 

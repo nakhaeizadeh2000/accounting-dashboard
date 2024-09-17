@@ -1,4 +1,4 @@
-import { SignInFormData } from '@/schemas/validations/auth/sign-in.shcema';
+import { SignInFormData } from '@/schemas/validations/auth/sign-in.schema';
 
 export type SignInBody = SignInFormData;
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { SignInFormData, SignInSchema } from '@/schemas/validations/auth/sign-in.shcema';
+import { SignInFormData, SignInSchema } from '@/schemas/validations/auth/sign-in.schema';
 import { setAccessTokenCookie } from '@/shared/functions/access-token-cookie';
 import { FormValidationsErrorState } from '@/shared/types/form-validations-error-state.type';
-import { isResponseCatchError, ResponseCatchError } from '@/store/features/base-response.model';
+import { isResponseCatchError } from '@/store/features/base-response.model';
 import { useSignInMutation } from '@/store/features/sign-in/sign-in.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -136,7 +136,7 @@ export default function SignInForm() {
         </button>
 
         {/* Forgot password link */}
-        {/* TODO: handle forgot password section in login form */}
+        {/* TODO: handle forgot password section in signIn form */}
         <a
           href="#!"
           className="dark:text- mt-2 block text-xs text-neutral-600 hover:underline dark:text-neutral-400 sm:text-sm"
@@ -146,12 +146,13 @@ export default function SignInForm() {
       </div>
 
       {/* Register button */}
-      {/* TODO: handle 'register if you did not before' in login form */}
+      {/* TODO: handle 'register if you did not before' in signIn form */}
       <div className="flex items-center justify-between pb-2">
         <p className="mb-0 me-2 text-xs sm:text-sm">ثبت نام نکرده اید؟</p>
         <button
           type="button"
-          className="inline-block rounded border-2 border-danger px-6 pb-[6px] pt-2 text-xs font-medium uppercase leading-normal text-danger transition duration-150 ease-in-out hover:border-danger-600 hover:bg-danger-50/50 hover:text-danger-600 focus:border-danger-600 focus:bg-danger-50/50 focus:text-danger-600 focus:outline-none focus:ring-0 active:border-danger-700 active:text-danger-700 dark:hover:bg-rose-950 dark:focus:bg-rose-950"
+          onClick={() => router.push('/auth/signUp')} // Redirect to signUp page
+          className="inline-block rounded border border-danger px-3 pb-[3px] pt-1 text-xs font-light uppercase leading-normal text-danger transition duration-150 ease-in-out hover:border-danger-600 hover:bg-danger-50/50 hover:text-danger-600 focus:border-danger-600 focus:bg-danger-50/50 focus:text-danger-600 focus:outline-none focus:ring-0 active:border-danger-700 active:text-danger-700 dark:hover:bg-rose-950 dark:focus:bg-rose-950"
           data-twe-ripple-init
           data-twe-ripple-color="light"
         >

@@ -1,4 +1,4 @@
-import CheckAuth from '@/components/auth/CheckAuth';
+import AuthRedirectToSignIn from '@/components/auth/AuthRedirect';
 import ContentAnimation from '@/components/layouts/content-animation';
 import Footer from '@/components/layouts/footer';
 import Header from '@/components/layouts/header';
@@ -13,7 +13,7 @@ import React from 'react';
 export default function DefaultLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <CheckAuth>
+      <AuthRedirectToSignIn>
         {/* BEGIN MAIN CONTAINER */}
         <div className="relative">
           <Overlay />
@@ -43,7 +43,7 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
             </div>
           </MainContainer>
         </div>
-      </CheckAuth>
+      </AuthRedirectToSignIn>
     </>
   );
 }
