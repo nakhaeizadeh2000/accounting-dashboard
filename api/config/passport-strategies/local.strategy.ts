@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { compareSync } from 'bcryptjs';
 import { Strategy } from 'passport-local';
@@ -26,6 +30,10 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     const user = await this.usersService.findByEmail(email);
     if (user && (await compareSync(password, user.password))) {
       return user;
+    } else {
+      if (!user) {
+        throw new NotFoundException(`کاربری با این مشخصات وجود ندارد!`);
+      }
     }
     return null;
   }

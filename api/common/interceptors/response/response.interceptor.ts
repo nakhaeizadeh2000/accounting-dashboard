@@ -29,7 +29,7 @@ export class ResponseInterceptor<T>
         return {
           success: true,
           statusCode: response.statusCode,
-          message: 'Request processed successfully',
+          message: ['Request processed successfully'],
           data,
         };
       }),
@@ -39,10 +39,7 @@ export class ResponseInterceptor<T>
           const responseData: ResponseData<null> = {
             success: false,
             statusCode: 408, // HTTP status code for Request Timeout
-            error: {
-              code: 408,
-              message: 'The operation timed out.',
-            },
+            message: ['The operation timed out.'],
           };
           return of(responseData); // Return the timeout response as an observable
         }
@@ -81,11 +78,9 @@ export class ResponseInterceptor<T>
         }
 
         // Handle rest kind of errors
-        responseData.error = {
-          code: statusCode,
-          message: error.message || 'An unexpected error occurred',
-          details: error.response || null,
-        };
+        responseData.message = error.message
+          ? [error.message]
+          : ['خطایی رخ داده است. به پشتیبانی اطلاع دهید!'];
 
         // Return the formatted error response as an observable
         return of(responseData);

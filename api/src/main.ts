@@ -10,6 +10,7 @@ import { FastifyInstance } from 'fastify/types/instance';
 import { swaggerBootstrap } from 'config/swagger/swagger-bootstrap';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { ResponseInterceptor } from 'common/interceptors/response/response.interceptor';
+import { NotFoundExceptionFilter } from 'common/exceptions/not-found-exception-filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -38,11 +39,12 @@ async function bootstrap() {
       whitelist: true, // Strip properties that are not in the DTO
       forbidNonWhitelisted: true, // Throw an error if non-whitelisted properties are present
     }),
-  ),
-    app.useGlobalInterceptors(
-      new ClassSerializerInterceptor(app.get(Reflector)),
-      new ResponseInterceptor(),
-    );
+  );
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(app.get(Reflector)),
+    new ResponseInterceptor(),
+  );
+  app.useGlobalFilters(new NotFoundExceptionFilter());
 
   await app.listen(4000, '0.0.0.0');
 }
