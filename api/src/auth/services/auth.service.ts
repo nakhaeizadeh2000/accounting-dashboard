@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
@@ -14,7 +14,6 @@ import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { ConfigService } from '@nestjs/config';
 import { FastifyReply } from 'fastify';
 import { ResponseUserRoleDto } from 'src/users/dto/response-user-role.dto';
-import { DEFAULT_FACTORY_CLASS_METHOD_KEY } from '@nestjs/common/module-utils/constants';
 import { ResponseLoginDto } from '../dto/response-login.dto';
 
 @Injectable()
@@ -83,7 +82,13 @@ export class AuthService {
   }
 
   async register(user: CreateUserDto): Promise<ResponseUserDto> {
-    return this.usersService.create(user);
+    const existingUser = await this.usersService.findByEmail(user.email);
+
+    if (existingUser) {
+      throw new ConflictException('ایمیل مورد نظر قبلا استفاده شده است');
+    } else {
+      return await this.usersService.create(user);
+    }
   }
 
   async logout(accessToken: string) {

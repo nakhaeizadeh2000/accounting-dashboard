@@ -149,7 +149,7 @@ export class UsersService {
       relations: { roles: true },
     });
     if (!user) {
-      throw new NotFoundException(`User with ID "${userId}" not found`);
+      throw new NotFoundException(`کاربر مورد نظر یافت نشد`);
     }
     // Clear existing roles
     user.roles = [];
@@ -177,7 +177,7 @@ export class UsersService {
   async remove(id: string): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new NotFoundException(`User with ID "${id}" not found`);
+      throw new NotFoundException(`کاربر مورد نظر یافت نشد`);
     }
     await this.userRepository.remove(user);
     const cacheKey = `ability_rules_by_user_id_${id}`;

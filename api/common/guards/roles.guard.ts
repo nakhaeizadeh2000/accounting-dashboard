@@ -25,11 +25,11 @@ export class IsAdminGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
 
     if (!user) {
-      throw new UnauthorizedException('You need to login first.');
-    } else if (!requireToBeAdmin) {
-      throw new ForbiddenException(
-        'You do not have the required role to access this resource',
+      throw new UnauthorizedException(
+        'لطفا ابتدا اهراز هویت خود را انجام دهید',
       );
+    } else if (!requireToBeAdmin) {
+      throw new ForbiddenException('شما دسترسی لازم را ندارید');
     }
 
     return true; // User is Admin

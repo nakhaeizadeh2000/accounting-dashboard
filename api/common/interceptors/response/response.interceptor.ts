@@ -8,6 +8,7 @@ import {
 import { Observable, of } from 'rxjs';
 import { map, catchError, timeout } from 'rxjs/operators';
 import { ResponseData } from './response.interface';
+import { FastifyReply } from 'fastify';
 
 @Injectable()
 export class ResponseInterceptor<T>
@@ -20,7 +21,7 @@ export class ResponseInterceptor<T>
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<ResponseData<T>> {
-    const response = context.switchToHttp().getResponse();
+    const response = context.switchToHttp().getResponse<FastifyReply>();
 
     return next.handle().pipe(
       // timeout(this.timeoutDuration), // Apply the timeout operator
@@ -29,7 +30,7 @@ export class ResponseInterceptor<T>
         return {
           success: true,
           statusCode: response.statusCode,
-          message: ['Request processed successfully'],
+          message: ['عملیات با موفقیت انجام شد'],
           data,
         };
       }),
@@ -41,6 +42,10 @@ export class ResponseInterceptor<T>
             statusCode: 408, // HTTP status code for Request Timeout
             message: ['The operation timed out.'],
           };
+
+          // Set the correct HTTP status code for errors
+          response.status(responseData.statusCode);
+
           return of(responseData); // Return the timeout response as an observable
         }
 
@@ -58,7 +63,9 @@ export class ResponseInterceptor<T>
           // Map validation errors to the desired structure
           if (Array.isArray(validationErrors.message)) {
             validationErrors.message.forEach((msg: string) => {
-              const field = msg.split(' ')[0]; // Extract field name from the message
+              const words = msg.split(' ');
+              const field = words[0]; // Assuming the first word is the field name
+              const messageWithoutFirstWord = words.slice(1).join(' '); // Join remaining words
 
               // Initialize the field in validationErrors if it doesn't exist
               if (!responseData.validationErrors) {
@@ -70,9 +77,18 @@ export class ResponseInterceptor<T>
               }
 
               // Add the error message to the array for this field
-              responseData.validationErrors[field].push(msg); // Add to validationErrors
+              responseData.validationErrors[field].push(
+                messageWithoutFirstWord,
+              ); // Add to validationErrors
             });
           }
+
+          responseData.message = [
+            'لطفا اطلاعات مورد نیاز را یه شکل صحیح وارد نمایید',
+          ];
+
+          // Set the correct HTTP status code for errors
+          response.status(statusCode);
 
           return of(responseData);
         }
@@ -81,6 +97,9 @@ export class ResponseInterceptor<T>
         responseData.message = error.message
           ? [error.message]
           : ['خطایی رخ داده است. به پشتیبانی اطلاع دهید!'];
+
+        // Set the correct HTTP status code for errors
+        response.status(statusCode);
 
         // Return the formatted error response as an observable
         return of(responseData);

@@ -146,5 +146,3 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return user;
   }
 }
-
-// TODO: must set expiration of AT cookie equal to rest of its RT ttl
