@@ -178,6 +178,7 @@ export default function SignUpForm() {
             background: 'linear-gradient(to right, #ee7724, #d8363a, #dd3675, #b44593)',
           }}
         >
+          {/* TODO: work on response when email is not uniqe */}
           {isLoading ? 'در حال بارگزاری...' : 'ثبت نام'}
         </button>
 

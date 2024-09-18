@@ -146,7 +146,6 @@ export default function SignInForm() {
       </div>
 
       {/* Register button */}
-      {/* TODO: handle 'register if you did not before' in signIn form */}
       <div className="flex items-center justify-between pb-2">
         <p className="mb-0 me-2 text-xs sm:text-sm">ثبت نام نکرده اید؟</p>
         <button
