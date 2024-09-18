@@ -14,7 +14,6 @@ module.exports = {
     './pages/**/*.{js,ts,jsx,tsx}',
     './components/**/*.{js,ts,jsx,tsx}',
     './src/**/*.{js,ts,jsx,tsx}',
-    './node_modules/tw-elements/js/**/*.js',
   ],
   darkMode: 'class',
   theme: {
@@ -105,6 +104,5 @@ module.exports = {
     }),
     require('@tailwindcss/typography'),
     rotateX,
-    require('tw-elements/plugin.cjs'),
   ],
 };

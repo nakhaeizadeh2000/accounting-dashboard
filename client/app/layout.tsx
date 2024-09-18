@@ -4,8 +4,6 @@ import '../styles/tailwind.css';
 import { yekanBakh } from './stuff/fonts';
 import { Metadata } from 'next';
 import { FontAwesome } from './stuff/fontawesome';
-import AuthRedirectToSignIn from '@/components/auth/AuthRedirect';
-import { TWEInitializer } from '@/components/TWEInitializer';
 
 export const metadata: Metadata = {
   title: {
@@ -28,10 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <FontAwesome />
-        <ProviderComponent>
-          {children}
-          <TWEInitializer />
-        </ProviderComponent>
+        <ProviderComponent>{children}</ProviderComponent>
       </body>
     </html>
   );

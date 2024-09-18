@@ -7,6 +7,7 @@ import { isResponseCatchError } from '@/store/features/base-response.model';
 import { useSignInMutation } from '@/store/features/sign-in/sign-in.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import AnimatedInput from '../tw-components/forms/input-groups/AnimatedInput';
 
 type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 
@@ -70,7 +71,7 @@ export default function SignInForm() {
 
       {/* Email input */}
       <div>
-        <div className="relative mt-4" data-twe-input-wrapper-init>
+        {/* <div className="relative mt-4" data-twe-input-wrapper-init>
           <input
             type="text"
             name="email"
@@ -91,7 +92,8 @@ export default function SignInForm() {
               <li key={index}>{error}</li>
             ))}
           </ul>
-        )}
+        )} */}
+        <AnimatedInput />
       </div>
 
       {/* Password input */}
