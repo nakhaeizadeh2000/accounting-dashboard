@@ -25,11 +25,12 @@ export default function SignUpForm() {
     // Client-side validation using safeParse
     const validationResult = SignUpSchema.safeParse(data);
 
+    // Client validation via Zod
     if (!validationResult.success) {
       const flattenedErrors = validationResult.error.flatten();
       setErrors({
-        fieldErrors: flattenedErrors.fieldErrors as SignUpErrorState['fieldErrors'],
-        formErrors: flattenedErrors.formErrors,
+        fieldErrors: (flattenedErrors.fieldErrors as SignUpErrorState['fieldErrors']) || {},
+        formErrors: flattenedErrors.formErrors || [],
       });
       return;
     }
@@ -46,8 +47,8 @@ export default function SignUpForm() {
       if (isResponseCatchError(error)) {
         // Handle ResponseCatchError specifically
         setErrors({
-          fieldErrors: error.data.validationErrors,
-          formErrors: error.data.message,
+          fieldErrors: error.data.validationErrors || {},
+          formErrors: error.data.message || [],
         });
       } else {
         setErrors({
@@ -184,7 +185,7 @@ export default function SignUpForm() {
 
         {/* Form errors */}
         {errors.formErrors.length > 0 && (
-          <ul className="flex justify-center pb-4 text-xs text-red-600">
+          <ul className="flex justify-center py-3 text-xs text-red-600">
             {errors.formErrors.map((error, index) => (
               <li key={index}>{error}</li>
             ))}

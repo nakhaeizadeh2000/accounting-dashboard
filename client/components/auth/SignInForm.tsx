@@ -29,8 +29,8 @@ export default function SignInForm() {
     if (!validationResult.success) {
       const flattenedErrors = validationResult.error.flatten();
       setErrors({
-        fieldErrors: flattenedErrors.fieldErrors as SignInErrorState['fieldErrors'],
-        formErrors: flattenedErrors.formErrors,
+        fieldErrors: (flattenedErrors.fieldErrors as SignInErrorState['fieldErrors']) || {},
+        formErrors: flattenedErrors.formErrors || [],
       });
       return;
     }
@@ -51,8 +51,8 @@ export default function SignInForm() {
       if (isResponseCatchError(error)) {
         // Handle ResponseCatchError specifically
         setErrors({
-          fieldErrors: {},
-          formErrors: error.data.message,
+          fieldErrors: error.data.validationErrors || {},
+          formErrors: error.data.message || [],
         });
       } else {
         // Handle other types of errors
@@ -135,6 +135,15 @@ export default function SignInForm() {
           {isLoading ? 'در حال بارگزاری...' : 'ورود'}
         </button>
 
+        {/* Form errors */}
+        {errors.formErrors.length > 0 && (
+          <ul className="flex justify-center py-3 text-xs text-red-600">
+            {errors.formErrors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        )}
+
         {/* Forgot password link */}
         {/* TODO: handle forgot password section in signIn form */}
         <a
@@ -158,15 +167,6 @@ export default function SignInForm() {
           ثبت نام
         </button>
       </div>
-
-      {/* Form errors */}
-      {errors.formErrors.length > 0 && (
-        <ul className="flex justify-center pb-4 text-xs text-red-600">
-          {errors.formErrors.map((error, index) => (
-            <li key={index}>{error}</li>
-          ))}
-        </ul>
-      )}
     </form>
   );
 }
