@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 
-const AnimatedInput = ({
+const AnimatedInputElement = ({
   isVisible = true,
   isDisabled = false,
 }: {
@@ -35,4 +35,4 @@ const AnimatedInput = ({
   ) : null;
 };
 
-export default AnimatedInput;
+export default AnimatedInputElement;

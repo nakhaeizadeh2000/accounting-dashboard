@@ -13,8 +13,6 @@ const Sales = () => {
       <p className="font-yekan font-bold">
         This will use YekanBakh Bold <strong>this is testing</strong>
       </p>
-
-      <i className="fa-light fa-house"></i>
     </div>
   );
 };
