@@ -1,0 +1,143 @@
+services:
+  nginx:
+    container_name: nginx
+    build: 
+      context: .
+      dockerfile: dev-env/nginx.dockerfile
+    ports:
+      - "80:80" # Expose Nginx service on port 80
+      - 443:443
+    volumes:
+      - ./nginx/default.prod.conf:/etc/nginx/nginx.conf:ro
+    environment:
+      - SERVER_NAME=${SERVER_NAME}
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.10" # Assign the desired static IP address
+
+  # api:
+  #   container_name: api
+  #   # restart: always
+  #   build:
+  #     context: .
+  #     dockerfile: dev-env/api.dockerfile
+  #   # ports:
+  #   #   - "3000:3000"
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - .:/home/app
+  #     - /home/app/api/node_modules
+  #   ports:
+  #     - 9229:9229
+  #   networks:
+  #     isatis:
+  #       ipv4_address: "172.20.0.20" # Assign the desired static IP address
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #     - mailpit
+  #   links:
+  #     - postgres
+  #     - redis
+  #     - mailpit
+
+  # client:
+  #   container_name: client
+  #   build:
+  #     context: .
+  #     dockerfile: dev-env/client.dockerfile
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - .:/home/app
+  #     - /home/app/client/node_modules
+  #   environment:
+  #     - NODE_ENV=development
+  #   networks:
+  #     isatis:
+  #       ipv4_address: "172.20.0.40" # Assign the desired static IP address
+
+  postgres:
+    container_name: ${POSTGRES_HOST}
+    image: postgres:16-alpine
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./api/database/postgres-db/data:/var/lib/postgresql/data
+      - ./api/database/postgres-db/sql:/docker-entrypoint-initdb.d
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.60" # Assign the desired static IP address
+
+  redis:
+    container_name: ${REDIS_HOST}
+    image: redis:7.4.0-alpine
+    env_file:
+      - .env
+    restart: always
+    ports:
+      - ${REDIS_PORT:-6379}:6379
+    volumes:
+      - ./api/database/redis-database/:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      retries: 3
+      timeout: 5s
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.70" # Assign the desired static IP address
+  mailpit:
+    container_name: mailpit
+    image: axllent/mailpit:latest
+    # ports:
+    #   - ${FORWARD_MAILPIT_PORT:-1025}:1025
+    #   - ${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025
+    volumes:
+      - ./api/storage/mail-tata/:/data
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.90" # Assign the desired static IP address
+  # minio:
+    #   container_name: minio
+    #   image: minio/minio:latest
+    #   # ports:
+    #   #   - ${FORWARD_MINIO_PORT:-9000}:9000
+    #   #   - ${FORWARD_MINIO_CONSOLE_PORT:-8900}:8900
+    #   environment:
+    #     MINIO_ROOT_USER: sail
+    #     MINIO_ROOT_PASSWORD: password123
+    #     ACCESS_KEY: minioadmin
+    #     SECRET_KEY: minioadmin
+    #   volumes:
+    #     - ./api/storage/s3-data/:/data
+    #   command: minio server /data/minio --console-address ":9061"
+    #   healthcheck:
+    #     test:
+    #       - CMD
+    #       - curl
+    #       - -f
+    #       - http://localhost:9061/minio/health/live
+    #     retries: 3
+    #     timeout: 5s
+    #   networks:
+    #     isatis:
+    #       ipv4_address: "172.20.0.80" # Assign the desired static IP address
+
+networks:
+  isatis:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "172.20.0.0/24" # Define the subnet including the desired IP address

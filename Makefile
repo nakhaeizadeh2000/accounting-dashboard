@@ -1,15 +1,17 @@
+build-production:
+  docker compose -f docker-compose.prod.yml up --build
 build:
 	# make pre-setup
-	docker compose build --parallel
+	docker compose -f docker-compose.yml up --build --parallel
 build-no-cache:
 	make pre-setup
-	docker compose build --parallel --no-cache
+	docker compose -f docker-compose.yml up --build --parallel --no-cache
 build-api:
 	docker compose build api
 build-client:
 	docker compose build client
 build-daemon:
-	docker compose up -d --build
+	docker compose -f docker-compose.yml up -d --build
 dev:
 	docker compose up
 dev-daemon:
