@@ -1,0 +1,20 @@
+/* Target autofilled inputs */
+input,
+input:-webkit-autofill,
+textarea,
+textarea:-webkit-autofill {
+    /* Use a fallback color for light mode */
+    -webkit-box-shadow: 0 0 0px 1000px rgba(var(--color-neutral-100), 1) inset; /* Light mode background */
+    -webkit-text-fill-color: rgba(0, 0, 0, 1); /* Light mode text color */
+    transition: background-color 5000s ease-in-out 0s; /* Smooth transition */
+}
+
+/* Dark mode styles */
+body.dark input,
+body.dark input:-webkit-autofill,
+body.dark textarea,
+body.dark textarea:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0px 1000px rgb(var(--color-slate-800)) inset; /* Dark mode background */
+    -webkit-text-fill-color: rgba(var(--color-white), 1); /* Dark mode text color */
+    transition: background-color 5000s ease-in-out 0s; /* Smooth transition */
+}
