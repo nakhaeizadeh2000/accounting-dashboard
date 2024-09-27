@@ -9,9 +9,6 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AnimatedInputElement from '@/Elements/input-elements/AnimatedInputElement';
 
-
-
-
 type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 
 export default function SignInForm() {
@@ -45,11 +42,11 @@ export default function SignInForm() {
       const result = await signIn(data).unwrap();
       if (result.success) {
         setAccessTokenCookie(result.data.access_token, result.data.cookie_expires_in);
-        if (window.history.length > 1) {
-          router.back();
-        } else {
-          router.push('/'); // Redirect to home if no back page
-        }
+        // if (window.history.length > 1) {
+        //   router.back();
+        // } else {
+        router.push('/'); // Redirect to home if no back page
+        // }
       }
     } catch (error: unknown) {
       if (isResponseCatchError(error)) {
@@ -74,11 +71,11 @@ export default function SignInForm() {
 
       {/* Email input */}
       <div>
-        {/* <div className="relative mt-4" data-twe-input-wrapper-init>
+        <div className="relative mt-4" data-twe-input-wrapper-init>
           <input
             type="text"
             name="email"
-            className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:autofill:shadow-autofill dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
+            className="dark:autofill:shadow-autofill peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
             id="exampleFormControlInput1"
             placeholder="ایمیل"
           />
@@ -95,8 +92,8 @@ export default function SignInForm() {
               <li key={index}>{error}</li>
             ))}
           </ul>
-        )} */}
-        <AnimatedInputElement />
+        )}
+        {/* <AnimatedInputElement /> */}
       </div>
 
       {/* Password input */}
@@ -105,7 +102,7 @@ export default function SignInForm() {
           <input
             type="password"
             name="password"
-            className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:autofill:shadow-autofill dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
+            className="dark:autofill:shadow-autofill peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
             id="exampleFormControlInput11"
             placeholder="رمزعبور"
           />
@@ -165,7 +162,7 @@ export default function SignInForm() {
         <button
           type="button"
           onClick={() => router.push('/auth/signUp')} // Redirect to signUp page
-          className="inline-block rounded border border-danger px-3 pb-[3px] pt-1 text-xs font-light uppercase leading-normal text-danger transition duration-150 ease-in-out hover:border-danger-600 hover:bg-danger-50/50 hover:text-danger-600 focus:border-danger-600 focus:bg-danger-50/50 focus:text-danger-600 focus:outline-none focus:ring-0 active:border-danger-700 active:text-danger-700 dark:hover:bg-rose-950 dark:focus:bg-rose-950"
+          className="hover:border-danger-600 hover:bg-danger-50/50 hover:text-danger-600 focus:border-danger-600 focus:bg-danger-50/50 focus:text-danger-600 active:border-danger-700 active:text-danger-700 inline-block rounded border border-danger px-3 pb-[3px] pt-1 text-xs font-light uppercase leading-normal text-danger transition duration-150 ease-in-out focus:outline-none focus:ring-0 dark:hover:bg-rose-950 dark:focus:bg-rose-950"
           data-twe-ripple-init
           data-twe-ripple-color="light"
         >
