@@ -6,9 +6,8 @@ import { FormValidationsErrorState } from '@/shared/types/form-validations-error
 import { isResponseCatchError } from '@/store/features/base-response.model';
 import { useSignInMutation } from '@/store/features/sign-in/sign-in.api';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import AnimatedInputElement from '@/Elements/input-elements/AnimatedInputElement';
-import { motion } from 'framer-motion';
 
 type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 
@@ -67,7 +66,7 @@ export default function SignInForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-1">
       <p className="text-lg font-medium">ورود</p>
 
       {/* Email input */}
@@ -123,7 +122,7 @@ export default function SignInForm() {
       </div>
 
       {/* Register button */}
-      <div className="flex items-center justify-between pb-2">
+      <div className="flex items-center justify-between py-2">
         <p className="mb-0 me-2 text-xs sm:text-sm">ثبت نام نکرده اید؟</p>
         <button
           type="button"

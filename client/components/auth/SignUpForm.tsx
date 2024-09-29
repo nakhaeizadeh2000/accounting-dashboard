@@ -6,6 +6,7 @@ import { isResponseCatchError } from '@/store/features/base-response.model';
 import { useSignUpMutation } from '@/store/features/sign-up/sign-up.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import AnimatedInputElement from '../Elements/input-elements/AnimatedInputElement';
 
 type SignUpErrorState = FormValidationsErrorState<SignUpFormData>;
 
@@ -60,112 +61,50 @@ export default function SignUpForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-1">
       <p className="text-lg font-medium">ثبت نام</p>
 
-      {/* First Name input */}
-      <div>
-        <div className="relative mt-4">
-          <input
-            type="text"
-            name="firstName"
-            className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:peer-focus:text-primary"
-            id="firstName"
-            placeholder="نام"
-          />
-          <label
-            htmlFor="firstName"
-            className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
-          >
-            نام
-          </label>
-        </div>
-        {errors.fieldErrors.firstName && (
-          <ul className="mt-1 text-xs text-red-600">
-            {errors.fieldErrors.firstName.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <div className="columns-2 gap-2">
+        {/* First Name input */}
+        <AnimatedInputElement
+          options={{
+            key: 'firstName',
+            label: 'نام',
+            type: 'text',
+            fieldError: errors.fieldErrors.firstName,
+          }}
+        />
 
-      {/* Last Name input */}
-      <div>
-        <div className="relative mt-4">
-          <input
-            type="text"
-            name="lastName"
-            className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:peer-focus:text-primary"
-            id="lastName"
-            placeholder="نام خانوادگی"
-          />
-          <label
-            htmlFor="lastName"
-            className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
-          >
-            نام خانوادگی
-          </label>
-        </div>
-        {errors.fieldErrors.lastName && (
-          <ul className="mt-1 text-xs text-red-600">
-            {errors.fieldErrors.lastName.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        )}
+        {/* Last Name input */}
+        <AnimatedInputElement
+          options={{
+            key: 'lastName',
+            label: 'نام خانوادگی',
+            type: 'text',
+            fieldError: errors.fieldErrors.lastName,
+          }}
+        />
       </div>
 
       {/* Email input */}
-      <div>
-        <div className="relative mt-4">
-          <input
-            type="text"
-            name="email"
-            className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:peer-focus:text-primary"
-            id="email"
-            placeholder="ایمیل"
-          />
-          <label
-            htmlFor="email"
-            className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
-          >
-            ایمیل
-          </label>
-        </div>
-        {errors.fieldErrors.email && (
-          <ul className="mt-1 text-xs text-red-600">
-            {errors.fieldErrors.email.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <AnimatedInputElement
+        options={{
+          key: 'email',
+          label: 'ایمیل',
+          type: 'text',
+          fieldError: errors.fieldErrors.email,
+        }}
+      />
 
       {/* Password input */}
-      <div>
-        <div className="relative mt-4">
-          <input
-            type="password"
-            name="password"
-            className="peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:peer-focus:text-primary"
-            id="password"
-            placeholder="رمزعبور"
-          />
-          <label
-            htmlFor="password"
-            className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
-          >
-            رمزعبور
-          </label>
-        </div>
-        {errors.fieldErrors.password && (
-          <ul className="mt-1 text-xs text-red-600">
-            {errors.fieldErrors.password.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <AnimatedInputElement
+        options={{
+          key: 'password',
+          label: 'رمزعبور',
+          type: 'password',
+          fieldError: errors.fieldErrors.password,
+        }}
+      />
 
       {/* Submit button */}
       <div className="pt-3 text-center">
@@ -192,7 +131,7 @@ export default function SignUpForm() {
       </div>
 
       {/* Already have an account? Link */}
-      <div className="flex items-center justify-between pb-2">
+      <div className="flex items-center justify-between pb-2 pt-2">
         <p className="mb-0 me-2 text-xs sm:text-sm">قبلاً ثبت نام کرده‌اید؟</p>
         <button
           type="button"

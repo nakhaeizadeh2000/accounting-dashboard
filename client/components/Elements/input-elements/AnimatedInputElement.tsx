@@ -27,6 +27,9 @@ const AnimatedInputElement = ({
     defaultValue = undefined,
     placeholder = undefined,
     label = undefined,
+    containerClass = '',
+    inputClass = '',
+    labelClass = '',
   },
 }: {
   options: Options;
@@ -51,20 +54,15 @@ const AnimatedInputElement = ({
     setInputOptions((prev) => ({ ...prev, fieldError, isDisabled, isVisible, defaultValue }));
   }, [fieldError, isDisabled, isVisible, defaultValue]);
 
-  // --tw-border-opacity: 1;
-  // border-color: rgb(67 97 238 / var(--tw-border-opacity));
-  // --tw-ring-color: transparent;
-
   return inputOptions.isVisible ? (
     <div>
-      <div className="relative mt-8">
+      <div className={`relative w-full ${containerClass}`}>
         <motion.label
           htmlFor={inputOptions.key}
-          className="pointer-events-none right-3 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-600 dark:text-neutral-300"
+          className={`pointer-events-none right-2 mb-0 truncate pt-[0.37rem] leading-[1.6] text-neutral-600 dark:text-neutral-300 ${labelClass}`}
           animate={{
-            position: 'absolute', // Keep it absolute
-            top: isDirty ? '-1.75rem' : '0', // Move up if touched or has value
-            fontSize: isDirty ? '0.75rem' : '0.9rem', // Smaller font size when active
+            position: 'relative', // Keep it absolute
+            top: isDirty ? '0' : '1.75rem', // Move up if touched or has value
           }}
           transition={spring}
         >
@@ -73,7 +71,7 @@ const AnimatedInputElement = ({
         <input
           type={inputOptions.type}
           name={inputOptions.key}
-          className="block min-h-[auto] w-full rounded bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear placeholder:opacity-50 focus:border focus:border-solid focus:border-blue-500 focus:ring-transparent motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300"
+          className={`block min-h-[auto] w-full rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none ring-transparent transition-all duration-200 ease-linear placeholder:opacity-50 focus:border-blue-500 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 ${inputClass}`}
           id={inputOptions.key}
           placeholder={inputOptions.placeholder}
           value={inputOptions.defaultValue || ''}
