@@ -24,7 +24,7 @@ export const sideBarMenu: SideBarNavItems[] = [
           {
             IconComponent: CiBookmarkCheck,
             name: 'test3',
-            link: '/user',
+            link: '/',
           },
         ],
       },
@@ -32,20 +32,20 @@ export const sideBarMenu: SideBarNavItems[] = [
         IconComponent: Fa42Group,
         type: 'link',
         name: 'test1',
-        link: '',
+        link: '/',
         // link: '/user',
       },
       {
         IconComponent: FaApple,
         type: 'link',
         name: 'test2',
-        link: '/user',
+        link: '/',
       },
       {
         IconComponent: CiBookmarkCheck,
         type: 'link',
         name: 'test3',
-        link: '/user',
+        link: '/',
       },
       {
         type: 'dropDown',

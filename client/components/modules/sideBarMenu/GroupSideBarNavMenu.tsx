@@ -23,14 +23,14 @@ const GroupSideBarNavMenu = ({ item, pathName }: Props) => {
       {item.childrenHeader && (
         <li className="nav-item">
           {childrenHeader.map((childItem, index) => (
-            <>
+            <div key={index} className="nav-item">
               {childItem.type === 'link' && (
-                <LinkSidebarMenu item={childItem} key={index} pathName={pathName} />
+                <LinkSidebarMenu item={childItem} pathName={pathName} />
               )}
               {childItem.type === 'dropDown' && (
-                <DropDownSidebarMenu item={childItem} key={index} pathName={pathName} />
+                <DropDownSidebarMenu item={childItem} pathName={pathName} />
               )}
-            </>
+            </div>
           ))}
         </li>
       )}

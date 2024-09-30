@@ -13,15 +13,11 @@ const SidebarNavMenu = ({ sideNavBar, pathName }: Props) => {
   return (
     <>
       {sideNavBar.map((item, index) => (
-        <>
-          {item?.type === 'link' && <LinkSidebarMenu item={item} pathName={pathName} key={index} />}
-          {item?.type === 'dropDown' && (
-            <DropDownSidebarMenu item={item} pathName={pathName} key={index} />
-          )}
-          {item?.type === 'GroupNav' && (
-            <GroupSideBarNavMenu item={item} pathName={pathName} key={index} />
-          )}
-        </>
+        <ul key={index}>
+          {item?.type === 'link' && <LinkSidebarMenu item={item} pathName={pathName} />}
+          {item?.type === 'dropDown' && <DropDownSidebarMenu item={item} pathName={pathName} />}
+          {item?.type === 'GroupNav' && <GroupSideBarNavMenu item={item} pathName={pathName} />}
+        </ul>
       ))}
     </>
   );
