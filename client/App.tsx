@@ -13,7 +13,7 @@ import {
 } from '@/store/features/theme/themeConfigSlice';
 import Loading from '@/components/layouts/loading';
 import { getTranslation } from '@/i18n';
-import 'styles/global.css';
+import 'styles/global.scss';
 
 function App({ children }: PropsWithChildren) {
   const themeConfig = useSelector((state: IRootState) => state.themeConfig);

@@ -7,7 +7,7 @@ const AuthTemplate = ({ children }: { children: React.ReactNode }) => {
         <div className="container h-full p-10">
           <div className="flex h-full flex-wrap items-center justify-center text-neutral-800 dark:text-neutral-200">
             <div className="w-full">
-              <div className="block rounded-lg bg-white shadow-lg dark:bg-neutral-800">
+              <div className="block rounded-lg bg-white shadow-lg dark:bg-slate-900">
                 <div className="g-0 lg:flex lg:flex-wrap">
                   {/* Right column container */}
                   <div className="px-4 md:px-0 lg:w-6/12">
