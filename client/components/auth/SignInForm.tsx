@@ -70,59 +70,7 @@ export default function SignInForm() {
       <p className="text-lg font-medium">ورود</p>
 
       {/* Email input */}
-<<<<<<< HEAD
-      <div>
-        <div className="relative mt-4" data-twe-input-wrapper-init>
-          <input
-            type="text"
-            name="email"
-            className="dark:autofill:shadow-autofill peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
-            id="exampleFormControlInput1"
-            placeholder="ایمیل"
-          />
-          <label
-            htmlFor="email"
-            className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary peer-data-[twe-input-state-active]:-translate-y-[0.9rem] peer-data-[twe-input-state-active]:scale-[0.8] motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
-          >
-            ایمیل
-          </label>
-        </div>
-        {errors.fieldErrors.email && (
-          <ul className="mt-1 text-xs text-red-600">
-            {errors.fieldErrors.email.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        )}
-        {/* <AnimatedInputElement /> */}
-      </div>
 
-      {/* Password input */}
-      <div>
-        <div className="relative mt-4" data-twe-input-wrapper-init>
-          <input
-            type="password"
-            name="password"
-            className="dark:autofill:shadow-autofill peer block min-h-[auto] w-full rounded border-0 bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none transition-all duration-200 ease-linear focus:placeholder:opacity-100 peer-focus:text-primary data-[twe-input-state-active]:placeholder:opacity-100 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 dark:peer-focus:text-primary [&:not([data-twe-input-placeholder-active])]:placeholder:opacity-0"
-            id="exampleFormControlInput11"
-            placeholder="رمزعبور"
-          />
-          <label
-            htmlFor="password"
-            className="pointer-events-none absolute left-3 top-0 mb-0 max-w-[90%] origin-[0_0] truncate pt-[0.37rem] leading-[1.6] text-neutral-500 transition-all duration-200 ease-out peer-focus:-translate-y-[0.9rem] peer-focus:scale-[0.8] peer-focus:text-primary peer-data-[twe-input-state-active]:-translate-y-[0.9rem] peer-data-[twe-input-state-active]:scale-[0.8] motion-reduce:transition-none dark:text-neutral-400 dark:peer-focus:text-primary"
-          >
-            رمزعبور
-          </label>
-        </div>
-        {errors.fieldErrors.password && (
-          <ul className="mt-1 text-xs text-red-600">
-            {errors.fieldErrors.password.map((error, index) => (
-              <li key={index}>{error}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-=======
       <AnimatedInputElement
         options={{
           key: 'email',
@@ -141,7 +89,6 @@ export default function SignInForm() {
           fieldError: errors.fieldErrors.password,
         }}
       />
->>>>>>> origin/nakhaeizadeh/feature/input-widget
 
       {/* Submit button */}
       <div className="pt-3 text-center">
@@ -182,11 +129,6 @@ export default function SignInForm() {
           type="button"
           onClick={() => router.push('/auth/signUp')} // Redirect to signUp page
           className="hover:border-danger-600 hover:bg-danger-50/50 hover:text-danger-600 focus:border-danger-600 focus:bg-danger-50/50 focus:text-danger-600 active:border-danger-700 active:text-danger-700 inline-block rounded border border-danger px-3 pb-[3px] pt-1 text-xs font-light uppercase leading-normal text-danger transition duration-150 ease-in-out focus:outline-none focus:ring-0 dark:hover:bg-rose-950 dark:focus:bg-rose-950"
-<<<<<<< HEAD
-          data-twe-ripple-init
-          data-twe-ripple-color="light"
-=======
->>>>>>> origin/nakhaeizadeh/feature/input-widget
         >
           ثبت نام
         </button>

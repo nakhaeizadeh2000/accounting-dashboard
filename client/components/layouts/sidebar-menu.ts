@@ -9,7 +9,6 @@ export const sideBarMenu: SideBarNavItems[] = [
     name: 'apps',
     IconComponent: RxAlignBaseline,
     link: '/',
-    className: 'text-3xl',
   },
   {
     titleHeader: 'apps',

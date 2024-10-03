@@ -3,6 +3,7 @@ import React from 'react';
 import LinkSidebarMenu from './LinkSidebarMenu';
 import DropDownSidebarMenu from './DropDownSidebarMenu';
 import { getTranslation } from '@/i18n';
+import { BsDashLg } from 'react-icons/bs';
 
 type Props = {
   item: GroupSideBarNavItem;
@@ -17,7 +18,7 @@ const GroupSideBarNavMenu = ({ item, pathName }: Props) => {
       <h2
         className={`-mx-4 mb-1 flex items-center bg-white-light/30 px-7 py-3 font-extrabold uppercase dark:bg-dark dark:bg-opacity-[0.08] ${classHeader}`}
       >
-        <IconHeader className="hidden h-5 w-4 flex-none" />
+        <BsDashLg className="hidden h-5 w-4 flex-none" />
         <span>{t(titleHeader)}</span>
       </h2>
       {item.childrenHeader && (

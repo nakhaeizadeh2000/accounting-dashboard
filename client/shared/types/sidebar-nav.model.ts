@@ -1,5 +1,6 @@
 import { Route } from 'next';
 import { IconType } from 'react-icons';
+import { Url } from 'url';
 
 interface sideBarBase {
   IconComponent: IconType | string;
@@ -10,12 +11,12 @@ interface sideBarBase {
 
 export interface linkTypeItem extends sideBarBase {
   type: 'link';
-  link: Route<string>;
+  link: Route<string> | Url;
 }
 
 export interface dropDownItem extends sideBarBase {
   type: 'dropDown';
-  childrenItem: { name: string; link: Route<string>; IconComponent: IconType | string }[];
+  childrenItem: { name: string; link: Route<string> | Url; IconComponent: IconType | string }[];
 }
 
 export type GroupSideBarNavItem = {
