@@ -1,8 +1,7 @@
-import Loading from '@/components/layouts/loading';
-import React from 'react';
+import FullScreenLoading from '@/components/Elements/loadings/FullScreenLoading';
 
 const loading = () => {
-  return <Loading />;
+  return <FullScreenLoading />;
 };
 
 export default loading;

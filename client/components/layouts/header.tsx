@@ -544,6 +544,7 @@ const Header = () => {
                       {t('Lock Screen')}
                     </Link>
                   </li>
+                  {/* TODO: add logout api to expire its token in backend too */}
                   <li className="border-t border-white-light dark:border-white-light/10">
                     <Link href="/auth/signIn" onClick={handleLogout} className="!py-3 text-danger">
                       <IconLogout className="h-4.5 w-4.5 shrink-0 rotate-90 ltr:mr-2 rtl:ml-2" />

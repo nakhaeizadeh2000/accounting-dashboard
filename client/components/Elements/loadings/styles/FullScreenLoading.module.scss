@@ -1,0 +1,12 @@
+.loader {
+  display: flex;
+  justify-content: space-between;
+  width: 45px;
+  aspect-ratio: 1;
+}
+
+.bar {
+  width: 20%;
+  height: 100%;
+  background: theme('colors.indigo.600');
+}
