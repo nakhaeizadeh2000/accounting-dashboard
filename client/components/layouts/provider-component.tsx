@@ -2,10 +2,8 @@
 import App from '@/App';
 import store from '@/store';
 import { Provider } from 'react-redux';
-import React, { ReactNode, Suspense } from 'react';
-import { appWithI18Next } from 'ni18n';
-import { ni18nConfig } from 'ni18n.config.ts';
-import Loading from '@/components/layouts/loading';
+import { ReactNode, Suspense } from 'react';
+import LayerLoading from '../Elements/loadings/LayerLoading';
 
 interface IProps {
   children?: ReactNode;
@@ -14,7 +12,7 @@ interface IProps {
 const ProviderComponent = ({ children }: IProps) => {
   return (
     <Provider store={store}>
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<LayerLoading />}>
         <App>{children} </App>
       </Suspense>
     </Provider>

@@ -11,9 +11,9 @@ import {
   toggleNavbar,
   toggleSemidark,
 } from '@/store/features/theme/themeConfigSlice';
-import Loading from '@/components/layouts/loading';
 import { getTranslation } from '@/i18n';
 import 'styles/global.scss';
+import LayerLoading from './components/Elements/loadings/LayerLoading';
 
 function App({ children }: PropsWithChildren) {
   const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -52,7 +52,7 @@ function App({ children }: PropsWithChildren) {
         themeConfig.rtlClass
       } main-section relative text-sm font-normal antialiased`}
     >
-      {isLoading ? <Loading /> : children}
+      {isLoading ? <LayerLoading /> : children}
     </div>
   );
 }
