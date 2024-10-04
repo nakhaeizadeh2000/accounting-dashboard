@@ -2,6 +2,16 @@
 
 import { motion } from 'framer-motion';
 import { HTMLInputTypeAttribute, useEffect, useState } from 'react';
+import { IconType } from 'react-icons';
+
+type IconOption = {
+  Icon: IconType;
+  iconText?: never;
+};
+type IconTextOption = {
+  Icon?: never;
+  iconText: string;
+};
 
 type Options = {
   isVisible?: boolean;
@@ -15,6 +25,7 @@ type Options = {
   type: HTMLInputTypeAttribute;
   key: string;
   fieldError: string[] | undefined;
+  icon?: IconOption | IconTextOption;
 };
 
 const AnimatedInputElement = ({
@@ -30,12 +41,13 @@ const AnimatedInputElement = ({
     containerClass = '',
     inputClass = '',
     labelClass = '',
+    icon,
   },
 }: {
   options: Options;
 }) => {
   const [inputOptions, setInputOptions] = useState<
-    Omit<Options, 'containerClass' | 'inputClass' | 'labelClass'>
+    Omit<Options, 'containerClass' | 'inputClass' | 'labelClass' | 'icon'>
   >({
     key,
     type,
@@ -68,24 +80,33 @@ const AnimatedInputElement = ({
         >
           {inputOptions.label}
         </motion.label>
-        <input
-          type={inputOptions.type}
-          name={inputOptions.key}
-          className={`block min-h-[auto] w-full rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none ring-transparent transition-all duration-200 ease-linear placeholder:opacity-50 focus:border-blue-500 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 ${inputClass}`}
-          id={inputOptions.key}
-          placeholder={inputOptions.placeholder}
-          value={inputOptions.defaultValue || ''}
-          disabled={inputOptions.isDisabled}
-          onChange={(e) =>
-            setInputOptions((prev) => ({
-              ...prev,
-              defaultValue: e.target.value,
-            }))
-          }
-          onFocus={() => setIsFocused(true)} // Set focus state
-          onBlur={() => setIsFocused(false)} // Reset focus state
-        />
+        <div className="input-parent flex rounded border border-solid border-transparent bg-neutral-100 dark:bg-slate-800">
+          <input
+            type={inputOptions.type}
+            name={inputOptions.key}
+            className={`block min-h-[auto] rounded ${icon ? 'w-5/6 rounded-l-none' : 'w-full'} border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none ring-transparent transition-all duration-200 ease-linear placeholder:opacity-50 focus:border-blue-500 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 ${inputClass}`}
+            id={inputOptions.key}
+            placeholder={inputOptions.placeholder}
+            value={inputOptions.defaultValue || ''}
+            disabled={inputOptions.isDisabled}
+            onChange={(e) =>
+              setInputOptions((prev) => ({
+                ...prev,
+                defaultValue: e.target.value,
+              }))
+            }
+            onFocus={() => setIsFocused(true)} // Set focus state
+            onBlur={() => setIsFocused(false)} // Reset focus state
+          />
+          {icon && (
+            <div className="flex w-1/6 items-center justify-center border-r border-gray-900 border-opacity-10 dark:border-gray-50">
+              {icon.Icon && <icon.Icon />}
+              {icon.iconText && icon.iconText}
+            </div>
+          )}
+        </div>
       </div>
+
       {inputOptions?.fieldError && (
         <ul className="ms-3 mt-1 text-xs text-red-600">
           {inputOptions.fieldError.map((error, index) => (

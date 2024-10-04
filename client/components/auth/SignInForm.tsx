@@ -10,6 +10,8 @@ import { useState } from 'react';
 import AnimatedInputElement from '@/Elements/input-elements/AnimatedInputElement';
 import FormButton from '../Elements/buttons/FormButton';
 import { FiLogIn } from 'react-icons/fi';
+import { MdOutlineAlternateEmail } from 'react-icons/md';
+import { FaEyeLowVision } from 'react-icons/fa6';
 
 type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 
@@ -20,6 +22,7 @@ export default function SignInForm() {
     fieldErrors: {},
     formErrors: [],
   });
+  const [isInputTypePassword, setPasswordInputType] = useState<boolean>(true);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -79,6 +82,7 @@ export default function SignInForm() {
           label: 'ایمیل',
           type: 'text',
           fieldError: errors.fieldErrors.email,
+          icon: { Icon: MdOutlineAlternateEmail },
         }}
       />
 
@@ -86,9 +90,17 @@ export default function SignInForm() {
       <AnimatedInputElement
         options={{
           key: 'password',
-          type: 'password',
+          // TODO: fix type on changeing via click on eye and config on hover class
+          type: isInputTypePassword ? 'password' : 'text',
           label: 'رمزعبور',
           fieldError: errors.fieldErrors.password,
+          icon: {
+            Icon: () => (
+              <FaEyeLowVision
+                onClick={() => setPasswordInputType((prev) => !prev)}
+              ></FaEyeLowVision>
+            ),
+          },
         }}
       />
 
