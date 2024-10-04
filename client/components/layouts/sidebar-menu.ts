@@ -23,7 +23,7 @@ export const sideBarMenu: SideBarNavItems[] = [
           {
             IconComponent: CiBookmarkCheck,
             name: 'test3',
-            link: '/userList',
+            link: '/user/list',
           },
         ],
       },
