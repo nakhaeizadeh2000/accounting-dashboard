@@ -7,6 +7,7 @@ import { useSignUpMutation } from '@/store/features/sign-up/sign-up.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AnimatedInputElement from '../Elements/input-elements/AnimatedInputElement';
+import FormButton from '../Elements/buttons/FormButton';
 
 type SignUpErrorState = FormValidationsErrorState<SignUpFormData>;
 
@@ -108,7 +109,16 @@ export default function SignUpForm() {
 
       {/* Submit button */}
       <div className="pt-3 text-center">
-        <button
+        <FormButton
+          isLoading={isLoading}
+          className="text-white"
+          style={{
+            background: 'linear-gradient(to right, #ee7724, #d8363a, #dd3675, #b44593)',
+          }}
+          label="ثبت نام"
+          loadingIconColor="bg-neutral-300"
+        ></FormButton>
+        {/* <button
           type="submit"
           disabled={isLoading}
           className="w-full rounded-md px-6 py-2 text-sm font-medium text-white transition duration-150 ease-in-out"
@@ -116,9 +126,8 @@ export default function SignUpForm() {
             background: 'linear-gradient(to right, #ee7724, #d8363a, #dd3675, #b44593)',
           }}
         >
-          {/* TODO: work on response when email is not uniqe */}
           {isLoading ? 'در حال بارگزاری...' : 'ثبت نام'}
-        </button>
+        </button> */}
 
         {/* Form errors */}
         {errors.formErrors.length > 0 && (
