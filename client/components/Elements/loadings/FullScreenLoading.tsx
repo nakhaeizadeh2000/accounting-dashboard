@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import styles from './styles/LayerLoading.module.scss';
+import styles from './styles/FullScreenLoading.module.scss';
 
 const containerVariants = {
   animate: {
@@ -25,7 +25,7 @@ const barVariants = {
 
 const LoaderBar = () => <motion.div className={styles.bar} variants={barVariants} />;
 
-const LayerLoading = () => {
+const FullScreenLoading = () => {
   return (
     <div className="flex h-screen items-center justify-center">
       <motion.div
@@ -42,4 +42,4 @@ const LayerLoading = () => {
   );
 };
 
-export default LayerLoading;
+export default FullScreenLoading;

@@ -1,7 +1,7 @@
-import LayerLoading from '@/components/Elements/loadings/LayerLoading';
+import FullScreenLoading from '@/components/Elements/loadings/FullScreenLoading';
 
 const loading = () => {
-  return <LayerLoading />;
+  return <FullScreenLoading />;
 };
 
 export default loading;

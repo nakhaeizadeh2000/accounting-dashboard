@@ -3,7 +3,7 @@ import App from '@/App';
 import store from '@/store';
 import { Provider } from 'react-redux';
 import { ReactNode, Suspense } from 'react';
-import LayerLoading from '../Elements/loadings/LayerLoading';
+import FullScreenLoading from '../Elements/loadings/FullScreenLoading';
 
 interface IProps {
   children?: ReactNode;
@@ -12,7 +12,7 @@ interface IProps {
 const ProviderComponent = ({ children }: IProps) => {
   return (
     <Provider store={store}>
-      <Suspense fallback={<LayerLoading />}>
+      <Suspense fallback={<FullScreenLoading />}>
         <App>{children} </App>
       </Suspense>
     </Provider>

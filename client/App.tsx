@@ -13,7 +13,7 @@ import {
 } from '@/store/features/theme/themeConfigSlice';
 import { getTranslation } from '@/i18n';
 import 'styles/global.scss';
-import LayerLoading from './components/Elements/loadings/LayerLoading';
+import FullScreenLoading from './components/Elements/loadings/FullScreenLoading';
 
 function App({ children }: PropsWithChildren) {
   const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -52,7 +52,7 @@ function App({ children }: PropsWithChildren) {
         themeConfig.rtlClass
       } main-section relative text-sm font-normal antialiased`}
     >
-      {isLoading ? <LayerLoading /> : children}
+      {isLoading ? <FullScreenLoading /> : children}
     </div>
   );
 }
