@@ -1,15 +1,15 @@
-import { SideBarNavItems } from '@/shared/types/sidebar-nav.model';
 import { Fa42Group, FaApple, FaPhone, FaUserCheck } from 'react-icons/fa6';
 import { CiBookmarkCheck } from 'react-icons/ci';
 import { RxAlignBaseline, RxCardStackPlus, RxComponent1, RxDashboard } from 'react-icons/rx';
+import { SideBarNavItems } from '@/shared/types/sidebar-nav.model';
 
 export const sideBarMenu: SideBarNavItems[] = [
-  {
-    type: 'link',
-    name: 'apps',
-    IconComponent: RxAlignBaseline,
-    link: '/',
-  },
+  // {
+  //   type: 'link',
+  //   name: 'apps',
+  //   IconComponent: RxAlignBaseline,
+  //   link: '/',
+  // },
   {
     titleHeader: 'apps',
     IconHeader: RxCardStackPlus,
@@ -23,7 +23,7 @@ export const sideBarMenu: SideBarNavItems[] = [
           {
             IconComponent: CiBookmarkCheck,
             name: 'test3',
-            link: '/',
+            link: '/userList',
           },
         ],
       },
