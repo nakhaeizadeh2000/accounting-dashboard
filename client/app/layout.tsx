@@ -1,9 +1,9 @@
 import ProviderComponent from '@/components/layouts/provider-component';
 import 'react-perfect-scrollbar/dist/css/styles.css';
 import '../styles/tailwind.css';
+
 import { yekanBakh } from './stuff/fonts';
 import { Metadata } from 'next';
-
 
 export const metadata: Metadata = {
   title: {
@@ -15,8 +15,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fa" className={`${yekanBakh.variable} font-sans`}>
-      <head>
-      </head>
+      <head></head>
       <body>
         <ProviderComponent>{children}</ProviderComponent>
       </body>

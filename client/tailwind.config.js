@@ -7,6 +7,7 @@ const rotateX = plugin(function ({ addUtilities }) {
     },
   });
 });
+
 module.exports = {
   content: [
     './App.tsx',
@@ -104,5 +105,23 @@ module.exports = {
     }),
     require('@tailwindcss/typography'),
     rotateX,
+    require('@tailwind-plugin/expose-colors')({
+      mode: 'rgb',
+      prefix: '--color',
+      extract: [
+        'primary',
+        'secondary',
+        'success',
+        'danger',
+        'warning',
+        'info',
+        'dark',
+        'black',
+        'white',
+        'neutral',
+        'slate',
+        'blue',
+      ],
+    }),
   ],
 };
