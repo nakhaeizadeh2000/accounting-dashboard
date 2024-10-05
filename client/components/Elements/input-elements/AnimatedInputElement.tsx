@@ -7,10 +7,12 @@ import { IconType } from 'react-icons';
 type IconOption = {
   Icon: IconType;
   iconText?: never;
+  iconClass?: string;
 };
 type IconTextOption = {
   Icon?: never;
   iconText: string;
+  iconClass?: string;
 };
 
 type Options = {
@@ -63,8 +65,8 @@ const AnimatedInputElement = ({
   const isDirty = isFocused || inputOptions.defaultValue?.trim() !== '';
 
   useEffect(() => {
-    setInputOptions((prev) => ({ ...prev, fieldError, isDisabled, isVisible, defaultValue }));
-  }, [fieldError, isDisabled, isVisible, defaultValue]);
+    setInputOptions((prev) => ({ ...prev, fieldError, isDisabled, isVisible, type }));
+  }, [fieldError, isDisabled, isVisible, type]);
 
   return inputOptions.isVisible ? (
     <div>
@@ -99,7 +101,9 @@ const AnimatedInputElement = ({
             onBlur={() => setIsFocused(false)} // Reset focus state
           />
           {icon && (
-            <div className="flex w-1/6 items-center justify-center border-r border-gray-900 border-opacity-10 dark:border-gray-50">
+            <div
+              className={`flex w-1/6 items-center justify-center border-r border-gray-900 border-opacity-10 dark:border-gray-50 dark:border-opacity-20 ${icon.iconClass ?? ''}`}
+            >
               {icon.Icon && <icon.Icon />}
               {icon.iconText && icon.iconText}
             </div>
