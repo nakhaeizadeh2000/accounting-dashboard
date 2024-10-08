@@ -4,8 +4,8 @@ type Props = {
   name?: string;
 };
 
-const UserAdd = (props: Props) => {
+const UserAddComponent = (props: Props) => {
   return <div>UserAdd</div>;
 };
 
-export default UserAdd;
+export default UserAddComponent;
