@@ -4,7 +4,7 @@ import { SignInFormData, SignInSchema } from '@/schemas/validations/auth/sign-in
 import { setAccessTokenCookie } from '@/shared/functions/access-token-cookie';
 import { FormValidationsErrorState } from '@/shared/types/form-validations-error-state.type';
 import { isResponseCatchError } from '@/store/features/base-response.model';
-import { useSignInMutation } from '@/store/features/sign-in/sign-in.api';
+import { useSignInMutation } from '@/store/features/auth/sign-in/sign-in.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AnimatedInputElement from '@/Elements/input-elements/AnimatedInputElement';

@@ -7,5 +7,5 @@ export const baseApi = createApi({
   baseQuery: fetchBaseQuery({ baseUrl: baseUrl }),
   keepUnusedDataFor: 1, // Keep data in cache for 1 seconds after last use
   endpoints: () => ({}),
-  tagTypes: ['User', 'SignIn', 'SignUp'], // Define tag types for cache
+  tagTypes: ['User', 'SignIn', 'SignUp', 'SignOut'], // Define tag types for cache
 });

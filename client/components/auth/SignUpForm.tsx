@@ -3,7 +3,7 @@
 import { SignUpFormData, SignUpSchema } from '@/schemas/validations/auth/sign-up.schema';
 import { FormValidationsErrorState } from '@/shared/types/form-validations-error-state.type';
 import { isResponseCatchError } from '@/store/features/base-response.model';
-import { useSignUpMutation } from '@/store/features/sign-up/sign-up.api';
+import { useSignUpMutation } from '@/store/features/auth/sign-up/sign-up.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AnimatedInputElement from '../Elements/input-elements/AnimatedInputElement';

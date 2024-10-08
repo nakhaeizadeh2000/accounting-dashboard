@@ -34,11 +34,13 @@ import IconMenuMore from '@/components/icon/menu/icon-menu-more';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTranslation } from '@/i18n';
 import { removeAccessTokenCookie } from '@/shared/functions/access-token-cookie';
+import { useSignOutMutation } from '@/store/features/auth/sign-out/sign-out.api';
 
 const Header = () => {
   const pathname = usePathname();
   const dispatch = useDispatch();
   const router = useRouter();
+  const [signOut, { isLoading: isLoadingLogout }] = useSignOutMutation();
   const { t, i18n } = getTranslation();
 
   useEffect(() => {
@@ -154,8 +156,8 @@ const Header = () => {
     setNotifications(notifications.filter((user) => user.id !== value));
   };
 
-  const handleLogout = () => {
-    // Replace 'your_cookie_name' with the actual name of your cookie
+  const handleLogout = async () => {
+    await signOut({}).unwrap();
     removeAccessTokenCookie();
   };
 
