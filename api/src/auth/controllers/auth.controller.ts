@@ -1,5 +1,5 @@
 // src/auth/auth.controller.ts
-import { Request, Body, Res } from '@nestjs/common';
+import { Request, Body, Res, Response } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { RegisterDto } from '../dto/register.dto';
 import {
@@ -28,7 +28,15 @@ export class AuthController {
   }
 
   @logoutEndpointDecorators()
-  async logout(@Request() req: FastifyRequest) {
-    this.authService.logout(req.headers.authorization?.split(' ')[1]); // pass accessToken to logout service.
+  async logout(
+    @Request() req: FastifyRequest,
+    @Res({ passthrough: true }) response: FastifyReply,
+  ) {
+    return this.authService.logout(
+      req.cookies['access_token'] ||
+        req.headers.authorization?.split(' ')[1] ||
+        null,
+      response,
+    ); // pass accessToken to logout service.
   }
 }

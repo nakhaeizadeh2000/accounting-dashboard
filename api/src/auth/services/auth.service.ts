@@ -91,7 +91,7 @@ export class AuthService {
     }
   }
 
-  async logout(accessToken: string) {
+  async logout(accessToken: string, response: FastifyReply) {
     const accessTokenPayload: AccessTokenPayloadDto =
       await this.jwtService.verifyAsync(accessToken, {
         ignoreExpiration: true,
@@ -114,9 +114,9 @@ export class AuthService {
       const newRefreshTokens: RefreshTokenDto = {
         refreshTokens: [...filteredRefreshTokenDto],
       };
-
       await this.cacheManager.del(cacheKey);
-      await this.cacheManager.set(cacheKey, newRefreshTokens);
+      await this.cacheManager.set(cacheKey, JSON.stringify(newRefreshTokens));
+      response.clearCookie('access_token');
     }
   }
 }
