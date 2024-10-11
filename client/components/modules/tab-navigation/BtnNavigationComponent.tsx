@@ -39,6 +39,7 @@ const BtnNavigationComponent = ({ btn, children }: Props) => {
               href={item?.link as Route}
               icon={<Icon />}
               iconPosition="start"
+              disabled={item?.disableCondition}
             />
           ))}
       </Tabs>

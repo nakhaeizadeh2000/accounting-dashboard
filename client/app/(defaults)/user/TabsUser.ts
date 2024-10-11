@@ -4,7 +4,7 @@ import { FaUser, FaUserCheck } from 'react-icons/fa6';
 export const btnTabs: btnNavigation[] = [
   { label: 'لیست', link: '/user/list', Icon: FaUser },
   { label: '1جدید', link: '/user/add', Icon: FaUserCheck },
-  { label: '2جدید', link: '/user/add', Icon: FaUserCheck },
+  { label: '2جدید', link: '/user/add', Icon: FaUserCheck, disableCondition: true },
   { label: '3جدید', link: '/user/add', Icon: FaUserCheck },
   { label: '4جدید', link: '/user/add', Icon: FaUserCheck },
   { label: '5جدید', link: '/user/add', Icon: FaUserCheck },

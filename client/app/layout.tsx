@@ -18,9 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fa" className={`${yekanBakh.variable} font-sans`}>
       <head></head>
       <body>
-        <ProviderMuiConfig>
-          <ProviderComponent>{children}</ProviderComponent>
-        </ProviderMuiConfig>
+        <ProviderComponent>
+          <ProviderMuiConfig>{children}</ProviderMuiConfig>
+        </ProviderComponent>
       </body>
     </html>
   );
