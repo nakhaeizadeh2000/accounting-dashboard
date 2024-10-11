@@ -21,7 +21,8 @@ export const lightTheme = createTheme({
         root: {
           color: '#121C27',
           '&.Mui-selected': {
-            color: '#1a73e8',
+            color: '#793ac1',
+            backgroundColor: '#eee',
           },
         },
       },
@@ -53,8 +54,15 @@ export const darkTheme = createTheme({
           color: 'rgba(255, 255, 255, 0.7)',
           '&.Mui-selected': {
             color: '#793ac1',
+            // backgroundColor: '#eee',
+            borderRadius: 20,
           },
         },
+
+        // indicator: {
+        //   backgroundColor: '#1a73e8', // Change the indicator color here
+        //   height: '3px', // Adjust thickness here
+        // },
       },
     },
   },

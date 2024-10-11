@@ -1,15 +1,15 @@
 'use client';
 
-import { btnNavigation } from '@/components/modules/tab-navigation/btn-navigation.model';
 import React, { useState } from 'react';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import { Box } from '@mui/material';
 import Link from 'next/link';
 import { Route } from 'next';
+import { BtnNavigation } from './btn-navigation.model';
 
 type Props = {
-  btn: btnNavigation[];
+  btn: BtnNavigation[];
   children: React.ReactNode;
 };
 
@@ -29,6 +29,11 @@ const BtnNavigationComponent = ({ btn, children }: Props) => {
         aria-label="scrollable force tabs example"
         variant="scrollable"
         scrollButtons="auto"
+        TabIndicatorProps={{
+          style: {
+            backgroundColor: '#793ac1',
+          },
+        }}
       >
         {btn.length > 0 &&
           btn.map(({ Icon, ...item }) => (
@@ -36,7 +41,7 @@ const BtnNavigationComponent = ({ btn, children }: Props) => {
               key={item?.label}
               label={item?.label}
               component={Link}
-              href={item?.link as Route}
+              href={item?.type === 'link' ? (item?.link as Route) : '/'}
               icon={<Icon />}
               iconPosition="start"
               disabled={item?.disableCondition}
