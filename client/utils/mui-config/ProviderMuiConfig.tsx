@@ -24,9 +24,8 @@ const ProviderMuiConfig = (props: Props) => {
   useEffect(() => {
     const value = dispatch(toggleTheme(localStorage.getItem('theme') || themeConfig.theme));
     SetDarkMode(value.payload);
-    console.log(value);
   }, [dispatch, themeConfig.theme]);
-  console.log(isDark);
+
   return (
     <CacheProvider value={rtlCache}>
       <ThemeProvider theme={isDark === 'dark' ? darkTheme : lightTheme}>
