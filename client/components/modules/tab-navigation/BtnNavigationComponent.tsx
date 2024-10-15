@@ -31,7 +31,8 @@ const BtnNavigationComponent = ({ btn, children }: Props) => {
         scrollButtons="auto"
         TabIndicatorProps={{
           style: {
-            backgroundColor: '#793ac1',
+            backgroundColor: '#6571ff',
+            color: '#6571ff',
           },
         }}
       >
@@ -50,7 +51,17 @@ const BtnNavigationComponent = ({ btn, children }: Props) => {
       </Tabs>
 
       {/* Conditionally render components based on the selected tab */}
-      <Box sx={{ padding: '20px', borderTop: '1px solid #e0e0e0' }}>{children}</Box>
+      <Box
+        sx={{
+          padding: '20px',
+          //TODO set color dynamic when i choose the mode theme
+          borderTop: '1px solid #e0e0e069',
+          minHeight: '600px',
+          bgcolor: 'primary.main',
+        }}
+      >
+        {children}
+      </Box>
     </Box>
   );
 };

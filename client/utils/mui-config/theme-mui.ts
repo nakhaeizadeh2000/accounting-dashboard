@@ -3,13 +3,13 @@ import { createTheme } from '@mui/material/styles';
 // Light theme
 export const lightTheme = createTheme({
   direction: 'rtl', // Set the direction to RTL
+  typography: {
+    fontFamily: 'var(--font-yekan-bakh)',
+  },
   palette: {
     mode: 'light',
     primary: {
-      main: '#1976d2',
-    },
-    background: {
-      default: '#f5f5f5',
+      main: '#f6f7fa',
     },
     text: {
       primary: '#000',
@@ -20,10 +20,18 @@ export const lightTheme = createTheme({
       styleOverrides: {
         root: {
           color: '#121C27',
+
           '&.Mui-selected': {
-            color: '#793ac1',
+            color: '#6571ff',
             backgroundColor: '#eee',
           },
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#f6f7fa',
         },
       },
     },
@@ -33,14 +41,19 @@ export const lightTheme = createTheme({
 // Dark theme
 export const darkTheme = createTheme({
   direction: 'rtl', // Set the direction to RTL
+  typography: {
+    fontFamily: 'var(--font-yekan-bakh)',
+  },
   palette: {
     mode: 'dark',
-    // primary: {
-    //   main: '#d2d8e300',
-    //   dark: '#d2d8e300',
-    // },
+    primary: {
+      main: '#101427',
+    },
+    //  common:{
+
+    //  },
     background: {
-      default: '#121212',
+      default: '#101427',
     },
     text: {
       primary: '#eee',
@@ -52,17 +65,19 @@ export const darkTheme = createTheme({
       styleOverrides: {
         root: {
           color: 'rgba(255, 255, 255, 0.7)',
+
           '&.Mui-selected': {
-            color: '#793ac1',
-            // backgroundColor: '#eee',
+            color: '#6571ff',
             borderRadius: 20,
           },
         },
-
-        // indicator: {
-        //   backgroundColor: '#1a73e8', // Change the indicator color here
-        //   height: '3px', // Adjust thickness here
-        // },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#101427',
+        },
       },
     },
   },
