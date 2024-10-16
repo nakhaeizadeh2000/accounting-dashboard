@@ -1,12 +1,25 @@
+'use client';
+
 import AnimatedDropDown from '@/components/Elements/drop-downs/AnimatedDropDown';
-import AnimatedInputElement from '@/components/Elements/input-elements/AnimatedInputElement';
 import { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: 'Sales Admin',
-};
+// export const metadata: Metadata = {
+//   title: 'Sales Admin',
+// };
 
 const Sales = () => {
+  const handleDropdownChange = (value: any) => {
+    // This function can be used for additional logic if needed
+    // console.log('Selected Value:', value);
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    // TODO: work on these sections
+    // formData.append()
+  };
+
   return (
     <div>
       <p className="font-sans">This will use font-sans</p>
@@ -15,16 +28,24 @@ const Sales = () => {
       <p className="font-yekan font-bold">
         This will use YekanBakh Bold <strong>this is testing</strong>
       </p>
-      <div className="flex flex-col gap-2">
+
+      <form onSubmit={handleSubmit}>
         <div className="flex gap-2">
-          <AnimatedDropDown options={{ label: 'menu', navClassNames: 'w-1/5 w' }} />
-          <AnimatedDropDown options={{ label: 'menu', navClassNames: 'w-4/5' }} />
+          <AnimatedDropDown
+            options={{
+              label: 'menu',
+              navClass: 'w-1/5 w',
+              items: [
+                { value: 'item1', label: '1 Item 1' },
+                { value: 'item2', label: '1 Item 2' },
+                { value: 'item3', label: '1 Item 3' },
+              ],
+              onChange: handleDropdownChange,
+            }}
+          />
         </div>
-        <div className="flex gap-2">
-          <AnimatedDropDown options={{ label: 'menu', navClassNames: 'w-4/5 w' }} />
-          <AnimatedDropDown options={{ label: 'menu', navClassNames: 'w-1/5 w' }} />
-        </div>
-      </div>
+        <button type="submit">Submit</button>
+      </form>
     </div>
   );
 };

@@ -6,7 +6,10 @@ import { motion, Variants } from 'framer-motion';
 type Props = {
   options: {
     label: string;
-    navClassNames?: string;
+    navClass?: string;
+    items: { value: string; label: string }[];
+    selectedValue?: { value: string; label: string }; // To hold the selected value
+    onChange: (item: { value: string; label: string }) => void; // Callback to handle change
   };
 };
 
@@ -25,21 +28,26 @@ const itemVariants: Variants = {
   },
 };
 
-export default function AnimatedDropDown({ options: { label, navClassNames = '' } }: Props) {
+export default function AnimatedDropDown({
+  options: { label, navClass = '', items, selectedValue, onChange },
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<{ value: string; label: string } | undefined>(
+    selectedValue,
+  );
 
   return (
     <motion.nav
       initial={false}
       animate={isOpen ? 'open' : 'closed'}
-      className={`relative ${navClassNames}`}
+      className={`relative ${navClass}`}
     >
       <motion.button
         whileTap={{ scale: 0.97 }}
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center justify-between rounded border border-solid border-transparent bg-neutral-100 p-2 leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
       >
-        {label}
+        {selectedItem?.label || label}
         <motion.div
           variants={{
             open: { rotate: 180 },
@@ -81,36 +89,19 @@ export default function AnimatedDropDown({ options: { label, navClassNames = '' 
         style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
         className="absolute z-10 mt-2 w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
       >
-        <motion.li
-          variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
-        >
-          Item 1
-        </motion.li>
-        <motion.li
-          variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
-        >
-          Item 2
-        </motion.li>
-        <motion.li
-          variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
-        >
-          Item 3
-        </motion.li>
-        <motion.li
-          variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
-        >
-          Item 4
-        </motion.li>
-        <motion.li
-          variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
-        >
-          Item 5
-        </motion.li>
+        {items.map((item) => (
+          <motion.li
+            key={item.value}
+            variants={itemVariants}
+            onClick={() => {
+              onChange(item);
+              setIsOpen(false); // Close dropdown after selection
+              setSelectedItem((prevItem) => item);
+            }}
+          >
+            {item.label}
+          </motion.li>
+        ))}
       </motion.ul>
     </motion.nav>
   );
