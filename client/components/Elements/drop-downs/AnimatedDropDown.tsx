@@ -3,6 +3,13 @@
 import { useState } from 'react';
 import { motion, Variants } from 'framer-motion';
 
+type Props = {
+  options: {
+    label: string;
+    navClassNames?: string;
+  };
+};
+
 const itemVariants: Variants = {
   open: {
     opacity: 1,
@@ -18,17 +25,21 @@ const itemVariants: Variants = {
   },
 };
 
-export default function AnimatedDropDown() {
+export default function AnimatedDropDown({ options: { label, navClassNames = '' } }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <motion.nav initial={false} animate={isOpen ? 'open' : 'closed'} className="relative w-full">
+    <motion.nav
+      initial={false}
+      animate={isOpen ? 'open' : 'closed'}
+      className={`relative ${navClassNames}`}
+    >
       <motion.button
         whileTap={{ scale: 0.97 }}
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center justify-between rounded border border-solid border-transparent bg-neutral-100 p-2 leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
       >
-        منو انتخابی
+        {label}
         <motion.div
           variants={{
             open: { rotate: 180 },
@@ -68,35 +79,35 @@ export default function AnimatedDropDown() {
           },
         }}
         style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-        className="absolute z-10 mt-2 w-full rounded border border-solid border-transparent bg-neutral-100 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
+        className="absolute z-10 mt-2 w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
       >
         <motion.li
           variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 hover:dark:bg-slate-700"
+          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
         >
           Item 1
         </motion.li>
         <motion.li
           variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 hover:dark:bg-slate-700"
+          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
         >
           Item 2
         </motion.li>
         <motion.li
           variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 hover:dark:bg-slate-700"
+          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
         >
           Item 3
         </motion.li>
         <motion.li
           variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 hover:dark:bg-slate-700"
+          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
         >
           Item 4
         </motion.li>
         <motion.li
           variants={itemVariants}
-          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 hover:dark:bg-slate-700"
+          className="cursor-pointer rounded border border-solid border-transparent px-4 py-2 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
         >
           Item 5
         </motion.li>

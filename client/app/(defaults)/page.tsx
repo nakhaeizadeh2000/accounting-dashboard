@@ -15,13 +15,15 @@ const Sales = () => {
       <p className="font-yekan font-bold">
         This will use YekanBakh Bold <strong>this is testing</strong>
       </p>
-      <div className="columns-2 gap-2">
-        <div>
-          <AnimatedDropDown />
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <AnimatedDropDown options={{ label: 'menu', navClassNames: 'w-1/5 w' }} />
+          <AnimatedDropDown options={{ label: 'menu', navClassNames: 'w-4/5' }} />
         </div>
-        <AnimatedInputElement
-          options={{ key: 'email', label: 'ایمیل', type: 'text', fieldError: undefined }}
-        />
+        <div className="flex gap-2">
+          <AnimatedDropDown options={{ label: 'menu', navClassNames: 'w-4/5 w' }} />
+          <AnimatedDropDown options={{ label: 'menu', navClassNames: 'w-1/5 w' }} />
+        </div>
       </div>
     </div>
   );
