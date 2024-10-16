@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { CacheProvider } from '@emotion/react';
 import { ThemeProvider } from '@mui/material/styles';
-import createRtlCache from '@/utils/mui-config/createRtlCache';
+import createRtlCache from '@/shared/configs/mui-config/createRtlCache';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleTheme } from '@/store/features/theme/themeConfigSlice';
 import { darkTheme, lightTheme } from './theme-mui';

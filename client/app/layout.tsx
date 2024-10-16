@@ -4,7 +4,7 @@ import '../styles/tailwind.css';
 
 import { yekanBakh } from './stuff/fonts';
 import { Metadata } from 'next';
-import ProviderMuiConfig from '@/utils/mui-config/ProviderMuiConfig';
+import ProviderMuiConfig from '@/shared/configs/mui-config/ProviderMuiConfig';
 
 export const metadata: Metadata = {
   title: {
