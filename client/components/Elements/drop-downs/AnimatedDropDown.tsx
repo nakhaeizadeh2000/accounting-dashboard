@@ -16,16 +16,10 @@ type Props = {
 const itemVariants: Variants = {
   open: {
     opacity: 1,
-    scale: 1,
-    filter: 'blur(0px)',
+    y: 0,
     transition: { type: 'spring', stiffness: 300, damping: 24 },
   },
-  closed: {
-    opacity: 0,
-    scale: 0.3,
-    filter: 'blur(20px)',
-    transition: { duration: 0.2 },
-  },
+  closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
 };
 
 export default function AnimatedDropDown({
@@ -80,7 +74,7 @@ export default function AnimatedDropDown({
               type: 'spring',
               bounce: 0,
               duration: 0.3,
-              when: 'afterChildren',
+
               staggerDirection: -1,
               staggerChildren: 0.06,
             },
@@ -92,6 +86,7 @@ export default function AnimatedDropDown({
         {items.map((item) => (
           <motion.li
             key={item.value}
+            className="cursor-pointer rounded border border-solid border-transparent px-4 py-1 text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600"
             variants={itemVariants}
             onClick={() => {
               onChange(item);
