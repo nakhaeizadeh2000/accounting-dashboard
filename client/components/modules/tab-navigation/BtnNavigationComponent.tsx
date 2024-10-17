@@ -55,7 +55,7 @@ const BtnNavigationComponent = ({ btn, children }: Props) => {
         sx={{
           padding: '20px',
           //TODO set color dynamic when i choose the mode theme
-          borderTop: '1px solid #e0e0e069',
+          borderTop: '1px solid #e0e0e0',
           minHeight: '600px',
           bgcolor: 'primary.main',
         }}
