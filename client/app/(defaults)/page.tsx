@@ -30,11 +30,23 @@ const Sales = () => {
       </p>
 
       <form onSubmit={handleSubmit}>
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2">
           <AnimatedDropDown
             options={{
               label: 'menu',
-              navClass: 'w-1/5 w',
+              containerClass: 'w-1/5',
+              items: [
+                { value: 'item1', label: '1 Item 1' },
+                { value: 'item2', label: '1 Item 2' },
+                { value: 'item3', label: '1 Item 3' },
+              ],
+              onChange: handleDropdownChange,
+            }}
+          />
+          <AnimatedDropDown
+            options={{
+              label: 'menu',
+              containerClass: 'w-4/5',
               items: [
                 { value: 'item1', label: '1 Item 1' },
                 { value: 'item2', label: '1 Item 2' },
