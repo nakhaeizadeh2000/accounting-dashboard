@@ -272,12 +272,12 @@ const Header = () => {
                     themeConfig.theme === 'dark' &&
                     'flex items-center rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-dark/40 dark:hover:bg-dark/60'
                   }`}
-                  onClick={() => dispatch(toggleTheme('system'))}
+                  onClick={() => dispatch(toggleTheme('light'))}
                 >
                   <IconMoon />
                 </button>
               )}
-              {themeConfig.theme === 'system' && (
+              {/* {themeConfig.theme === 'system' && (
                 <button
                   className={`${
                     themeConfig.theme === 'system' &&
@@ -287,7 +287,7 @@ const Header = () => {
                 >
                   <IconLaptop />
                 </button>
-              )}
+              )} */}
             </div>
             <div className="dropdown shrink-0">
               <Dropdown
