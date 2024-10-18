@@ -1,3 +1,4 @@
+import BadgesComponents from '@/components/modules/badges/BadgesComponents';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ const Sales = () => {
       <p className="font-yekan font-normal">This will use YekanBakh Regular</p>
       <p className="font-yekan font-bold">
         This will use YekanBakh Bold <strong>this is testing</strong>
+        <BadgesComponents />
       </p>
     </div>
   );
