@@ -1,10 +1,11 @@
 import { baseApi } from '@/store/api';
 import { GetFull, GetIndex, PostType } from './users.model';
+import { UserFormData } from '@/schemas/validations/users/user.schema';
 
 export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getUsers: builder.query<GetIndex[], void>({
-      query: () => 'users',
+    getUsers: builder.query<getUsers, { page: number; pageSize: number }>({
+      query: ({ page, pageSize }) => `users?page=${page}&pageSize=${pageSize}`,
       providesTags: ['User'],
     }),
     getUserById: builder.query<GetFull, { id: number }>({
@@ -23,3 +24,17 @@ export const userApi = baseApi.injectEndpoints({
 });
 
 export const { useGetUsersQuery, useGetUserByIdQuery, useCreateUserMutation } = userApi;
+
+export interface getUsers {
+  data: {
+    currentPage: number;
+    items: Array<UserFormData & { id: string }>;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+
+  message: string[];
+  statusCode: number;
+  success: number;
+}
