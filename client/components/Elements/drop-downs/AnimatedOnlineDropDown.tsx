@@ -2,12 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
+import { TiArrowSortedDown } from 'react-icons/ti';
+import { HiMiniXMark } from 'react-icons/hi2';
 
 type Props = {
   options: {
     label: string;
     navClass?: string;
     containerClass?: string;
+    labelClass?: string;
     items: { value: string; label: string }[];
     selectedValue?: { value: string; label: string }; // To hold the selected value
     onChange: (item: { value: string; label: string }) => void; // Callback to handle change
@@ -23,8 +26,8 @@ const itemVariants: Variants = {
   closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
 };
 
-export default function AnimatedDropDown({
-  options: { label, navClass = '', items, selectedValue, onChange, containerClass },
+export default function AnimatedOnlineDropDown({
+  options: { label, navClass = '', items, selectedValue, onChange, containerClass, labelClass },
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ value: string; label: string } | undefined>(
@@ -48,34 +51,63 @@ export default function AnimatedDropDown({
     };
   }, []);
 
+  function onRemoveItemClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedItem(undefined);
+  }
+
   return (
     <div className={`flex flex-col ${containerClass}`}>
-      <motion.p>label</motion.p>
+      <motion.label
+        className={`pointer-events-none right-2 z-10 mb-0 truncate pt-[0.37rem] leading-[1.6] text-neutral-600 dark:text-neutral-300 ${labelClass}`}
+        animate={{
+          position: 'relative', // Keep it absolute
+          top: selectedItem?.value || isOpen ? '0' : '1.95rem', // Move up if touched or has value
+        }}
+        transition={{
+          type: 'spring',
+          stiffness: 700,
+          damping: 30,
+        }}
+      >
+        {label}
+      </motion.label>
       <motion.nav
         initial={false}
         animate={isOpen ? 'open' : 'closed'}
-        className={`relative ${navClass}`}
+        className={`relative rounded border ${isOpen ? 'border-blue-500' : 'border-transparent'} bg-neutral-100 dark:bg-slate-800 ${navClass}`}
         ref={dropdownRef} // Attach ref to the nav element
       >
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={() => setIsOpen(!isOpen)}
-          className="flex w-full items-center justify-between rounded border border-solid border-transparent bg-neutral-100 p-2 leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
+          className="flex w-full items-center justify-between rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
         >
           <p className="leading-[1.6]">{selectedItem?.label}</p>
-          <motion.div
-            variants={{
-              open: { rotate: 180 },
-              closed: { rotate: 0 },
-            }}
-            transition={{ duration: 0.2 }}
-            style={{ originY: 0.55 }}
-            className="ml-2"
-          >
-            <svg width="15" height="15" viewBox="0 0 20 20" className="fill-current">
-              <path d="M0 7 L 20 7 L 10 16" />
-            </svg>
-          </motion.div>
+
+          <div className="flex items-center">
+            {selectedItem?.value && (
+              <HiMiniXMark
+                onClick={onRemoveItemClick}
+                className="rounded-full bg-neutral-300 dark:bg-slate-600"
+              />
+            )}
+            <motion.div
+              variants={{
+                open: { rotate: 180 },
+                closed: { rotate: 0 },
+              }}
+              transition={{ duration: 0.2 }}
+              style={{ originY: 0.55 }}
+              className="mr-2 min-h-[auto] py-[0.24rem]"
+            >
+              <TiArrowSortedDown
+                className="fill-current text-dark dark:text-white-dark"
+                size={'15px'}
+                viewBox="0 0 20 20"
+              />
+            </motion.div>
+          </div>
         </motion.button>
         <motion.ul
           variants={{
@@ -116,7 +148,7 @@ export default function AnimatedDropDown({
               }}
             >
               <motion.p
-                className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 hover:dark:bg-slate-600' : ''}`}
+                className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
                 whileHover={{
                   x: item?.value !== selectedItem?.value ? '-7px' : '0px',
                 }}

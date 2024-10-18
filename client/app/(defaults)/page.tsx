@@ -1,7 +1,9 @@
 'use client';
 
-import AnimatedDropDown from '@/components/Elements/drop-downs/AnimatedDropDown';
+import AnimatedOfflineDropDown from '@/components/Elements/drop-downs/AnimatedOfflineDropDown';
+import AnimatedInputElement from '@/components/Elements/input-elements/AnimatedInputElement';
 import { Metadata } from 'next';
+import { MdOutlineAlternateEmail } from 'react-icons/md';
 
 // export const metadata: Metadata = {
 //   title: 'Sales Admin',
@@ -31,9 +33,9 @@ const Sales = () => {
 
       <form onSubmit={handleSubmit}>
         <div className="flex w-full gap-2">
-          <AnimatedDropDown
+          <AnimatedOfflineDropDown
             options={{
-              label: 'menu',
+              label: 'انتخاب کنید',
               containerClass: 'w-1/5',
               items: [
                 { value: 'item1', label: '1 Item 1' },
@@ -43,7 +45,7 @@ const Sales = () => {
               onChange: handleDropdownChange,
             }}
           />
-          <AnimatedDropDown
+          {/* <AnimatedDropDown
             options={{
               label: 'menu',
               containerClass: 'w-4/5',
@@ -53,6 +55,16 @@ const Sales = () => {
                 { value: 'item3', label: '1 Item 3' },
               ],
               onChange: handleDropdownChange,
+            }}
+          /> */}
+
+          <AnimatedInputElement
+            options={{
+              key: 'email',
+              label: 'ایمیل',
+              type: 'text',
+              fieldError: [],
+              icon: { Icon: MdOutlineAlternateEmail },
             }}
           />
         </div>
