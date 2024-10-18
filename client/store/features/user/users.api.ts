@@ -4,8 +4,8 @@ import { UserFormData } from '@/schemas/validations/users/user.schema';
 
 export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getUsers: builder.query<getUsers, { page: number; pageSize: number }>({
-      query: ({ page, pageSize }) => `users?page=${page}&pageSize=${pageSize}`,
+    getUsers: builder.query<getUsers, { page: number; limit: number }>({
+      query: ({ page, limit }) => `users?page=${page}&limit=${limit}`,
       providesTags: ['User'],
     }),
     getUserById: builder.query<GetFull, { id: number }>({
