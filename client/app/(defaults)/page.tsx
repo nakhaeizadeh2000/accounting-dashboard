@@ -1,16 +1,16 @@
 'use client';
 
-import AnimatedOfflineDropDown from '@/components/Elements/drop-downs/AnimatedOfflineDropDown';
 import AnimatedInputElement from '@/components/Elements/input-elements/AnimatedInputElement';
 import { Metadata } from 'next';
 import { MdOutlineAlternateEmail } from 'react-icons/md';
+import UserSingleSelectWidget from './UserSingleSelectWidget';
 
 // export const metadata: Metadata = {
 //   title: 'Sales Admin',
 // };
 
 const Sales = () => {
-  const handleDropdownChange = (value: any) => {
+  const handleUserSingleSelectChange = (value: any) => {
     // This function can be used for additional logic if needed
     // console.log('Selected Value:', value);
   };
@@ -33,17 +33,8 @@ const Sales = () => {
 
       <form onSubmit={handleSubmit}>
         <div className="flex w-full gap-2">
-          <AnimatedOfflineDropDown
-            options={{
-              label: 'انتخاب کنید',
-              containerClass: 'w-1/5',
-              items: [
-                { value: 'item1', label: '1 Item 1' },
-                { value: 'item2', label: '1 Item 2' },
-                { value: 'item3', label: '1 Item 3' },
-              ],
-              onChange: handleDropdownChange,
-            }}
+          <UserSingleSelectWidget
+            options={{ containerClass: 'w-1/5', onChange: handleUserSingleSelectChange }}
           />
           {/* <AnimatedDropDown
             options={{
@@ -57,7 +48,6 @@ const Sales = () => {
               onChange: handleDropdownChange,
             }}
           /> */}
-
           <AnimatedInputElement
             options={{
               key: 'email',

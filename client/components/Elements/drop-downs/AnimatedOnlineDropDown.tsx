@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, SetStateAction } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { TiArrowSortedDown } from 'react-icons/ti';
 import { HiMiniXMark } from 'react-icons/hi2';
+import { Dispatch } from '@reduxjs/toolkit';
 
 type Props = {
   options: {
@@ -11,9 +12,11 @@ type Props = {
     navClass?: string;
     containerClass?: string;
     labelClass?: string;
-    items: { value: string; label: string }[];
+    items?: { value: string; label: string }[];
     selectedValue?: { value: string; label: string }; // To hold the selected value
     onChange: (item: { value: string; label: string }) => void; // Callback to handle change
+    isLoading: boolean;
+    onFullScroll: ()=>void
   };
 };
 
@@ -27,9 +30,20 @@ const itemVariants: Variants = {
 };
 
 export default function AnimatedOnlineDropDown({
-  options: { label, navClass = '', items, selectedValue, onChange, containerClass, labelClass },
+  options: {
+    label,
+    navClass = '',
+    items = [],
+    selectedValue,
+    onChange,
+    containerClass,
+    labelClass,
+    isLoading,
+    onFullScroll
+  },
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  // const [page, setPage] = useState(1);
   const [selectedItem, setSelectedItem] = useState<{ value: string; label: string } | undefined>(
     selectedValue,
   );
@@ -55,6 +69,13 @@ export default function AnimatedOnlineDropDown({
     e.stopPropagation();
     setSelectedItem(undefined);
   }
+
+    const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
+    const bottom = e.currentTarget.scrollHeight === e.currentTarget.scrollTop + e.currentTarget.clientHeight;
+    if (bottom && !isLoading) {
+      onFullScroll();
+    }
+  };
 
   return (
     <div className={`flex flex-col ${containerClass}`}>
@@ -109,7 +130,8 @@ export default function AnimatedOnlineDropDown({
             </motion.div>
           </div>
         </motion.button>
-        <motion.ul
+        <motion.ul 
+          onScroll={handleScroll}
           variants={{
             open: {
               clipPath: 'inset(0% 0% 0% 0% round 5px)',
@@ -134,7 +156,7 @@ export default function AnimatedOnlineDropDown({
             },
           }}
           style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-          className="absolute z-10 mt-2 w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
+          className="absolute overflow-y-auto max-h-[300px] z-10 mt-2 w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
         >
           {items.map((item) => (
             <motion.li
