@@ -34,7 +34,11 @@ const Sales = () => {
       <form onSubmit={handleSubmit}>
         <div className="flex w-full gap-2">
           <UserSingleSelectWidget
-            options={{ containerClass: 'w-1/5', onChange: handleUserSingleSelectChange }}
+            options={{
+              containerClass: 'w-1/5',
+              onChange: handleUserSingleSelectChange,
+              isMarquee: true,
+            }}
           />
           {/* <AnimatedDropDown
             options={{

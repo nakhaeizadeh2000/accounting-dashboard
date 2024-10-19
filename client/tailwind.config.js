@@ -22,6 +22,10 @@ module.exports = {
       center: true,
     },
     extend: {
+      maxWidth: {
+        70: '70%', // Custom class for max-width: 70%
+        30: '30%',
+      },
       colors: {
         primary: {
           DEFAULT: '#4361ee',
@@ -100,6 +104,15 @@ module.exports = {
     },
   },
   plugins: [
+    function ({ addUtilities }) {
+      const newUtilities = {
+        '.direction-ltr': {
+          direction: 'ltr',
+        },
+      };
+
+      addUtilities(newUtilities, ['responsive', 'hover']);
+    },
     require('@tailwindcss/forms')({
       strategy: 'class',
     }),

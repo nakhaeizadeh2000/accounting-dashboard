@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect, SetStateAction } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { TiArrowSortedDown } from 'react-icons/ti';
 import { HiMiniXMark } from 'react-icons/hi2';
-import { Dispatch } from '@reduxjs/toolkit';
+import Marquee from 'react-fast-marquee';
 
 type Props = {
   options: {
@@ -12,11 +12,12 @@ type Props = {
     navClass?: string;
     containerClass?: string;
     labelClass?: string;
+    isMarquee?: boolean;
     items?: { value: string; label: string }[];
     selectedValue?: { value: string; label: string }; // To hold the selected value
     onChange: (item: { value: string; label: string }) => void; // Callback to handle change
     isLoading: boolean;
-    onFullScroll: ()=>void
+    onFullScroll: () => void;
   };
 };
 
@@ -39,7 +40,8 @@ export default function AnimatedOnlineDropDown({
     containerClass,
     labelClass,
     isLoading,
-    onFullScroll
+    onFullScroll,
+    isMarquee = false,
   },
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
@@ -70,8 +72,9 @@ export default function AnimatedOnlineDropDown({
     setSelectedItem(undefined);
   }
 
-    const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
-    const bottom = e.currentTarget.scrollHeight === e.currentTarget.scrollTop + e.currentTarget.clientHeight;
+  const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
+    const bottom =
+      e.currentTarget.scrollHeight === e.currentTarget.scrollTop + e.currentTarget.clientHeight;
     if (bottom && !isLoading) {
       onFullScroll();
     }
@@ -102,15 +105,30 @@ export default function AnimatedOnlineDropDown({
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={() => setIsOpen(!isOpen)}
-          className="flex w-full items-center justify-between rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
+          className="flex w-full items-center justify-between gap-2 rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
         >
-          <p className="leading-[1.6]">{selectedItem?.label}</p>
+          <div className="w-4/5 overflow-hidden">
+            {selectedItem?.label &&
+              (isMarquee ? (
+                <Marquee
+                  speed={50}
+                  autoFill={true}
+                  pauseOnHover={true}
+                  direction="right"
+                  className="direction-ltr"
+                >
+                  <p className="px-2 leading-[1.6]">{selectedItem?.label}</p>
+                </Marquee>
+              ) : (
+                <p className="px-2 leading-[1.6]">{selectedItem?.label}</p>
+              ))}
+          </div>
 
-          <div className="flex items-center">
+          <div className="flex w-1/5 items-center justify-end">
             {selectedItem?.value && (
               <HiMiniXMark
                 onClick={onRemoveItemClick}
-                className="rounded-full bg-neutral-300 dark:bg-slate-600"
+                className="justify-end rounded-full bg-neutral-300 dark:bg-slate-600"
               />
             )}
             <motion.div
@@ -120,7 +138,7 @@ export default function AnimatedOnlineDropDown({
               }}
               transition={{ duration: 0.2 }}
               style={{ originY: 0.55 }}
-              className="mr-2 min-h-[auto] py-[0.24rem]"
+              className="flex min-h-[auto] w-1/2 justify-end py-[0.24rem]"
             >
               <TiArrowSortedDown
                 className="fill-current text-dark dark:text-white-dark"
@@ -130,7 +148,7 @@ export default function AnimatedOnlineDropDown({
             </motion.div>
           </div>
         </motion.button>
-        <motion.ul 
+        <motion.ul
           onScroll={handleScroll}
           variants={{
             open: {
@@ -156,7 +174,7 @@ export default function AnimatedOnlineDropDown({
             },
           }}
           style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-          className="absolute overflow-y-auto max-h-[300px] z-10 mt-2 w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
+          className="absolute z-10 mt-2 max-h-[300px] w-full overflow-y-auto rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
         >
           {items.map((item) => (
             <motion.li
