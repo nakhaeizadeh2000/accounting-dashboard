@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { TiArrowSortedDown } from 'react-icons/ti';
 import { HiMiniXMark } from 'react-icons/hi2';
 import Marquee from 'react-fast-marquee';
+import { Scrollbar } from 'react-scrollbars-custom';
+import { ScrollState } from 'react-scrollbars-custom/dist/types/types';
 
 type Props = {
   options: {
@@ -19,15 +21,6 @@ type Props = {
     isLoading: boolean;
     onFullScroll: () => void;
   };
-};
-
-const itemVariants: Variants = {
-  open: {
-    opacity: 1,
-    y: 0,
-    transition: { type: 'spring', stiffness: 300, damping: 24 },
-  },
-  closed: { opacity: 0, y: 20, transition: { duration: 0.2 } },
 };
 
 export default function AnimatedOnlineDropDown({
@@ -72,9 +65,17 @@ export default function AnimatedOnlineDropDown({
     setSelectedItem(undefined);
   }
 
-  const handleScroll = (e: React.UIEvent<HTMLUListElement>) => {
-    const bottom =
-      e.currentTarget.scrollHeight === e.currentTarget.scrollTop + e.currentTarget.clientHeight;
+  // const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  //   const bottom =
+  //     e.currentTarget.scrollHeight === e.currentTarget.scrollTop + e.currentTarget.clientHeight;
+  //   if (bottom && !isLoading) {
+  //     onFullScroll();
+  //   }
+  // };
+
+  // Define the handleScroll function with the correct parameters
+  const handleScroll = (scrollValues: ScrollState, prevScrollValues: ScrollState) => {
+    const bottom = scrollValues.scrollHeight === scrollValues.scrollTop + scrollValues.clientHeight;
     if (bottom && !isLoading) {
       onFullScroll();
     }
@@ -103,11 +104,10 @@ export default function AnimatedOnlineDropDown({
         ref={dropdownRef} // Attach ref to the nav element
       >
         <motion.button
-          whileTap={{ scale: 0.97 }}
           onClick={() => setIsOpen(!isOpen)}
           className="flex w-full items-center justify-between gap-2 rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
         >
-          <div className="w-4/5 overflow-hidden">
+          <motion.div whileTap={{ scale: 0.97 }} className="w-4/5 overflow-hidden">
             {selectedItem?.label &&
               (isMarquee ? (
                 <Marquee
@@ -122,7 +122,7 @@ export default function AnimatedOnlineDropDown({
               ) : (
                 <p className="px-2 leading-[1.6]">{selectedItem?.label}</p>
               ))}
-          </div>
+          </motion.div>
 
           <div className="flex w-1/5 items-center justify-end">
             {selectedItem?.value && (
@@ -138,7 +138,7 @@ export default function AnimatedOnlineDropDown({
               }}
               transition={{ duration: 0.2 }}
               style={{ originY: 0.55 }}
-              className="flex min-h-[auto] w-1/2 justify-end py-[0.24rem]"
+              className="flex min-h-[auto] w-1/2 justify-center py-[0.24rem]"
             >
               <TiArrowSortedDown
                 className="fill-current text-dark dark:text-white-dark"
@@ -149,7 +149,6 @@ export default function AnimatedOnlineDropDown({
           </div>
         </motion.button>
         <motion.ul
-          onScroll={handleScroll}
           variants={{
             open: {
               clipPath: 'inset(0% 0% 0% 0% round 5px)',
@@ -157,8 +156,6 @@ export default function AnimatedOnlineDropDown({
                 type: 'spring',
                 bounce: 0,
                 duration: 0.5,
-                delayChildren: 0.3,
-                staggerChildren: 0.1,
               },
             },
             closed: {
@@ -167,36 +164,50 @@ export default function AnimatedOnlineDropDown({
                 type: 'spring',
                 bounce: 0,
                 duration: 0.3,
-
-                staggerDirection: -1,
-                staggerChildren: 0.06,
               },
             },
           }}
           style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-          className="absolute z-10 mt-2 max-h-[300px] w-full overflow-y-auto rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
+          className="absolute z-10 mt-2 w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
         >
-          {items.map((item) => (
-            <motion.li
-              key={item.value}
-              className={`var(--color-neutral-100 cursor-pointer rounded border border-solid border-transparent text-neutral-600 ${item?.value !== selectedItem?.value ? 'hover:bg-neutral-300 hover:dark:bg-slate-600' : ''} dark:text-neutral-300`}
-              variants={itemVariants}
-              onClick={() => {
-                onChange(item);
-                setIsOpen(false); // Close dropdown after selection
-                setSelectedItem((prevItem) => item);
-              }}
-            >
-              <motion.p
-                className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
-                whileHover={{
-                  x: item?.value !== selectedItem?.value ? '-7px' : '0px',
-                }}
-              >
-                {item.label}
-              </motion.p>
-            </motion.li>
-          ))}
+          {/* <PerfectScrollbar
+            options={{ suppressScrollX: false }}
+            dir="ltr"
+            onScroll={handleScroll}
+            style={{ maxHeight: '300px', width: '100%' }}
+            className="my-2"
+          > */}
+          <Scrollbar
+            style={{ maxHeight: '300px', width: '100%' }}
+            // onScroll={handleScroll}
+            // onScroll={handleScroll}
+            className="my-2"
+            rtl={true}
+          >
+            <div className="direction-rtl w-max">
+              {items.map((item) => (
+                <motion.li
+                  key={item.value}
+                  className={`var(--color-neutral-100) cursor-pointer rounded border border-solid border-transparent text-neutral-600 ${item?.value !== selectedItem?.value ? 'hover:bg-neutral-300 hover:dark:bg-slate-600' : ''} dark:text-neutral-300`}
+                  onClick={() => {
+                    onChange(item);
+                    setIsOpen(false); // Close dropdown after selection
+                    setSelectedItem((prevItem) => item);
+                  }}
+                >
+                  <motion.p
+                    className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
+                    whileHover={{
+                      x: item?.value !== selectedItem?.value ? '-5px' : '0px',
+                    }}
+                  >
+                    {item.label}
+                  </motion.p>
+                </motion.li>
+              ))}
+            </div>
+            {/* </PerfectScrollbar> */}
+          </Scrollbar>
         </motion.ul>
       </motion.nav>
     </div>

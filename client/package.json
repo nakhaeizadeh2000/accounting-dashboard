@@ -44,6 +44,7 @@
     "react-perfect-scrollbar": "^1.5.8",
     "react-popper": "^2.3.0",
     "react-redux": "^9.1.2",
+    "react-scrollbars-custom": "^4.1.1",
     "sass": "^1.79.3",
     "styled-components": "^6.1.13",
     "stylis": "^4.3.4",

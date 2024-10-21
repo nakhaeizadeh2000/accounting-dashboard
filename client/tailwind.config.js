@@ -109,6 +109,9 @@ module.exports = {
         '.direction-ltr': {
           direction: 'ltr',
         },
+        '.direction-rtl': {
+          direction: 'rtl',
+        },
       };
 
       addUtilities(newUtilities, ['responsive', 'hover']);

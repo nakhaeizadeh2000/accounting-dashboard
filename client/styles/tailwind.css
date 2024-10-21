@@ -509,10 +509,10 @@ hover:text-primary hover:before:!bg-primary ltr:before:mr-2 rtl:before:ml-2 dark
 }
 
 /* perfect scrollbar */
-.ps__rail-y > .ps__thumb-y,
+/* .ps__rail-y > .ps__thumb-y,
 .ps__rail-y > .ps__thumb-y {
   @apply !w-1.5 !bg-[#DDDDDD] dark:!bg-[#2d334c];
-}
+} */
 .ps .ps__rail-x:hover,
 .ps .ps__rail-y:hover,
 .ps .ps__rail-x:focus,
