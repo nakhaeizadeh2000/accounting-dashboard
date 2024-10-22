@@ -1,5 +1,5 @@
 'use client';
-import CustomPagination from '@/components/modules/pagination/PaginationComponent';
+import PaginationDataTableGridComponent from '@/components/modules/pagination/PaginationComponent';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
@@ -51,7 +51,11 @@ const UserListComponent = (props: Props) => {
         <DataGrid
           sx={{
             '& .MuiDataGrid-footerContainer': {
-              justifyContent: 'flex-start',
+              justifyContent: 'space-between',
+              flexDirection: 'row-reverse',
+            },
+            '&.MuiDataGrid-cell:focus': {
+              outline: 'solid #6571ff 1px',
             },
           }}
           rows={rowData}
@@ -62,7 +66,7 @@ const UserListComponent = (props: Props) => {
           onPaginationModelChange={handlePaginationModelChange}
           pageSizeOptions={[10, 15, 20, 50]}
           slots={{
-            pagination: CustomPagination,
+            pagination: PaginationDataTableGridComponent,
           }}
         />
       </div>
