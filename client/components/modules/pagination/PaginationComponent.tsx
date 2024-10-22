@@ -1,34 +1,4 @@
 'use client';
-// import React, { useState } from 'react';
-// import { Pagination, PaginationItem } from '@mui/material';
-
-// import {
-//   gridPageCountSelector,
-//   gridPageSelector,
-//   useGridApiContext,
-//   useGridSelector,
-// } from '@mui/x-data-grid';
-// import styles from './Pagination.module.scss';
-
-// export default function CustomPagination() {
-//   const apiRef = useGridApiContext();
-//   const page = useGridSelector(apiRef, gridPageSelector);
-//   const pageCount = useGridSelector(apiRef, gridPageCountSelector);
-//   console.log({
-//     apiRef,
-//     page,
-//     pageCount,
-//   });
-
-//   return (
-//     <Pagination
-//       color="primary"
-//       count={pageCount}
-//       page={page + 1}
-//       onChange={(event, value) => apiRef.current.setPage(value - 1)}
-//     />
-//   );
-// }
 
 import React, { useState } from 'react';
 import { Pagination, Select, MenuItem, SelectChangeEvent } from '@mui/material';
@@ -68,7 +38,7 @@ function CustomPagination() {
         onChange={handlePageSizeChange}
         style={{ marginLeft: 16 }}
       >
-        {[5, 10, 25, 50].map((size) => (
+        {[10, 15, 20, 50].map((size) => (
           <MenuItem key={size} value={size}>
             {size}
           </MenuItem>

@@ -1,6 +1,7 @@
 'use client';
 import CustomPagination from '@/components/modules/pagination/PaginationComponent';
-import { useGetUsersQuery } from '@/store/features/user/users.api';
+import { UserFormData } from '@/schemas/validations/users/user.schema';
+import { getUsers, useGetUsersQuery } from '@/store/features/user/users.api';
 import { GetIndex } from '@/store/features/user/users.model';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
 import React, { useEffect, useState } from 'react';
@@ -17,10 +18,15 @@ const UserListComponent = (props: Props) => {
 
   // Automatically fetches data when the component is mounted
   const { data, error, isLoading } = useGetUsersQuery({
-    page: 2,
-    limit: 15,
+    page: paginationModel?.page + 1,
+    limit: paginationModel?.pageSize,
   });
-  console.log(data);
+
+  const [rowData, setRowData] = useState<Array<UserFormData & { id: string }>>();
+
+  useEffect(() => {
+    setRowData(data?.data?.items);
+  }, []);
 
   const columns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70 },
@@ -28,10 +34,10 @@ const UserListComponent = (props: Props) => {
     { field: 'lastName', headerName: 'Last name', width: 130 },
   ];
 
-  const rows = dataFake;
-
   const handlePaginationModelChange = (newModel: GridPaginationModel) => {
     setPaginationModel(newModel);
+    console.log(newModel, 'helloo', paginationModel, 'paginationModel');
+    setRowData(data?.data?.items);
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -40,19 +46,20 @@ const UserListComponent = (props: Props) => {
   return (
     <div>
       <h1>User List</h1>
-      <ul>{data?.data?.items?.map((item) => <li key={item?.id}>{item?.firstName}</li>)}</ul>
-      <div style={{ height: 400, width: '100%' }}>
+      <div style={{ height: 500, width: '100%' }}>
         <DataGrid
           sx={{
             '& .MuiDataGrid-footerContainer': {
               justifyContent: 'flex-start',
             },
           }}
-          rows={rows}
+          rows={rowData}
+          rowCount={data?.data?.total}
           columns={columns}
+          paginationMode="server"
           paginationModel={paginationModel}
           onPaginationModelChange={handlePaginationModelChange}
-          pageSizeOptions={[5, 10, 25, 50]}
+          pageSizeOptions={[10, 15, 20, 50]}
           slots={{
             pagination: CustomPagination,
           }}
