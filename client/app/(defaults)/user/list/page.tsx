@@ -1,8 +1,7 @@
 'use client';
 import CustomPagination from '@/components/modules/pagination/PaginationComponent';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
-import { getUsers, useGetUsersQuery } from '@/store/features/user/users.api';
-import { GetIndex } from '@/store/features/user/users.model';
+import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
 import React, { useEffect, useState } from 'react';
 
@@ -13,31 +12,33 @@ type Props = {
 const UserListComponent = (props: Props) => {
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     pageSize: 10,
-    page: 0,
+    page: 0, // Start from page 0 for MUI DataGrid
   });
 
   // Automatically fetches data when the component is mounted
   const { data, error, isLoading } = useGetUsersQuery({
-    page: paginationModel?.page + 1,
-    limit: paginationModel?.pageSize,
+    page: paginationModel.page + 1, // Convert to 1-based for API
+    limit: paginationModel.pageSize,
   });
 
-  const [rowData, setRowData] = useState<Array<UserFormData & { id: string }>>();
+  const [rowData, setRowData] = useState<Array<UserFormData & { id: string }> | []>([]);
 
+  // Update rowData whenever data changes
   useEffect(() => {
-    setRowData(data?.data?.items);
-  }, []);
+    if (data) {
+      setRowData(data.data.items); // Adjust based on your API response structure
+    }
+  }, [data]);
 
   const columns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70 },
+    { field: '', headerName: 'index', width: 70 },
     { field: 'firstName', headerName: 'First name', width: 130 },
     { field: 'lastName', headerName: 'Last name', width: 130 },
   ];
 
   const handlePaginationModelChange = (newModel: GridPaginationModel) => {
     setPaginationModel(newModel);
-    console.log(newModel, 'helloo', paginationModel, 'paginationModel');
-    setRowData(data?.data?.items);
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -54,7 +55,7 @@ const UserListComponent = (props: Props) => {
             },
           }}
           rows={rowData}
-          rowCount={data?.data?.total}
+          rowCount={data?.data?.total} // Ensure this reflects total number of items
           columns={columns}
           paginationMode="server"
           paginationModel={paginationModel}
@@ -70,7 +71,6 @@ const UserListComponent = (props: Props) => {
 };
 
 export default UserListComponent;
-
 const dataFake = [
   { id: 1, lastName: 'Martell', firstName: 'Theon' },
   { id: 2, lastName: 'Targaryen', firstName: 'Theon' },
