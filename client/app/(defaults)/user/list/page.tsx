@@ -54,7 +54,7 @@ const UserListComponent = (props: Props) => {
               justifyContent: 'space-between',
               flexDirection: 'row-reverse',
             },
-            '&.MuiDataGrid-cell:focus': {
+            '&.MuiDataGrid-cell': {
               outline: 'solid #6571ff 1px',
             },
           }}
@@ -65,6 +65,7 @@ const UserListComponent = (props: Props) => {
           paginationModel={paginationModel}
           onPaginationModelChange={handlePaginationModelChange}
           pageSizeOptions={[10, 15, 20, 50]}
+          checkboxSelection={true}
           slots={{
             pagination: PaginationDataTableGridComponent,
           }}
@@ -75,55 +76,3 @@ const UserListComponent = (props: Props) => {
 };
 
 export default UserListComponent;
-const dataFake = [
-  { id: 1, lastName: 'Martell', firstName: 'Theon' },
-  { id: 2, lastName: 'Targaryen', firstName: 'Theon' },
-  { id: 3, lastName: 'Frey', firstName: 'Robb' },
-  { id: 4, lastName: 'Martell', firstName: 'Tyrion' },
-  { id: 5, lastName: 'Baratheon', firstName: 'Bran' },
-  { id: 6, lastName: 'Martell', firstName: 'Cersei' },
-  { id: 7, lastName: 'Snow', firstName: 'Jaime' },
-  { id: 8, lastName: 'Frey', firstName: 'Robb' },
-  { id: 9, lastName: 'Tyrell', firstName: 'Arya' },
-  { id: 10, lastName: 'Bolton', firstName: 'Theon' },
-  { id: 11, lastName: 'Frey', firstName: 'Joffrey' },
-  { id: 12, lastName: 'Stark', firstName: 'Tyrion' },
-  { id: 13, lastName: 'Stark', firstName: 'Tyrion' },
-  { id: 14, lastName: 'Martell', firstName: 'Bran' },
-  { id: 15, lastName: 'Targaryen', firstName: 'Cersei' },
-  { id: 16, lastName: 'Stark', firstName: 'Tyrion' },
-  { id: 17, lastName: 'Tyrell', firstName: 'Sansa' },
-  { id: 18, lastName: 'Tyrell', firstName: 'Sansa' },
-  { id: 19, lastName: 'Stark', firstName: 'Robb' },
-  { id: 20, lastName: 'Frey', firstName: 'Theon' },
-  { id: 21, lastName: 'Baratheon', firstName: 'Arya' },
-  { id: 22, lastName: 'Stark', firstName: 'Jaime' },
-  { id: 23, lastName: 'Targaryen', firstName: 'Arya' },
-  { id: 24, lastName: 'Bolton', firstName: 'Jaime' },
-  { id: 25, lastName: 'Snow', firstName: 'Bran' },
-  { id: 26, lastName: 'Baratheon', firstName: 'Tyrion' },
-  { id: 27, lastName: 'Stark', firstName: 'Tyrion' },
-  { id: 28, lastName: 'Lannister', firstName: 'Theon' },
-  { id: 29, lastName: 'Snow', firstName: 'Sansa' },
-  { id: 30, lastName: 'Stark', firstName: 'Joffrey' },
-  { id: 31, lastName: 'Lannister', firstName: 'Sansa' },
-  { id: 32, lastName: 'Lannister', firstName: 'Theon' },
-  { id: 33, lastName: 'Frey', firstName: 'Robb' },
-  { id: 34, lastName: 'Baratheon', firstName: 'Cersei' },
-  { id: 35, lastName: 'Greyjoy', firstName: 'Jon' },
-  { id: 36, lastName: 'Martell', firstName: 'Tyrion' },
-  { id: 37, lastName: 'Stark', firstName: 'Cersei' },
-  { id: 38, lastName: 'Baratheon', firstName: 'Theon' },
-  { id: 39, lastName: 'Lannister', firstName: 'Bran' },
-  { id: 40, lastName: 'Bolton', firstName: 'Jon' },
-  { id: 41, lastName: 'Lannister', firstName: 'Robb' },
-  { id: 42, lastName: 'Martell', firstName: 'Joffrey' },
-  { id: 43, lastName: 'Baratheon', firstName: 'Cersei' },
-  { id: 44, lastName: 'Bolton', firstName: 'Theon' },
-  { id: 45, lastName: 'Baratheon', firstName: 'Sansa' },
-  { id: 46, lastName: 'Snow', firstName: 'Cersei' },
-  { id: 47, lastName: 'Snow', firstName: 'Robb' },
-  { id: 48, lastName: 'Frey', firstName: 'Robb' },
-  { id: 49, lastName: 'Bolton', firstName: 'Robb' },
-  { id: 50, lastName: 'Greyjoy', firstName: 'Cersei' },
-];

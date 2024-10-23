@@ -27,7 +27,7 @@ function PaginationDataTableGridComponent() {
       <Select
         value={paginationModel.pageSize}
         onChange={handlePageSizeChange}
-        style={{ marginLeft: 16 }}
+        className="ml-4 h-[50px]"
       >
         {[10, 15, 20, 50].map((size) => (
           <MenuItem key={size} value={size}>
