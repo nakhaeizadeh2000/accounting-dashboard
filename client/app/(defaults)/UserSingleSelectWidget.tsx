@@ -47,6 +47,3 @@ const UserSingleSelectWidget = ({
 };
 
 export default UserSingleSelectWidget;
-
-// TODO: if have full scroll to end of a huge list and then closes the dropdown and again opens it, at the end of list , items are not shown correctly that is because of framer motion animationing of list items
-// TODO: scroll bars ui/ux is sheet

@@ -167,13 +167,16 @@ export default function AnimatedOnlineDropDown({
             style={{ maxHeight: '300px', width: '100%' }}
             className="my-2"
           > */}
-          <div className="scrollbar-thumb-rounded-full scrollbar-track-rounded-full max-h-[300px] overflow-auto overflow-x-scroll scrollbar scrollbar-track-slate-300 scrollbar-thumb-slate-700">
-            <div className="max-h-[300px] w-max">
+          <div
+            onScroll={handleScroll}
+            className="scrollbar-w-2 scrollbar-h-2 scrollbar-thumb-rounded-full scrollbar-track-rounded-full max-h-[300px] overflow-auto overflow-x-scroll scrollbar scrollbar-track-slate-300 scrollbar-thumb-slate-700 dark:scrollbar-track-slate-800 dark:scrollbar-thumb-slate-300"
+          >
+            <div className="max-h-[300px] w-max min-w-full">
               {items.length ? (
                 items.map((item) => (
                   <motion.li
                     key={item.value}
-                    className={`var(--color-neutral-100) cursor-pointer rounded border border-solid border-transparent text-neutral-600 ${item?.value !== selectedItem?.value ? 'hover:bg-neutral-300 hover:dark:bg-slate-600' : ''} dark:text-neutral-300`}
+                    className={`cursor-pointer rounded border border-solid border-transparent text-neutral-600 ${item?.value !== selectedItem?.value ? 'hover:bg-neutral-300 hover:dark:bg-slate-600' : ''} dark:text-neutral-300`}
                     onClick={() => {
                       onChange(item);
                       setIsOpen(false); // Close dropdown after selection
@@ -184,6 +187,7 @@ export default function AnimatedOnlineDropDown({
                       className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
                       whileHover={{
                         x: item?.value !== selectedItem?.value ? '-5px' : '0px',
+                        width: item?.value !== selectedItem?.value ? 'calc(100% - 5px)' : '100%',
                       }}
                     >
                       {item.label}
