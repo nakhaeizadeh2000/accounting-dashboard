@@ -36,11 +36,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const cacheKey = `refresh_tokens_by_user_id_${payload.user_id}`;
     const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
 
-    const refreshTokens = plainToInstance(
-      RefreshTokenDto,
-      JSON.parse(cachedRefreshTokens),
-      { excludeExtraneousValues: true },
-    );
+    const refreshTokens = cachedRefreshTokens
+      ? plainToInstance(RefreshTokenDto, JSON.parse(cachedRefreshTokens), {
+          excludeExtraneousValues: true,
+        })
+      : null;
 
     if (refreshTokens) {
       const rt = refreshTokens.refreshTokens.filter(
