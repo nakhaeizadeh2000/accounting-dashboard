@@ -116,6 +116,7 @@ module.exports = {
 
       addUtilities(newUtilities, ['responsive', 'hover']);
     },
+    require('tailwind-scrollbar')({ nocompatible: true, preferredStrategy: 'pseudoelements' }),
     require('@tailwindcss/forms')({
       strategy: 'class',
     }),

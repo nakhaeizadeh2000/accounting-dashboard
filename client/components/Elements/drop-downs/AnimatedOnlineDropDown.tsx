@@ -5,8 +5,6 @@ import { motion } from 'framer-motion';
 import { TiArrowSortedDown } from 'react-icons/ti';
 import { HiMiniXMark } from 'react-icons/hi2';
 import Marquee from 'react-fast-marquee';
-import { Scrollbar } from 'react-scrollbars-custom';
-import { ScrollState } from 'react-scrollbars-custom/dist/types/types';
 
 type Props = {
   options: {
@@ -65,17 +63,9 @@ export default function AnimatedOnlineDropDown({
     setSelectedItem(undefined);
   }
 
-  // const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-  //   const bottom =
-  //     e.currentTarget.scrollHeight === e.currentTarget.scrollTop + e.currentTarget.clientHeight;
-  //   if (bottom && !isLoading) {
-  //     onFullScroll();
-  //   }
-  // };
-
-  // Define the handleScroll function with the correct parameters
-  const handleScroll = (scrollValues: ScrollState, prevScrollValues: ScrollState) => {
-    const bottom = scrollValues.scrollHeight === scrollValues.scrollTop + scrollValues.clientHeight;
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const bottom =
+      e.currentTarget.scrollHeight === e.currentTarget.scrollTop + e.currentTarget.clientHeight;
     if (bottom && !isLoading) {
       onFullScroll();
     }
@@ -168,7 +158,7 @@ export default function AnimatedOnlineDropDown({
             },
           }}
           style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-          className="absolute z-10 mt-2 w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
+          className="absolute z-10 mt-2 min-h-[200px] w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
         >
           {/* <PerfectScrollbar
             options={{ suppressScrollX: false }}
@@ -177,37 +167,40 @@ export default function AnimatedOnlineDropDown({
             style={{ maxHeight: '300px', width: '100%' }}
             className="my-2"
           > */}
-          <Scrollbar
-            style={{ maxHeight: '300px', width: '100%' }}
-            // onScroll={handleScroll}
-            // onScroll={handleScroll}
-            className="my-2"
-            rtl={true}
-          >
-            <div className="direction-rtl w-max">
-              {items.map((item) => (
-                <motion.li
-                  key={item.value}
-                  className={`var(--color-neutral-100) cursor-pointer rounded border border-solid border-transparent text-neutral-600 ${item?.value !== selectedItem?.value ? 'hover:bg-neutral-300 hover:dark:bg-slate-600' : ''} dark:text-neutral-300`}
-                  onClick={() => {
-                    onChange(item);
-                    setIsOpen(false); // Close dropdown after selection
-                    setSelectedItem((prevItem) => item);
-                  }}
-                >
-                  <motion.p
-                    className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
-                    whileHover={{
-                      x: item?.value !== selectedItem?.value ? '-5px' : '0px',
+          <div className="scrollbar-thumb-rounded-full scrollbar-track-rounded-full max-h-[300px] overflow-auto overflow-x-scroll scrollbar scrollbar-track-slate-300 scrollbar-thumb-slate-700">
+            <div className="max-h-[300px] w-max">
+              {items.length ? (
+                items.map((item) => (
+                  <motion.li
+                    key={item.value}
+                    className={`var(--color-neutral-100) cursor-pointer rounded border border-solid border-transparent text-neutral-600 ${item?.value !== selectedItem?.value ? 'hover:bg-neutral-300 hover:dark:bg-slate-600' : ''} dark:text-neutral-300`}
+                    onClick={() => {
+                      onChange(item);
+                      setIsOpen(false); // Close dropdown after selection
+                      setSelectedItem((prevItem) => item);
                     }}
                   >
-                    {item.label}
-                  </motion.p>
+                    <motion.p
+                      className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
+                      whileHover={{
+                        x: item?.value !== selectedItem?.value ? '-5px' : '0px',
+                      }}
+                    >
+                      {item.label}
+                    </motion.p>
+                  </motion.li>
+                ))
+              ) : (
+                <motion.li
+                  key={label}
+                  className={`h-[200px] bg-transparent text-neutral-400 dark:text-neutral-500`}
+                >
+                  داده ای جهت نمایش وجود ندارد!
                 </motion.li>
-              ))}
+              )}
             </div>
-            {/* </PerfectScrollbar> */}
-          </Scrollbar>
+          </div>
+          {/* </PerfectScrollbar> */}
         </motion.ul>
       </motion.nav>
     </div>
