@@ -1,6 +1,6 @@
 'use client';
 
-import AnimatedInputElement from '@/components/Elements/input-elements/AnimatedInputElement';
+import AnimatedInputElement from '@/components/Elements/widgets/input-elements/AnimatedInputElement';
 import { Metadata } from 'next';
 import { MdOutlineAlternateEmail } from 'react-icons/md';
 import UserSingleSelectWidget from './UserSingleSelectWidget';
@@ -37,7 +37,6 @@ const Sales = () => {
             options={{
               containerClass: 'w-1/5',
               onChange: handleUserSingleSelectChange,
-              isMarquee: true,
             }}
           />
           {/* <AnimatedDropDown

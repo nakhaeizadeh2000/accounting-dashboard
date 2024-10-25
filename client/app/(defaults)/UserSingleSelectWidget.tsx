@@ -1,19 +1,16 @@
-import AnimatedOnlineDropDown from '@/components/Elements/drop-downs/AnimatedOnlineDropDown';
+import DropDownWidget from '@/components/Elements/widgets/drop-downs/DropDownWidget';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { useEffect, useState } from 'react';
 
 type Props = {
   options: {
-    isMarquee?: boolean;
     onChange: (item: { value: string; label: string }) => void;
     containerClass: string;
   };
 };
 
-const UserSingleSelectWidget = ({
-  options: { isMarquee, onChange, containerClass = 'w-full' },
-}: Props) => {
+const UserSingleSelectWidget = ({ options: { onChange, containerClass = 'w-full' } }: Props) => {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Array<UserFormData & { id: string }>>([]);
 
@@ -32,15 +29,16 @@ const UserSingleSelectWidget = ({
   }
 
   return (
-    <AnimatedOnlineDropDown
+    <DropDownWidget
       options={{
         isLoading: isLoading,
         onFullScroll,
+        isLTR: true,
         label: 'کاریر',
         containerClass: containerClass,
         items: items.map((item) => ({ value: item.id, label: item.email })),
         onChange: onChange,
-        isMarquee,
+        isMarquee: true,
       }}
     />
   );

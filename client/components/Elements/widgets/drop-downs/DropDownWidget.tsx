@@ -17,11 +17,12 @@ type Props = {
     selectedValue?: { value: string; label: string }; // To hold the selected value
     onChange: (item: { value: string; label: string }) => void; // Callback to handle change
     isLoading: boolean;
-    onFullScroll: () => void;
+    onFullScroll?: () => void;
+    isLTR?: boolean;
   };
 };
 
-export default function AnimatedOnlineDropDown({
+export default function DropDownWidget({
   options: {
     label,
     navClass = '',
@@ -31,12 +32,12 @@ export default function AnimatedOnlineDropDown({
     containerClass,
     labelClass,
     isLoading,
-    onFullScroll,
+    onFullScroll = () => {},
     isMarquee = false,
+    isLTR = false,
   },
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  // const [page, setPage] = useState(1);
   const [selectedItem, setSelectedItem] = useState<{ value: string; label: string } | undefined>(
     selectedValue,
   );
@@ -158,18 +159,11 @@ export default function AnimatedOnlineDropDown({
             },
           }}
           style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-          className="absolute z-10 mt-2 min-h-[200px] w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
+          className="absolute z-10 mt-2 min-h-[50px] w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
         >
-          {/* <PerfectScrollbar
-            options={{ suppressScrollX: false }}
-            dir="ltr"
-            onScroll={handleScroll}
-            style={{ maxHeight: '300px', width: '100%' }}
-            className="my-2"
-          > */}
           <div
             onScroll={handleScroll}
-            className="scrollbar-w-2 scrollbar-h-2 scrollbar-thumb-rounded-full scrollbar-track-rounded-full max-h-[300px] overflow-auto overflow-x-scroll scrollbar scrollbar-track-slate-300 scrollbar-thumb-slate-700 dark:scrollbar-track-slate-800 dark:scrollbar-thumb-slate-300"
+            className={`max-h-[300px] overflow-auto overflow-x-scroll ${isLTR ? 'direction-ltr' : ''} scrollbar scrollbar-track-transparent scrollbar-thumb-slate-700 scrollbar-track-rounded-full scrollbar-thumb-rounded-full scrollbar-w-2 scrollbar-h-2 dark:scrollbar-track-transparent dark:scrollbar-thumb-slate-300`}
           >
             <div className="max-h-[300px] w-max min-w-full">
               {items.length ? (
@@ -186,7 +180,7 @@ export default function AnimatedOnlineDropDown({
                     <motion.p
                       className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
                       whileHover={{
-                        x: item?.value !== selectedItem?.value ? '-5px' : '0px',
+                        x: item?.value !== selectedItem?.value ? (isLTR ? '5px' : '-5px') : '0px',
                         width: item?.value !== selectedItem?.value ? 'calc(100% - 5px)' : '100%',
                       }}
                     >
@@ -197,14 +191,13 @@ export default function AnimatedOnlineDropDown({
               ) : (
                 <motion.li
                   key={label}
-                  className={`h-[200px] bg-transparent text-neutral-400 dark:text-neutral-500`}
+                  className={`flex h-[32px] items-center justify-center bg-transparent text-neutral-400 dark:text-neutral-500`}
                 >
-                  داده ای جهت نمایش وجود ندارد!
+                  !داده ای جهت نمایش وجود ندارد
                 </motion.li>
               )}
             </div>
           </div>
-          {/* </PerfectScrollbar> */}
         </motion.ul>
       </motion.nav>
     </div>
