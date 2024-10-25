@@ -22,6 +22,10 @@ module.exports = {
       center: true,
     },
     extend: {
+      maxWidth: {
+        70: '70%', // Custom class for max-width: 70%
+        30: '30%',
+      },
       colors: {
         primary: {
           DEFAULT: '#4361ee',
@@ -100,6 +104,19 @@ module.exports = {
     },
   },
   plugins: [
+    function ({ addUtilities }) {
+      const newUtilities = {
+        '.direction-ltr': {
+          direction: 'ltr',
+        },
+        '.direction-rtl': {
+          direction: 'rtl',
+        },
+      };
+
+      addUtilities(newUtilities, ['responsive', 'hover']);
+    },
+    require('tailwind-scrollbar')({ nocompatible: true, preferredStrategy: 'pseudoelements' }),
     require('@tailwindcss/forms')({
       strategy: 'class',
     }),

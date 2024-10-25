@@ -11,7 +11,7 @@ const UserListComponent = (props: Props) => {
   // Automatically fetches data when the component is mounted
   const { data, error, isLoading } = useGetUsersQuery({
     page: 1,
-    pageSize: 15,
+    limit: 15,
   });
   console.log(data);
 
