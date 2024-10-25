@@ -95,6 +95,8 @@ export default function DropDownWidget({
         ref={dropdownRef} // Attach ref to the nav element
       >
         <motion.button
+          title={label}
+          id="dropdown-widget-button"
           onClick={() => setIsOpen(!isOpen)}
           className="flex w-full items-center justify-between gap-2 rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
         >
