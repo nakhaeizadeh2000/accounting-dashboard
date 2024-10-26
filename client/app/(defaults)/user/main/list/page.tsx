@@ -4,6 +4,7 @@ import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { Button } from '@mui/material';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
 };
 
 const UserListComponent = (props: Props) => {
+  const router = useRouter();
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     pageSize: 10,
     page: 0, // Start from page 0 for MUI DataGrid
@@ -44,7 +46,7 @@ const UserListComponent = (props: Props) => {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => console.log('hello', params.row)} // Pass the record ID to the edit function
+          onClick={() => router.push(`/user/info/${params.row?.id}`)} // Pass the record ID to the edit function
         >
           Edit
         </Button>
@@ -61,7 +63,6 @@ const UserListComponent = (props: Props) => {
 
   return (
     <div>
-      <h1>User List</h1>
       <div style={{ height: 500, width: '100%' }}>
         <DataGrid
           sx={{

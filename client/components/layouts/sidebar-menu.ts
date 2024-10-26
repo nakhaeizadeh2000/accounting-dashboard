@@ -4,12 +4,12 @@ import { RxAlignBaseline, RxCardStackPlus, RxComponent1, RxDashboard } from 'rea
 import { SideBarNavItems } from '@/shared/types/sidebar-nav.model';
 
 export const sideBarMenu: SideBarNavItems[] = [
-  // {
-  //   type: 'link',
-  //   name: 'apps',
-  //   IconComponent: RxAlignBaseline,
-  //   link: '/',
-  // },
+  {
+    type: 'link',
+    name: 'apps',
+    IconComponent: RxAlignBaseline,
+    link: '/',
+  },
   {
     titleHeader: 'apps',
     IconHeader: RxCardStackPlus,
@@ -23,7 +23,7 @@ export const sideBarMenu: SideBarNavItems[] = [
           {
             IconComponent: CiBookmarkCheck,
             name: 'test3',
-            link: '/user/list',
+            link: '/user/main/list',
           },
         ],
       },
