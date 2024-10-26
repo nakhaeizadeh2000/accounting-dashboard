@@ -2,6 +2,7 @@
 import PaginationDataTableGridComponent from '@/components/modules/pagination/PaginationComponent';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
+import { Button } from '@mui/material';
 import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
 import React, { useEffect, useState } from 'react';
 
@@ -35,6 +36,20 @@ const UserListComponent = (props: Props) => {
     { field: '', headerName: 'index', width: 70 },
     { field: 'firstName', headerName: 'First name', width: 130 },
     { field: 'lastName', headerName: 'Last name', width: 130 },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 150,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => console.log('hello', params.row)} // Pass the record ID to the edit function
+        >
+          Edit
+        </Button>
+      ),
+    },
   ];
 
   const handlePaginationModelChange = (newModel: GridPaginationModel) => {
@@ -65,10 +80,13 @@ const UserListComponent = (props: Props) => {
           paginationModel={paginationModel}
           onPaginationModelChange={handlePaginationModelChange}
           pageSizeOptions={[10, 15, 20, 50]}
-          checkboxSelection={true}
           slots={{
             pagination: PaginationDataTableGridComponent,
           }}
+          disableColumnMenu
+          disableColumnSorting
+          disableColumnResize
+          checkboxSelection={true}
         />
       </div>
     </div>
