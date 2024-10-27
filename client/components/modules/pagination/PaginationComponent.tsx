@@ -1,8 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Pagination, Select, MenuItem, SelectChangeEvent } from '@mui/material';
+import { Select, SelectChangeEvent } from '@mui/material';
 import { gridPageCountSelector, useGridApiContext, useGridSelector } from '@mui/x-data-grid';
+import dynamic from 'next/dynamic';
+
+const Pagination = dynamic(() => import('@mui/material').then((mod) => mod.Pagination));
+// const Select = dynamic(() => import('@mui/material').then((mod) => mod.Select));
+const MenuItem = dynamic(() => import('@mui/material').then((mod) => mod.MenuItem));
 
 function PaginationDataTableGridComponent() {
   const apiRef = useGridApiContext();

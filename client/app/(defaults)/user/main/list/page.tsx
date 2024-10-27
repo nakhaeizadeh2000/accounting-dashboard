@@ -1,27 +1,28 @@
 'use client';
-import PaginationDataTableGridComponent from '@/components/modules/pagination/PaginationComponent';
+import DataGridComponent from '@/components/modules/data-grid/DataGridComponent';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { Button } from '@mui/material';
-import { DataGrid, GridColDef, GridPaginationModel } from '@mui/x-data-grid';
+import { GridColDef } from '@mui/x-data-grid';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 
-type Props = {
-  name?: string;
-};
+// type Props = {
+//   name?: string;
+// };
 
-const UserListComponent = (props: Props) => {
+const UserListComponent = (props: any) => {
   const router = useRouter();
-  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+  const [detailPage, setDetailPage] = useState<{ page: number; pageSize: number }>({
     pageSize: 10,
     page: 0, // Start from page 0 for MUI DataGrid
   });
 
+  console.log(detailPage, 'detail');
   // Automatically fetches data when the component is mounted
   const { data, error, isLoading } = useGetUsersQuery({
-    page: paginationModel.page + 1, // Convert to 1-based for API
-    limit: paginationModel.pageSize,
+    page: detailPage.page + 1, // Convert to 1-based for API
+    limit: detailPage.pageSize,
   });
 
   const [rowData, setRowData] = useState<Array<UserFormData & { id: string }> | []>([]);
@@ -54,42 +55,19 @@ const UserListComponent = (props: Props) => {
     },
   ];
 
-  const handlePaginationModelChange = (newModel: GridPaginationModel) => {
-    setPaginationModel(newModel);
-  };
-
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading users</div>;
 
   return (
     <div>
-      <div style={{ height: 500, width: '100%' }}>
-        <DataGrid
-          sx={{
-            '& .MuiDataGrid-footerContainer': {
-              justifyContent: 'space-between',
-              flexDirection: 'row-reverse',
-            },
-            '&.MuiDataGrid-cell': {
-              outline: 'solid #6571ff 1px',
-            },
-          }}
-          rows={rowData}
-          rowCount={data?.data?.total} // Ensure this reflects total number of items
-          columns={columns}
-          paginationMode="server"
-          paginationModel={paginationModel}
-          onPaginationModelChange={handlePaginationModelChange}
-          pageSizeOptions={[10, 15, 20, 50]}
-          slots={{
-            pagination: PaginationDataTableGridComponent,
-          }}
-          disableColumnMenu
-          disableColumnSorting
-          disableColumnResize
-          checkboxSelection={true}
-        />
-      </div>
+      <DataGridComponent
+        options={{
+          rowData,
+          columnsData: columns,
+          rowCountData: data?.data?.total,
+          getPaginationModel: setDetailPage,
+        }}
+      />
     </div>
   );
 };
