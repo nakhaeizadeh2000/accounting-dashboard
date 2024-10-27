@@ -1,9 +1,18 @@
 'use client';
 
-import AnimatedInputElement from '@/components/Elements/widgets/input-elements/AnimatedInputElement';
-import { Metadata } from 'next';
+import dynamic from 'next/dynamic';
+// import { Metadata } from 'next';
 import { MdOutlineAlternateEmail } from 'react-icons/md';
+// const EmailIcon = dynamic(
+//   () => import('react-icons/md').then((mod) => mod.MdOutlineAlternateEmail),
+//   { ssr: false },
+// );
 import UserSingleSelectWidget from './UserSingleSelectWidget';
+// const UserSingleSelectWidget = dynamic(() => import('./UserSingleSelectWidget'));
+import AnimatedInputElement from '@/components/Elements/widgets/input-elements/AnimatedInputElement';
+// const AnimatedInputElement = dynamic(
+//   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
+// );
 
 // export const metadata: Metadata = {
 //   title: 'Sales Admin',
@@ -57,7 +66,7 @@ const Sales = () => {
               label: 'ایمیل',
               type: 'text',
               fieldError: [],
-              icon: { Icon: MdOutlineAlternateEmail },
+              // icon: { Icon: MdOutlineAlternateEmail },
             }}
           />
         </div>

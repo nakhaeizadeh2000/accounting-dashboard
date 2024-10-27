@@ -1,11 +1,14 @@
 'use client'; // Ensure this component is treated as a client component
 
-import { motion } from 'framer-motion';
-import { HTMLInputTypeAttribute, useEffect, useState } from 'react';
-import { IconType } from 'react-icons';
+import { LazyMotion, m } from 'framer-motion';
+import { ComponentType, HTMLInputTypeAttribute, useEffect, useState } from 'react';
+import { IconBaseProps, IconType } from 'react-icons';
+
+const loadLazyMotionFeatures = () =>
+  import('@/components/lazy-framer-motion').then((res) => res.default);
 
 type IconOption = {
-  Icon: IconType;
+  Icon: IconType | ComponentType<IconBaseProps>;
   iconText?: never;
   iconClass?: string;
 };
@@ -71,44 +74,46 @@ const AnimatedInputElement = ({
   return inputOptions.isVisible ? (
     <div>
       <div className={`relative w-full ${containerClass}`}>
-        <motion.label
-          htmlFor={inputOptions.key}
-          className={`pointer-events-none right-2 mb-0 truncate pt-[0.37rem] leading-[1.6] text-neutral-600 dark:text-neutral-300 ${labelClass}`}
-          animate={{
-            position: 'relative', // Keep it absolute
-            top: isDirty ? '0' : '1.75rem', // Move up if touched or has value
-          }}
-          transition={spring}
-        >
-          {inputOptions.label}
-        </motion.label>
-        <div className="input-parent flex rounded border border-solid border-transparent bg-neutral-100 dark:bg-slate-800">
-          <input
-            type={inputOptions.type}
-            name={inputOptions.key}
-            className={`block min-h-[auto] rounded ${icon ? 'w-5/6 rounded-l-none' : 'w-full'} border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none ring-transparent transition-all duration-200 ease-linear placeholder:opacity-50 focus:border-blue-500 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 ${inputClass}`}
-            id={inputOptions.key}
-            placeholder={inputOptions.placeholder}
-            value={inputOptions.defaultValue || ''}
-            disabled={inputOptions.isDisabled}
-            onChange={(e) =>
-              setInputOptions((prev) => ({
-                ...prev,
-                defaultValue: e.target.value,
-              }))
-            }
-            onFocus={() => setIsFocused(true)} // Set focus state
-            onBlur={() => setIsFocused(false)} // Reset focus state
-          />
-          {icon && (
-            <div
-              className={`flex w-1/6 items-center justify-center border-r border-gray-900 border-opacity-10 dark:border-gray-50 dark:border-opacity-20 ${icon.iconClass ?? ''}`}
-            >
-              {icon.Icon && <icon.Icon />}
-              {icon.iconText && icon.iconText}
-            </div>
-          )}
-        </div>
+        <LazyMotion features={loadLazyMotionFeatures}>
+          <m.label
+            htmlFor={inputOptions.key}
+            className={`pointer-events-none right-2 mb-0 truncate pt-[0.37rem] leading-[1.6] text-neutral-600 dark:text-neutral-300 ${labelClass}`}
+            animate={{
+              position: 'relative', // Keep it absolute
+              top: isDirty ? '0' : '1.75rem', // Move up if touched or has value
+            }}
+            transition={spring}
+          >
+            {inputOptions.label}
+          </m.label>
+          <div className="input-parent flex rounded border border-solid border-transparent bg-neutral-100 dark:bg-slate-800">
+            <input
+              type={inputOptions.type}
+              name={inputOptions.key}
+              className={`block min-h-[auto] rounded ${icon ? 'w-5/6 rounded-l-none' : 'w-full'} border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] outline-none ring-transparent transition-all duration-200 ease-linear placeholder:opacity-50 focus:border-blue-500 motion-reduce:transition-none dark:text-white dark:placeholder:text-neutral-300 ${inputClass}`}
+              id={inputOptions.key}
+              placeholder={inputOptions.placeholder}
+              value={inputOptions.defaultValue || ''}
+              disabled={inputOptions.isDisabled}
+              onChange={(e) =>
+                setInputOptions((prev) => ({
+                  ...prev,
+                  defaultValue: e.target.value,
+                }))
+              }
+              onFocus={() => setIsFocused(true)} // Set focus state
+              onBlur={() => setIsFocused(false)} // Reset focus state
+            />
+            {icon && (
+              <div
+                className={`flex w-1/6 items-center justify-center border-r border-gray-900 border-opacity-10 dark:border-gray-50 dark:border-opacity-20 ${icon.iconClass ?? ''}`}
+              >
+                {icon.Icon && <icon.Icon />}
+                {icon.iconText && icon.iconText}
+              </div>
+            )}
+          </div>
+        </LazyMotion>
       </div>
 
       {inputOptions?.fieldError && (
