@@ -1,7 +1,10 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { LazyMotion, m } from 'framer-motion';
 import styles from './styles/FullScreenLoading.module.scss';
+
+const loadLazyMotionFeatures = () =>
+  import('@/components/lazy-framer-motion').then((res) => res.default);
 
 const containerVariants = {
   animate: {
@@ -23,21 +26,23 @@ const barVariants = {
   },
 };
 
-const LoaderBar = () => <motion.div className={styles.bar} variants={barVariants} />;
+const LoaderBar = () => <m.div className={styles.bar} variants={barVariants} />;
 
 const FullScreenLoading = () => {
   return (
     <div className="flex h-screen items-center justify-center">
-      <motion.div
-        className={styles.loader}
-        variants={containerVariants}
-        initial="initial"
-        animate="animate"
-      >
-        <LoaderBar />
-        <LoaderBar />
-        <LoaderBar />
-      </motion.div>
+      <LazyMotion features={loadLazyMotionFeatures}>
+        <m.div
+          className={styles.loader}
+          variants={containerVariants}
+          initial="initial"
+          animate="animate"
+        >
+          <LoaderBar />
+          <LoaderBar />
+          <LoaderBar />
+        </m.div>
+      </LazyMotion>
     </div>
   );
 };
