@@ -26,9 +26,8 @@ const barVariants = {
   },
 };
 
-const LoaderBar = () => <m.div className={styles.bar} variants={barVariants} />;
-
 const FullScreenLoading = () => {
+  const LoaderBar = () => <m.div className={styles.bar} variants={barVariants} />;
   return (
     <div className="flex h-screen items-center justify-center">
       <LazyMotion features={loadLazyMotionFeatures}>

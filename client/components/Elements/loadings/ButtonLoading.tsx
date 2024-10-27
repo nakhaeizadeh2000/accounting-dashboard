@@ -1,7 +1,10 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { LazyMotion, m } from 'framer-motion';
 import styles from './styles/ButtonLoading.module.scss';
+
+const loadLazyMotionFeatures = () =>
+  import('@/components/lazy-framer-motion').then((res) => res.default);
 
 const containerVariants = {
   animate: {
@@ -24,18 +27,23 @@ const barVariants = {
 };
 
 const ButtonLoading = ({ colorClassName = 'bg-indigo-600' }: { colorClassName?: string }) => {
+  const LoaderBar = () => (
+    <m.div className={`${styles.bar} ${colorClassName}`} variants={barVariants} />
+  );
   return (
     <div className="flex items-center justify-center">
-      <motion.div
-        className={styles.loader}
-        variants={containerVariants}
-        initial="initial"
-        animate="animate"
-      >
-        <motion.div className={`${styles.bar} ${colorClassName}`} variants={barVariants} />
-        <motion.div className={`${styles.bar} ${colorClassName}`} variants={barVariants} />
-        <motion.div className={`${styles.bar} ${colorClassName}`} variants={barVariants} />
-      </motion.div>
+      <LazyMotion features={loadLazyMotionFeatures}>
+        <m.div
+          className={styles.loader}
+          variants={containerVariants}
+          initial="initial"
+          animate="animate"
+        >
+          <LoaderBar />
+          <LoaderBar />
+          <LoaderBar />
+        </m.div>
+      </LazyMotion>
     </div>
   );
 };
