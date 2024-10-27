@@ -35,6 +35,15 @@ export const lightTheme = createTheme({
         },
       },
     },
+    MuiPagination: {
+      styleOverrides: {
+        root: {
+          '&..MuiDataGrid-footerContainer': {
+            justifyContent: 'flex-start',
+          },
+        },
+      },
+    },
   },
 });
 
