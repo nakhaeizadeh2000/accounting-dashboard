@@ -1,5 +1,12 @@
 'use client';
-import { GridColDef, GridPaginationModel, GridRowsProp } from '@mui/x-data-grid';
+import {
+  GridColDef,
+  GridPaginationModel,
+  GridRowId,
+  GridRowSelectionModel,
+  GridRowsProp,
+  GridValidRowModel,
+} from '@mui/x-data-grid';
 import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
 import PaginationDataTableGridComponent from '../pagination/PaginationComponent';
@@ -15,11 +22,24 @@ type Props = {
     disableColumnSorting?: boolean;
     disableColumnResize?: boolean;
     checkboxSelection?: boolean;
-    getPaginationModel?: (pagination: { page: number; pageSize: number }) => void;
+    getPaginationModel: (pagination: { page: number; pageSize: number }) => void;
+    getSelectedData?: <T>(items: GridValidRowModel[] & T) => void;
   };
 };
 
-const DataGridComponent = ({ options }: Props) => {
+const DataGridComponent = ({
+  options: {
+    columnsData,
+    rowCountData,
+    rowData,
+    checkboxSelection,
+    disableColumnMenu,
+    disableColumnResize,
+    disableColumnSorting,
+    getPaginationModel,
+    getSelectedData,
+  },
+}: Props) => {
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     pageSize: 10,
     page: 0, // Start from page 0 for MUI DataGrid
@@ -27,7 +47,12 @@ const DataGridComponent = ({ options }: Props) => {
 
   const handlePaginationModelChange = (newModel: GridPaginationModel) => {
     setPaginationModel(newModel);
-    options?.getPaginationModel?.(newModel);
+    getPaginationModel?.(newModel);
+  };
+
+  const handleRowSelection = (selectionModel: GridRowSelectionModel) => {
+    const selectedRowsData = rowData.filter((row) => selectionModel.includes(row.id));
+    getSelectedData?.(selectedRowsData);
   };
 
   return (
@@ -43,9 +68,9 @@ const DataGridComponent = ({ options }: Props) => {
               outline: 'solid #6571ff 1px',
             },
           }}
-          rows={options?.rowData}
-          rowCount={options?.rowCountData} // Ensure this reflects total number of items
-          columns={options?.columnsData}
+          rows={rowData}
+          rowCount={rowCountData} // Ensure this reflects total number of items
+          columns={columnsData}
           paginationMode="server"
           paginationModel={paginationModel}
           onPaginationModelChange={handlePaginationModelChange}
@@ -53,10 +78,11 @@ const DataGridComponent = ({ options }: Props) => {
           slots={{
             pagination: PaginationDataTableGridComponent,
           }}
-          disableColumnMenu={options?.disableColumnMenu}
-          disableColumnSorting={options?.disableColumnSorting}
-          disableColumnResize={options?.disableColumnResize}
-          checkboxSelection={options?.checkboxSelection}
+          disableColumnMenu={disableColumnMenu}
+          disableColumnSorting={disableColumnSorting}
+          disableColumnResize={disableColumnResize}
+          checkboxSelection={checkboxSelection}
+          onRowSelectionModelChange={handleRowSelection}
         />
       </div>
     </div>
