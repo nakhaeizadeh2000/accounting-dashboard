@@ -2,14 +2,14 @@
 import {
   GridColDef,
   GridPaginationModel,
-  GridRowId,
   GridRowSelectionModel,
   GridRowsProp,
   GridValidRowModel,
 } from '@mui/x-data-grid';
 import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
-import PaginationDataTableGridComponent from '../pagination/PaginationComponent';
+import PaginationDataTableGridComponent from '../pagination/pagination-grid-component/PaginationComponent';
+import { persianLocaleText } from './persian-local-text';
 
 const DataGrid = dynamic(() => import('@mui/x-data-grid').then((mod) => mod.DataGrid));
 
@@ -22,6 +22,8 @@ type Props = {
     disableColumnSorting?: boolean;
     disableColumnResize?: boolean;
     checkboxSelection?: boolean;
+    disableRowSelectionOnClick?: boolean;
+    disableMultipleRowSelection?: boolean;
     getPaginationModel: (pagination: { page: number; pageSize: number }) => void;
     getSelectedData?: <T>(items: GridValidRowModel[] & T) => void;
   };
@@ -36,6 +38,8 @@ const DataGridComponent = ({
     disableColumnMenu,
     disableColumnResize,
     disableColumnSorting,
+    disableMultipleRowSelection,
+    disableRowSelectionOnClick,
     getPaginationModel,
     getSelectedData,
   },
@@ -64,9 +68,6 @@ const DataGridComponent = ({
               justifyContent: 'space-between',
               flexDirection: 'row-reverse',
             },
-            '&.MuiDataGrid-cell': {
-              outline: 'solid #6571ff 1px',
-            },
           }}
           rows={rowData}
           rowCount={rowCountData} // Ensure this reflects total number of items
@@ -83,6 +84,9 @@ const DataGridComponent = ({
           disableColumnResize={disableColumnResize}
           checkboxSelection={checkboxSelection}
           onRowSelectionModelChange={handleRowSelection}
+          localeText={persianLocaleText}
+          disableMultipleRowSelection={disableMultipleRowSelection}
+          disableRowSelectionOnClick={disableRowSelectionOnClick}
         />
       </div>
     </div>
@@ -90,3 +94,7 @@ const DataGridComponent = ({
 };
 
 export default DataGridComponent;
+
+type selectedDataType = {
+  [key: string]: any; // or number, boolean, etc.
+};

@@ -4,3 +4,12 @@
 .MuiCheckbox-root.MuiCheckbox-indeterminate {
   color: #6571ff !important // Override indeterminate color
 }
+
+.Mui-selected {
+  background-color: #6571ff36 !important;
+}
+
+.MuiDataGrid-cell:focus {
+    outline:none !important;
+    outline-offset: none !important
+}

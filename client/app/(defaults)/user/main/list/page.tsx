@@ -21,8 +21,13 @@ const UserListComponent = (props: any) => {
   });
 
   // this state for getting the selected data of grid data component
-  const [selectedData, setSelectedData] = useState<GridValidRowModel[]>([]);
+  const [selectedData, setSelectedData] = useState<Array<UserFormData & { id: string }> | []>([]);
   console.log('Selected Rows Data:', selectedData);
+
+  // casting data type
+  const onChange = (item: GridValidRowModel[]) => {
+    setSelectedData(item as Array<UserFormData & { id: string }> | []);
+  };
 
   // Automatically fetches data when the component is mounted
   const { data, error, isLoading } = useGetUsersQuery({
@@ -43,9 +48,8 @@ const UserListComponent = (props: any) => {
   // define the columns the grid data component
   const columns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70 },
-    { field: '', headerName: 'index', width: 70 },
-    { field: 'firstName', headerName: 'First name', width: 130 },
-    { field: 'lastName', headerName: 'Last name', width: 130 },
+    { field: 'firstName', headerName: 'نام', width: 130 },
+    { field: 'lastName', headerName: 'نام خانوادگی', width: 130 },
     {
       field: 'actions',
       headerName: 'Actions',
@@ -74,7 +78,7 @@ const UserListComponent = (props: any) => {
           rowCountData: data?.data?.total,
           getPaginationModel: setDetailPage,
           checkboxSelection: true,
-          getSelectedData: setSelectedData,
+          getSelectedData: onChange,
         }}
       />
     </div>
@@ -82,5 +86,3 @@ const UserListComponent = (props: any) => {
 };
 
 export default UserListComponent;
-
-//TODO assignment the safe type for getting the selected data
