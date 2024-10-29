@@ -5,9 +5,13 @@ import { LazyMotion, m } from 'framer-motion';
 import { TiArrowSortedDown } from 'react-icons/ti';
 import { HiMiniXMark } from 'react-icons/hi2';
 import Marquee from 'react-fast-marquee';
+import { Chip } from '@mui/material';
+import styles from './dropdown.module.scss';
 
 const loadLazyMotionFeatures = () =>
   import('@/components/lazy-framer-motion').then((res) => res.default);
+
+export type ItemType = { value: string | number; label: string };
 
 type Props = {
   options: {
@@ -16,12 +20,14 @@ type Props = {
     containerClass?: string;
     labelClass?: string;
     isMarquee?: boolean;
-    items?: { value: string; label: string }[];
-    selectedValue?: { value: string; label: string }; // To hold the selected value
-    onChange: (item: { value: string; label: string }) => void; // Callback to handle change
+    items?: ItemType[];
+    selectedValue?: ItemType[]; // To hold the selected value
+    onChange: (item: ItemType[]) => void; // Callback to handle change
     isLoading: boolean;
     onFullScroll?: () => void;
     isLTR?: boolean;
+    isMultiSelectable?: boolean;
+    multiSelectLabelsViewType?: 'simple' | 'chips';
   };
 };
 
@@ -30,7 +36,7 @@ export default function DropDownWidget({
     label,
     navClass = '',
     items = [],
-    selectedValue,
+    selectedValue = [],
     onChange,
     containerClass,
     labelClass,
@@ -38,12 +44,14 @@ export default function DropDownWidget({
     onFullScroll = () => {},
     isMarquee = false,
     isLTR = false,
+    isMultiSelectable = false,
+    multiSelectLabelsViewType = 'simple',
   },
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<{ value: string; label: string } | undefined>(
-    selectedValue,
-  );
+  // TODO: when i select some items or a item, and then scrolls to end of list to load new datas, after loading, the state goes empty(because of states behaviours)
+  // TODO: when its on multi and uses chips view, scrolling does not make fire onChange(view port issues) and in this mode height of widget is bigger and if select more items, it wraps to new line make its height even bigger that if this issue fix, the scroll to onChange issue will fix too.
+  const [selectedItems, setSelectedItems] = useState<ItemType[]>(selectedValue);
 
   const dropdownRef = useRef<HTMLDivElement>(null); // Create a ref for the dropdown
 
@@ -64,7 +72,9 @@ export default function DropDownWidget({
 
   function onRemoveItemClick(e: React.MouseEvent) {
     e.stopPropagation();
-    setSelectedItem(undefined);
+    if (!isMultiSelectable) {
+      setSelectedItems([]);
+    }
   }
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -75,6 +85,34 @@ export default function DropDownWidget({
     }
   };
 
+  function isItemSelected(item: ItemType, reverse = false) {
+    const filteredValue = selectedItems.filter((selectedItem) => selectedItem === item);
+    return reverse ? !filteredValue.length : !!filteredValue.length;
+  }
+
+  function onChangeSelection(item: ItemType) {
+    setSelectedItems((prevSelectedItems) => {
+      let newData: ItemType[];
+      if (isItemSelected(item)) {
+        newData = prevSelectedItems.filter(
+          (prevSelecteditem) => prevSelecteditem.value !== item.value,
+        );
+      } else {
+        if (isMultiSelectable) {
+          newData = [...prevSelectedItems, item];
+        } else {
+          newData = [item];
+        }
+      }
+      onChange(newData);
+      return newData;
+    });
+
+    if (!isMultiSelectable) {
+      setIsOpen(false);
+    }
+  }
+
   return (
     <div className={`flex flex-col ${containerClass}`}>
       <LazyMotion features={loadLazyMotionFeatures}>
@@ -82,7 +120,7 @@ export default function DropDownWidget({
           className={`pointer-events-none right-2 z-10 mb-0 truncate pt-[0.37rem] leading-[1.6] text-neutral-600 dark:text-neutral-300 ${labelClass}`}
           animate={{
             position: 'relative', // Keep it absolute
-            top: selectedItem?.value || isOpen ? '0' : '1.95rem', // Move up if touched or has value
+            top: !!selectedItems.length || isOpen ? '0' : '1.95rem', // Move up if touched or has value
           }}
           transition={{
             type: 'spring',
@@ -104,25 +142,17 @@ export default function DropDownWidget({
             onClick={() => setIsOpen(!isOpen)}
             className="flex w-full items-center justify-between gap-2 rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
           >
-            <m.div whileTap={{ scale: 0.97 }} className="w-4/5 overflow-hidden">
-              {selectedItem?.label &&
-                (isMarquee ? (
-                  <Marquee
-                    speed={50}
-                    autoFill={true}
-                    pauseOnHover={true}
-                    direction="right"
-                    className="direction-ltr"
-                  >
-                    <p className="px-2 leading-[1.6]">{selectedItem?.label}</p>
-                  </Marquee>
-                ) : (
-                  <p className="px-2 leading-[1.6]">{selectedItem?.label}</p>
-                ))}
+            <m.div
+              whileTap={{ scale: 0.97 }}
+              className={`${isMultiSelectable ? 'w-[90%]' : 'w-4/5'} overflow-hidden`}
+            >
+              {!!selectedItems.length && <SelectedLabel />}
             </m.div>
 
-            <div className="flex w-1/5 items-center justify-end">
-              {selectedItem?.value && (
+            <div
+              className={`${isMultiSelectable ? 'w-[10%]' : 'w-1/5'} flex items-center justify-end`}
+            >
+              {!!selectedItems.length && !isMultiSelectable && (
                 <HiMiniXMark
                   onClick={onRemoveItemClick}
                   className="justify-end rounded-full bg-neutral-300 dark:bg-slate-600"
@@ -135,12 +165,12 @@ export default function DropDownWidget({
                 }}
                 transition={{ duration: 0.2 }}
                 style={{ originY: 0.55 }}
-                className="flex min-h-[auto] w-1/2 justify-center py-[0.24rem]"
+                className={`${isMultiSelectable ? 'w-full' : 'w-1/2'} flex min-h-[auto] justify-center py-[0.24rem]`}
               >
                 <TiArrowSortedDown
                   className="fill-current text-dark dark:text-white-dark"
                   size={'15px'}
-                  viewBox="0 0 20 20"
+                  viewBox="0 0 23 20"
                 />
               </m.div>
             </div>
@@ -176,18 +206,14 @@ export default function DropDownWidget({
                   items.map((item) => (
                     <m.li
                       key={item.value}
-                      className={`cursor-pointer rounded border border-solid border-transparent text-neutral-600 ${item?.value !== selectedItem?.value ? 'hover:bg-neutral-300 hover:dark:bg-slate-600' : ''} dark:text-neutral-300`}
-                      onClick={() => {
-                        onChange(item);
-                        setIsOpen(false); // Close dropdown after selection
-                        setSelectedItem((prevItem) => item);
-                      }}
+                      className={`cursor-pointer border border-solid border-transparent text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600 ${isItemSelected(item) ? 'bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
+                      onClick={() => onChangeSelection(item)}
                     >
                       <m.p
-                        className={`px-4 py-1 ${item?.value === selectedItem?.value ? 'rounded bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
+                        className={`px-4 py-1`}
                         whileHover={{
-                          x: item?.value !== selectedItem?.value ? (isLTR ? '5px' : '-5px') : '0px',
-                          width: item?.value !== selectedItem?.value ? 'calc(100% - 5px)' : '100%',
+                          x: isLTR ? '5px' : '-5px',
+                          width: 'calc(100% - 5px)',
                         }}
                       >
                         {item.label}
@@ -209,4 +235,43 @@ export default function DropDownWidget({
       </LazyMotion>
     </div>
   );
+
+  function SelectedLabel() {
+    if (!isMultiSelectable) {
+      return isMarquee ? (
+        <Marquee
+          speed={50}
+          autoFill={true}
+          pauseOnHover={true}
+          direction="right"
+          className="direction-ltr"
+        >
+          <p className="px-2 leading-[1.6]">{selectedItems[0].label}</p>
+        </Marquee>
+      ) : (
+        <p className="px-2 leading-[1.6]">{selectedItems[0].label}</p>
+      );
+    } else {
+      if (multiSelectLabelsViewType === 'simple') {
+        return (
+          <p className={`text-nowrap leading-[1.6] ${isLTR ? 'direction-ltr' : 'direction-rtl'}`}>
+            {selectedItems.map((item) =>
+              selectedItems.length > 1 ? `${item.label} , ` : item.label,
+            )}
+          </p>
+        );
+      }
+      if (multiSelectLabelsViewType === 'chips') {
+        return selectedItems.map((item) => (
+          <Chip
+            // className="m-[0.125rem]"
+            className={styles.chips_margin}
+            key={item.value}
+            label={item.label}
+            onDelete={() => onChangeSelection(item)}
+          />
+        ));
+      }
+    }
+  }
 }

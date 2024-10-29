@@ -10,6 +10,7 @@ import { MdOutlineAlternateEmail } from 'react-icons/md';
 import UserSingleSelectWidget from './UserSingleSelectWidget';
 // const UserSingleSelectWidget = dynamic(() => import('./UserSingleSelectWidget'));
 import AnimatedInputElement from '@/components/Elements/widgets/input-elements/AnimatedInputElement';
+import { ItemType } from '@/components/Elements/widgets/drop-downs/DropDownWidget';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -19,9 +20,9 @@ import AnimatedInputElement from '@/components/Elements/widgets/input-elements/A
 // };
 
 const Sales = () => {
-  const handleUserSingleSelectChange = (value: any) => {
+  const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
-    // console.log('Selected Value:', value);
+    console.log('Selected Value:', value);
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -41,11 +42,12 @@ const Sales = () => {
       </p>
 
       <form onSubmit={handleSubmit}>
-        <div className="flex w-full gap-2">
+        <div className="flex w-full justify-center gap-2">
           <UserSingleSelectWidget
             options={{
-              containerClass: 'w-1/5',
-              onChange: handleUserSingleSelectChange,
+              containerClass: 'w-5/6 sm:w-5/6',
+              onChange: handleUserSelectedChange,
+              value: [],
             }}
           />
           {/* <AnimatedDropDown
@@ -60,7 +62,7 @@ const Sales = () => {
               onChange: handleDropdownChange,
             }}
           /> */}
-          <AnimatedInputElement
+          {/* <AnimatedInputElement
             options={{
               key: 'email',
               label: 'ایمیل',
@@ -68,8 +70,35 @@ const Sales = () => {
               fieldError: [],
               // icon: { Icon: MdOutlineAlternateEmail },
             }}
-          />
+          /> */}
         </div>
+        <AnimatedInputElement
+          options={{
+            key: 'email',
+            label: 'ایمیل',
+            type: 'text',
+            fieldError: [],
+            // icon: { Icon: MdOutlineAlternateEmail },
+          }}
+        />
+        <AnimatedInputElement
+          options={{
+            key: 'email',
+            label: 'ایمیل',
+            type: 'text',
+            fieldError: [],
+            // icon: { Icon: MdOutlineAlternateEmail },
+          }}
+        />
+        <AnimatedInputElement
+          options={{
+            key: 'email',
+            label: 'ایمیل',
+            type: 'text',
+            fieldError: [],
+            // icon: { Icon: MdOutlineAlternateEmail },
+          }}
+        />
         <button type="submit">Submit</button>
       </form>
     </div>

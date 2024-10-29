@@ -1,16 +1,19 @@
-import DropDownWidget from '@/components/Elements/widgets/drop-downs/DropDownWidget';
+import DropDownWidget, { ItemType } from '@/components/Elements/widgets/drop-downs/DropDownWidget';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { useEffect, useState } from 'react';
 
 type Props = {
   options: {
-    onChange: (item: { value: string; label: string }) => void;
+    onChange: (item: ItemType[]) => void;
+    value: ItemType[];
     containerClass: string;
   };
 };
 
-const UserSingleSelectWidget = ({ options: { onChange, containerClass = 'w-full' } }: Props) => {
+const UserSingleSelectWidget = ({
+  options: { onChange, containerClass = 'w-full', value },
+}: Props) => {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Array<UserFormData & { id: string }>>([]);
 
@@ -35,10 +38,13 @@ const UserSingleSelectWidget = ({ options: { onChange, containerClass = 'w-full'
         onFullScroll,
         isLTR: true,
         label: 'کاریر',
+        selectedValue: value,
         containerClass: containerClass,
         items: items.map((item) => ({ value: item.id, label: item.email })),
         onChange: onChange,
-        isMarquee: true,
+        // isMultiSelectable: true,
+        // multiSelectLabelsViewType: 'chips',
+        // isMarquee: true,
       }}
     />
   );
