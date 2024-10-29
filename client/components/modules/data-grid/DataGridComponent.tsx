@@ -87,6 +87,7 @@ const DataGridComponent = ({
           localeText={persianLocaleText}
           disableMultipleRowSelection={disableMultipleRowSelection}
           disableRowSelectionOnClick={disableRowSelectionOnClick}
+          scrollbarSize={5}
         />
       </div>
     </div>
