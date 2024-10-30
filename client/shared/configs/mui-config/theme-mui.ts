@@ -77,7 +77,6 @@ export const darkTheme = createTheme({
 
           '&.Mui-selected': {
             color: '#6571ff',
-            borderRadius: 20,
           },
         },
       },
