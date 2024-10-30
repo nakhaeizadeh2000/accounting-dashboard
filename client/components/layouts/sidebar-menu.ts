@@ -16,13 +16,13 @@ export const sideBarMenu: SideBarNavItems[] = [
     type: 'GroupNav',
     childrenHeader: [
       {
-        name: 'test4',
+        name: 'اطلاعات پایه',
         IconComponent: FaPhone,
         type: 'dropDown',
         childrenItem: [
           {
             IconComponent: CiBookmarkCheck,
-            name: 'test3',
+            name: 'اشخاص حقیقی',
             link: '/user/main/list',
           },
         ],
