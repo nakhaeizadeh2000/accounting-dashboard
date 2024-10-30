@@ -11,6 +11,7 @@ export const persianLocaleText = {
   columnsPanelHideAllButton: 'مخفی‌کردن همه',
 
   // Filter Panel
+  //TODO translate all props in filterPanelOperator
   filterPanelAddFilter: 'افزودن فیلتر',
   filterPanelDeleteIconLabel: 'حذف',
   filterPanelLogicOperator: 'عملگر منطقی',
@@ -21,13 +22,14 @@ export const persianLocaleText = {
   filterPanelInputLabel: 'مقدار',
 
   // Column Menu
+  //TODO translate all props in columnMenuManageColumns
   columnMenuLabel: 'منو',
   columnMenuSortAsc: 'ترتیب صعودی',
   columnMenuSortDesc: 'ترتیب نزولی',
   columnMenuFilter: 'فیلتر',
   columnMenuHideColumn: 'مخفی‌کردن ستون',
   columnMenuShowColumns: 'نمایش ستون‌ها',
-  ManageColumns: 'مدیریت ستون ها',
+  columnMenuManageColumns: 'مدیریت ستون ها',
 
   // Pagination
   footerRowSelected: (count: number) => `${count.toLocaleString()} ردیف انتخاب شده`,

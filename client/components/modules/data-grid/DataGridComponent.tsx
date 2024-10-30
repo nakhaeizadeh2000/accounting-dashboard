@@ -24,6 +24,7 @@ type Props = {
     checkboxSelection?: boolean;
     disableRowSelectionOnClick?: boolean;
     disableMultipleRowSelection?: boolean;
+    className?: string;
     getPaginationModel: (pagination: { page: number; pageSize: number }) => void;
     getSelectedData?: <T>(items: GridValidRowModel[] & T) => void;
   };
@@ -40,10 +41,12 @@ const DataGridComponent = ({
     disableColumnSorting,
     disableMultipleRowSelection,
     disableRowSelectionOnClick,
+    className,
     getPaginationModel,
     getSelectedData,
   },
 }: Props) => {
+  // set pagination detail
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
     pageSize: 10,
     page: 0, // Start from page 0 for MUI DataGrid
@@ -54,6 +57,7 @@ const DataGridComponent = ({
     getPaginationModel?.(newModel);
   };
 
+  // set selected data from data table grid
   const handleRowSelection = (selectionModel: GridRowSelectionModel) => {
     const selectedRowsData = rowData.filter((row) => selectionModel.includes(row.id));
     getSelectedData?.(selectedRowsData);
@@ -69,6 +73,7 @@ const DataGridComponent = ({
               flexDirection: 'row-reverse',
             },
           }}
+          className={`${className}`}
           rows={rowData}
           rowCount={rowCountData} // Ensure this reflects total number of items
           columns={columnsData}
@@ -87,7 +92,6 @@ const DataGridComponent = ({
           localeText={persianLocaleText}
           disableMultipleRowSelection={disableMultipleRowSelection}
           disableRowSelectionOnClick={disableRowSelectionOnClick}
-          scrollbarSize={5}
         />
       </div>
     </div>

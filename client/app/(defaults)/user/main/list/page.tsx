@@ -22,7 +22,6 @@ const UserListComponent = (props: any) => {
 
   // this state for getting the selected data of grid data component
   const [selectedData, setSelectedData] = useState<Array<UserFormData & { id: string }> | []>([]);
-  console.log('Selected Rows Data:', selectedData);
 
   // casting data type
   const onChange = (item: GridValidRowModel[]) => {
@@ -63,6 +62,8 @@ const UserListComponent = (props: any) => {
           Edit
         </Button>
       ),
+      disableColumnMenu: true,
+      sortable: false,
     },
   ];
 
