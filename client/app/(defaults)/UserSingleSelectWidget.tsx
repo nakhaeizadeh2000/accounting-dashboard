@@ -1,4 +1,5 @@
-import DropDownWidget, { ItemType } from '@/components/Elements/widgets/drop-downs/DropDownWidget';
+import { ItemType } from '@/components/Elements/widgets/drop-downs/drop-down.type';
+import DropDownWidget from '@/components/Elements/widgets/drop-downs/DropDownWidget';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { useEffect, useState } from 'react';
@@ -16,17 +17,26 @@ const UserSingleSelectWidget = ({
 }: Props) => {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Array<UserFormData & { id: string }>>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // New loading state (needed cause RTK isLoading does not update in later request but first time)
 
   const { data, error, isLoading } = useGetUsersQuery({ page, limit: 10 });
 
   useEffect(() => {
     if (data) {
       setItems((prevItems) => [...prevItems, ...data.data.items]);
+      setIsLoadingMore(false); // Reset loading state after data is fetched
     }
   }, [data]);
 
+  useEffect(() => {
+    if (error) {
+      // TODO: handle if an error occured about any thing ligh auth or permission of server side or ...
+    }
+  }, [error]);
+
   function onFullScroll() {
-    if (data && data?.data.currentPage < data?.data.totalPages) {
+    if (!isLoadingMore && data && data.data.currentPage < data.data.totalPages) {
+      setIsLoadingMore(true); // Set loading state before fetching more data
       setPage((prevPage) => prevPage + 1);
     }
   }
@@ -34,7 +44,7 @@ const UserSingleSelectWidget = ({
   return (
     <DropDownWidget
       options={{
-        isLoading: isLoading,
+        isLoading: isLoading || isLoadingMore,
         onFullScroll,
         isLTR: true,
         label: 'کاریر',
@@ -42,8 +52,8 @@ const UserSingleSelectWidget = ({
         containerClass: containerClass,
         items: items.map((item) => ({ value: item.id, label: item.email })),
         onChange: onChange,
-        // isMultiSelectable: true,
-        // multiSelectLabelsViewType: 'chips',
+        isMultiSelectable: true,
+        multiSelectLabelsViewType: 'chips',
         // isMarquee: true,
       }}
     />

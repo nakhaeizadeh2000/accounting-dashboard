@@ -10,7 +10,7 @@ import { MdOutlineAlternateEmail } from 'react-icons/md';
 import UserSingleSelectWidget from './UserSingleSelectWidget';
 // const UserSingleSelectWidget = dynamic(() => import('./UserSingleSelectWidget'));
 import AnimatedInputElement from '@/components/Elements/widgets/input-elements/AnimatedInputElement';
-import { ItemType } from '@/components/Elements/widgets/drop-downs/DropDownWidget';
+import { ItemType } from '@/components/Elements/widgets/drop-downs/drop-down.type';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -22,7 +22,6 @@ import { ItemType } from '@/components/Elements/widgets/drop-downs/DropDownWidge
 const Sales = () => {
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
-    console.log('Selected Value:', value);
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
