@@ -25,6 +25,8 @@
     "@mui/material-nextjs": "^6.1.3",
     "@mui/styled-engine-sc": "^6.1.2",
     "@mui/x-data-grid": "^7.21.0",
+    "@mui/x-data-grid-generator": "^7.22.0",
+    "@mui/x-data-grid-premium": "^7.21.0",
     "@next/bundle-analyzer": "^14.2.8",
     "@reduxjs/toolkit": "^2.2.7",
     "@tailwind-plugin/expose-colors": "^1.1.8",
