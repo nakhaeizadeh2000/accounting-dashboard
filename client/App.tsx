@@ -13,7 +13,7 @@ import {
 } from '@/store/features/theme/themeConfigSlice';
 import { getTranslation } from '@/i18n';
 import 'styles/global.scss';
-import FullScreenLoading from './components/Elements/loadings/FullScreenLoading';
+import FullScreenLoading from './components/modules/loadings/FullScreenLoading';
 
 function App({ children }: PropsWithChildren) {
   const themeConfig = useSelector((state: IRootState) => state.themeConfig);

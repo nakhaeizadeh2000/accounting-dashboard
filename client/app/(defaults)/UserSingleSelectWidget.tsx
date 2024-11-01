@@ -1,5 +1,5 @@
-import { ItemType } from '@/components/Elements/widgets/drop-downs/drop-down.type';
-import DropDownWidget from '@/components/Elements/widgets/drop-downs/DropDownWidget';
+import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
+import DropDownWidget from '@/components/modules/drop-downs/DropDownWidget';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { useEffect, useState } from 'react';

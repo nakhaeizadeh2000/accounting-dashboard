@@ -9,8 +9,8 @@ import { MdOutlineAlternateEmail } from 'react-icons/md';
 // );
 import UserSingleSelectWidget from './UserSingleSelectWidget';
 // const UserSingleSelectWidget = dynamic(() => import('./UserSingleSelectWidget'));
-import AnimatedInputElement from '@/components/Elements/widgets/input-elements/AnimatedInputElement';
-import { ItemType } from '@/components/Elements/widgets/drop-downs/drop-down.type';
+import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
+import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
