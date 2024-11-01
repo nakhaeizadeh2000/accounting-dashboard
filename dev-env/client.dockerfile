@@ -31,8 +31,8 @@ USER node
 RUN npm install
 
 # Crack MUI premium and pro mode
-COPY ./dev-env/files/useLicenseVerifier.js ./node_modules//@mui/x-license/modern/useLicenseVerifier/
-COPY ./dev-env/files/useLicenseVerifier.js ./node_modules//@mui/x-license/useLicenseVerifier/
+COPY ./dev-env/files/useLicenseVerifier.js ./node_modules/@mui/x-license/modern/useLicenseVerifier/
+COPY ./dev-env/files/useLicenseVerifier.js ./node_modules/@mui/x-license/useLicenseVerifier/
 
 # Expose port for development
 # EXPOSE 3000
