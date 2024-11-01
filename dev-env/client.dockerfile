@@ -31,8 +31,12 @@ USER node
 RUN npm install
 
 # Crack MUI premium and pro mode
-COPY ./dev-env/files/useLicenseVerifier.js ./node_modules/@mui/x-license/modern/useLicenseVerifier/
-COPY ./dev-env/files/useLicenseVerifier.js ./node_modules/@mui/x-license/useLicenseVerifier/
+COPY ./dev-env/files/mui-crack-files/modern/useLicenseVerifier.js ./node_modules/@mui/x-license/modern/useLicenseVerifier/
+COPY ./dev-env/files/mui-crack-files/modern/verifyLicense.js ./node_modules/@mui/x-license/modern/verifyLicense/
+COPY ./dev-env/files/mui-crack-files/useLicenseVerifier.js ./node_modules/@mui/x-license/useLicenseVerifier/
+COPY ./dev-env/files/mui-crack-files/verifyLicense.js ./node_modules/@mui/x-license/verifyLicense/
+COPY ./dev-env/files/mui-crack-files/node/verifyLicense.js ./node_modules/@mui/x-license/node/verifyLicense/
+COPY ./dev-env/files/mui-crack-files/node/useLicenseVerifier.js ./node_modules/@mui/x-license/node/useLicenseVerifier/
 
 # Expose port for development
 # EXPOSE 3000
