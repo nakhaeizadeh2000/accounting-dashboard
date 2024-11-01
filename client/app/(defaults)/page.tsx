@@ -11,6 +11,7 @@ import UserSingleSelectWidget from './UserSingleSelectWidget';
 // const UserSingleSelectWidget = dynamic(() => import('./UserSingleSelectWidget'));
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
+import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -89,15 +90,7 @@ const Sales = () => {
             // icon: { Icon: MdOutlineAlternateEmail },
           }}
         />
-        <AnimatedInputElement
-          options={{
-            key: 'email',
-            label: 'ایمیل',
-            type: 'text',
-            fieldError: [],
-            // icon: { Icon: MdOutlineAlternateEmail },
-          }}
-        />
+        <FileUpload />
         <button type="submit">Submit</button>
       </form>
     </div>

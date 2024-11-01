@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    // TODO: because of using ES2015 that is ES6 instead of ES5 we have to use polyfills or additional tools like Babel to ensure compatibility (for limiting older version of browsers)
+    "target": "ES2015",
+    "downlevelIteration": true,
     "lib": [
       "dom",
       "dom.iterable",
