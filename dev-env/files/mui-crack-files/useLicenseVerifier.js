@@ -24,7 +24,7 @@ const sharedLicenseStatuses = (exports.sharedLicenseStatuses = {});
 function useLicenseVerifier(packageName, releaseInfo) {
   const { key: contextKey } = React.useContext(_MuiLicenseInfoContext.default);
   return React.useMemo(() => {
-    return { status: LICENSE_STATUS.Valid };
+    return { status: _licenseStatus.LICENSE_STATUS.Valid };
 
     const licenseKey = contextKey ?? _licenseInfo.LicenseInfo.getLicenseKey();
 
