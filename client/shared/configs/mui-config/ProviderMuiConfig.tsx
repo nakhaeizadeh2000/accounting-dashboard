@@ -7,12 +7,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { toggleTheme } from '@/store/features/theme/themeConfigSlice';
 import { darkTheme, lightTheme } from './theme-mui';
 import { IRootState } from '@/store';
+import { LocalizationProvider } from '@mui/x-date-pickers-pro';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3'; // If using solution a
 
 type Props = {
   children: React.ReactNode;
 };
 const rtlCache = createRtlCache();
-const ProviderMuiConfig = (props: Props) => {
+const ProviderMuiConfig = ({ children }: Props) => {
   //get theme in store and local storage
   const themeConfig = useSelector((state: IRootState) => state.themeConfig);
   const dispatch = useDispatch();
@@ -29,7 +31,7 @@ const ProviderMuiConfig = (props: Props) => {
   return (
     <CacheProvider value={rtlCache}>
       <ThemeProvider theme={isDark === 'dark' ? darkTheme : lightTheme}>
-        {props.children}
+        <LocalizationProvider dateAdapter={AdapterDateFns}>{children}</LocalizationProvider>
       </ThemeProvider>
     </CacheProvider>
   );

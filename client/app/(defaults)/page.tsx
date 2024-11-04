@@ -11,6 +11,9 @@ import UserSingleSelectWidget from './UserSingleSelectWidget';
 // const UserSingleSelectWidget = dynamic(() => import('./UserSingleSelectWidget'));
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { useState } from 'react';
+
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -20,6 +23,8 @@ import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 // };
 
 const Sales = () => {
+  const [selectedDate, setSelectedDate] = useState<Date | null>();
+
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
   };
@@ -97,6 +102,11 @@ const Sales = () => {
             fieldError: [],
             // icon: { Icon: MdOutlineAlternateEmail },
           }}
+        />
+        <DatePicker
+          label="تاریخ"
+          value={selectedDate}
+          onChange={(newValue) => setSelectedDate(newValue)}
         />
         <button type="submit">Submit</button>
       </form>
