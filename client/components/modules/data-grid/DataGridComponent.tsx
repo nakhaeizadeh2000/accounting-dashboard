@@ -17,7 +17,7 @@ type Props = {
   options: {
     columnsData: GridColDef[];
     rowData: GridRowsProp;
-    rowCountData: number | undefined;
+    rowCountData: number;
     disableColumnMenu?: boolean;
     disableColumnSorting?: boolean;
     disableColumnResize?: boolean;
@@ -75,7 +75,7 @@ const DataGridComponent = ({
           }}
           className={`${className}`}
           rows={rowData}
-          rowCount={rowCountData} // Ensure this reflects total number of items
+          rowCount={rowCountData ?? 0} // Ensure this reflects total number of items
           columns={columnsData}
           paginationMode="server"
           paginationModel={paginationModel}
