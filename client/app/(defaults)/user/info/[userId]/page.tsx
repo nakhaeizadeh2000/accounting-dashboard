@@ -1,10 +1,10 @@
 import React from 'react';
 
-type Props = {
-  id?: number;
-};
+// type Props = {
+//   id?: number;
+// };
 
-const UserEdit = (props: Props) => {
+const UserEdit = (props: any) => {
   return <div>UserEdit</div>;
 };
 

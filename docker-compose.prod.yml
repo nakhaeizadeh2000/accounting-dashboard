@@ -1,0 +1,94 @@
+version: "3.8"
+
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    ports:
+      - "80:80" # HTTP
+      - "443:443" # HTTPS
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro # SSL certificates for production
+    depends_on:
+      - api
+      - client
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.10"
+
+  api:
+    container_name: api
+    build:
+      context: .
+      dockerfile: dev-env/api.prod.dockerfile
+      args:
+        NODE_ENV: production # Set environment to production
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    volumes:
+      - .:/home/app # You may choose to adjust this for production to avoid mounting the entire app directory.
+
+  # Note that in production, you may want to avoid mounting the entire app directory.
+  # You can also consider using a multi-stage build to copy only the necessary files.
+
+  client:
+    container_name: client
+    build:
+      context: .
+      dockerfile: dev-env/client.prod.dockerfile
+      args:
+        NODE_ENV: production # Set environment to production
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    volumes:
+      - .:/home/app # Again, consider adjusting this for production.
+
+  # Note that in production, you may want to avoid mounting the entire app directory.
+  # You can also consider using a multi-stage build to copy only the necessary files.
+
+  postgres:
+    container_name: ${POSTGRES_HOST}
+    image: postgres:16-alpine
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./api/database/postgres-db/data:/var/lib/postgresql/data
+      - ./api/database/postgres-db/sql:/docker-entrypoint-initdb.d
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.60"
+
+  redis:
+    container_name: ${REDIS_HOST}
+    image: redis:7.4.0-alpine
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ./api/database/redis-database/:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.70"
+
+networks:
+  isatis:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "172.20.0.0/24" # Define the subnet including the desired IP address

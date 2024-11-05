@@ -1,10 +1,10 @@
 import React from 'react';
 
-type Props = {
-  name?: string;
-};
+// type Props = {
+//   name?: string;
+// };
 
-const UserAddComponent = (props: Props) => {
+const UserAddComponent = (props: any) => {
   return <div>UserAdd</div>;
 };
 
