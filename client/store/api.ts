@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { tags } from './apiTags';
 
 const baseUrl = 'http://localhost/api/';
 
@@ -7,5 +8,5 @@ export const baseApi = createApi({
   baseQuery: fetchBaseQuery({ baseUrl: baseUrl }),
   keepUnusedDataFor: 1, // Keep data in cache for 1 seconds after last use
   endpoints: () => ({}),
-  tagTypes: ['User', 'SignIn', 'SignUp'], // Define tag types for cache
+  tagTypes: tags, // Define tag types for cache
 });

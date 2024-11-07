@@ -1,23 +1,54 @@
-build-production:
-  docker compose -f docker-compose.prod.yml up --build
-build:
-	# make pre-setup
-	docker compose -f docker-compose.yml up --build --parallel
-build-no-cache:
+# dev command 
+build-dev:
 	make pre-setup
-	docker compose -f docker-compose.yml up --build --parallel --no-cache
-build-api:
-	docker compose build api
-build-client:
-	docker compose build client
-build-daemon:
-	docker compose -f docker-compose.yml up -d --build
+	docker compose -f docker-compose.dev.yml build --parallel
+build-dev-no-cache:
+	make pre-setup
+	docker compose -f docker-compose.dev.yml build --parallel --no-cache
+build-dev-api:
+	make pre-setup
+	docker compose -f docker-compose.dev.yml build api
+build-dev-client:
+	make pre-setup
+	docker compose -f docker-compose.dev.yml build client
+build-daemon-dev:
+	make pre-setup
+	docker compose -f docker-compose.dev.yml up -d --build
 dev:
-	docker compose up
+	docker compose -f docker-compose.dev.yml up
 dev-daemon:
-	docker compose up -d
+	docker compose -f docker-compose.dev.yml up -d
+api-dev:
+	docker exec -it api npm run start:dev --host 0.0.0.0 --port 4000
+client-dev:
+	docker exec -it client npm run dev
+
+
+# prod command 
+build-prod:
+	# make pre-setup
+	docker compose -f docker-compose.prod.yml build --parallel --no-cache
+build-prod-api:
+	docker compose -f docker-compose.prod.yml build api  --no-cache
+build-prod-client:
+	docker compose -f docker-compose.prod.yml build client  --no-cache
+build-daemon-prod:
+	docker compose -f docker-compose.prod.yml up -d --build  --no-cache
+prod:
+	docker compose -f docker-compose.prod.yml up
+prod-daemon:
+	docker compose -f docker-compose.prod.yml up -d
+
+
+# stop & down command 
 down:
 	docker compose down
+down-volume:
+	docker compose down -v
+stop:
+	docker compose stop
+
+# api related
 api-setup:
 	make api-install && \
 	make api-migrate-refresh
@@ -25,27 +56,25 @@ api-install:
 	docker exec -it api npm install
 api-debug:
 	docker exec -it api npm run start:debug --host 0.0.0.0 --port 4000
-api-dev:
-	docker exec -it api npm run start:dev --host 0.0.0.0 --port 4000
 api-ssh:
 	docker exec -it api /bin/bash
 api-restart:
 	docker compose restart api --no-deps
-client-dev:
-	docker exec -it client npm run dev
+api-migrate-refresh:
+	docker exec -it api npm run migration:run && \
+	make api-seed 
+api-seed: 
+	docker exec -it api npm run seed:run
+
+
+# client related
 client-analyze:
 	cd ./client && npm run analyze
 client-ssh:
 	docker exec -it client /bin/bash
-# migrate:
-# 	docker exec -it api php artisan migrate
-# api-migrate:
-# 	docker exec -it api php artisan migrate
-api-migrate-refresh:
-	docker exec -it api npm run migration:run && \
-	make api-seed
-api-seed: 
-	docker exec -it api npm run seed:run
+
+
+# bash command & etc..
 pre-setup:
 	dev-env/sh/pre-setup.sh
 setup:
@@ -54,13 +83,9 @@ setup:
 	make post-setup
 post-setup:
 	dev-env/sh/setup.sh
-# build-deploy-api:
-# 	docker build -f ./php.deploy.dockerfile -t isatis:1.0.0 .
-# run-deploy-api:
-# 	docker run --name php-deploy -p 8000:8000 isatis:1.0.0
-# test-api:
-# 	docker exec docker-swoole-php /usr/src/api/vendor/bin/phpunit \
-# 	--configuration /usr/src/api/phpunit.xml \
-# 	--colors=auto
+  
+
+
+# test related
 test-cypress:
 	docker compose -f docker-compose.test.yml -p tese-cypress up

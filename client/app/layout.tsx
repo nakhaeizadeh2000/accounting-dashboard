@@ -4,6 +4,7 @@ import '../styles/tailwind.css';
 
 import { yekanBakh } from './stuff/fonts';
 import { Metadata } from 'next';
+import ProviderMuiConfig from '@/shared/configs/mui-config/ProviderMuiConfig';
 
 export const metadata: Metadata = {
   title: {
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fa" className={`${yekanBakh.variable} font-sans`}>
       <head></head>
       <body>
-        <ProviderComponent>{children}</ProviderComponent>
+        <ProviderComponent>
+          <ProviderMuiConfig>{children}</ProviderMuiConfig>
+        </ProviderComponent>
       </body>
     </html>
   );

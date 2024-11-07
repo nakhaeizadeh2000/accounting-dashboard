@@ -1,6 +1,6 @@
 import { baseApi } from '@/store/api';
 import { SignUpBody, SignUpResponse } from './sign-up.model';
-import { BaseResponse } from '../base-response.model';
+import { BaseResponse } from '../../base-response.model';
 
 export const signUpApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

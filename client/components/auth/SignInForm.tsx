@@ -4,15 +4,15 @@ import { SignInFormData, SignInSchema } from '@/schemas/validations/auth/sign-in
 import { setAccessTokenCookie } from '@/shared/functions/access-token-cookie';
 import { FormValidationsErrorState } from '@/shared/types/form-validations-error-state.type';
 import { isResponseCatchError } from '@/store/features/base-response.model';
-import { useSignInMutation } from '@/store/features/sign-in/sign-in.api';
+import { useSignInMutation } from '@/store/features/auth/sign-in/sign-in.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import AnimatedInputElement from '@/Elements/input-elements/AnimatedInputElement';
-import FormButton from '../Elements/buttons/FormButton';
+import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
+import FormButton from '../modules/buttons/FormButton';
 import { FiLogIn } from 'react-icons/fi';
 import { MdOutlineAlternateEmail } from 'react-icons/md';
 import { FaEyeLowVision } from 'react-icons/fa6';
-import AnimatedPasswordInputelement from '../Elements/input-elements/AnimatedPasswordInputElement';
+import AnimatedPasswordInputelement from '../modules/input-elements/AnimatedPasswordInputElement';
 
 type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 

@@ -1,74 +1,78 @@
+version: "3.8"
+
 services:
   nginx:
     container_name: nginx
-    build: 
-      context: .
-      dockerfile: dev-env/nginx.dockerfile
+    image: nginx:alpine
+    env_file:
+      - .env.production
     ports:
-      - "80:80" # Expose Nginx service on port 80
-      - 443:443
+      - "80:80" # HTTP
+      - "443:443" # HTTPS
     volumes:
-      - ./nginx/default.prod.conf:/etc/nginx/nginx.conf:ro
-    environment:
-      - SERVER_NAME=${SERVER_NAME}
+      ### switch between default-ssl and default to disable and enable of having ssl
+      # - ./nginx/default-ssl.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/default.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro # SSL certificates for production
+    depends_on:
+      - api
+      - client
     networks:
       isatis:
-        ipv4_address: "172.20.0.10" # Assign the desired static IP address
+        ipv4_address: "172.20.0.10"
 
-  # api:
-  #   container_name: api
-  #   # restart: always
-  #   build:
-  #     context: .
-  #     dockerfile: dev-env/api.dockerfile
-  #   # ports:
-  #   #   - "3000:3000"
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - .:/home/app
-  #     - /home/app/api/node_modules
-  #   ports:
-  #     - 9229:9229
-  #   networks:
-  #     isatis:
-  #       ipv4_address: "172.20.0.20" # Assign the desired static IP address
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #     - mailpit
-  #   links:
-  #     - postgres
-  #     - redis
-  #     - mailpit
+  api:
+    image: accounting-dashboard-api-prod:latest
+    container_name: api
+    build:
+      context: .
+      dockerfile: dev-env/api.prod.dockerfile
+      args:
+        NODE_ENV: production # Set environment to production
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    # volumes:
+    #   - .:/home/app # You may choose to adjust this for production to avoid mounting the entire app directory.
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.20" # Assign the desired static IP address
+    depends_on:
+      - postgres
+      - redis
 
-  # client:
-  #   container_name: client
-  #   build:
-  #     context: .
-  #     dockerfile: dev-env/client.dockerfile
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - .:/home/app
-  #     - /home/app/client/node_modules
-  #   environment:
-  #     - NODE_ENV=development
-  #   networks:
-  #     isatis:
-  #       ipv4_address: "172.20.0.40" # Assign the desired static IP address
+  # Note that in production, you may want to avoid mounting the entire app directory.
+  # You can also consider using a multi-stage build to copy only the necessary files.
+
+  client:
+    image: accounting-dashboard-client-prod:latest
+    container_name: client
+    build:
+      context: .
+      dockerfile: dev-env/client.prod.dockerfile
+      args:
+        NODE_ENV: production # Set environment to production
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    # volumes:
+    #   - .:/home/app # Again, consider adjusting this for production.
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.40" # Assign the desired static IP address
+
+  # Note that in production, you may want to avoid mounting the entire app directory.
+  # You can also consider using a multi-stage build to copy only the necessary files.
 
   postgres:
     container_name: ${POSTGRES_HOST}
     image: postgres:16-alpine
     env_file:
-      - .env
+      - .env.production # Use a different env file for production if needed
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
-      - ${POSTGRES_PORT:-5432}:5432
+      - "${POSTGRES_PORT:-5432}:5432"
     restart: unless-stopped
     tty: true
     volumes:
@@ -76,64 +80,26 @@ services:
       - ./api/database/postgres-db/sql:/docker-entrypoint-initdb.d
     networks:
       isatis:
-        ipv4_address: "172.20.0.60" # Assign the desired static IP address
+        ipv4_address: "172.20.0.60"
 
   redis:
     container_name: ${REDIS_HOST}
     image: redis:7.4.0-alpine
     env_file:
-      - .env
+      - .env.production # Use a different env file for production if needed
     restart: always
     ports:
-      - ${REDIS_PORT:-6379}:6379
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - ./api/database/redis-database/:/data
     healthcheck:
-      test:
-        - CMD
-        - redis-cli
-        - ping
-      retries: 3
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
       timeout: 5s
+      retries: 3
     networks:
       isatis:
-        ipv4_address: "172.20.0.70" # Assign the desired static IP address
-  mailpit:
-    container_name: mailpit
-    image: axllent/mailpit:latest
-    # ports:
-    #   - ${FORWARD_MAILPIT_PORT:-1025}:1025
-    #   - ${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025
-    volumes:
-      - ./api/storage/mail-tata/:/data
-    networks:
-      isatis:
-        ipv4_address: "172.20.0.90" # Assign the desired static IP address
-  # minio:
-    #   container_name: minio
-    #   image: minio/minio:latest
-    #   # ports:
-    #   #   - ${FORWARD_MINIO_PORT:-9000}:9000
-    #   #   - ${FORWARD_MINIO_CONSOLE_PORT:-8900}:8900
-    #   environment:
-    #     MINIO_ROOT_USER: sail
-    #     MINIO_ROOT_PASSWORD: password123
-    #     ACCESS_KEY: minioadmin
-    #     SECRET_KEY: minioadmin
-    #   volumes:
-    #     - ./api/storage/s3-data/:/data
-    #   command: minio server /data/minio --console-address ":9061"
-    #   healthcheck:
-    #     test:
-    #       - CMD
-    #       - curl
-    #       - -f
-    #       - http://localhost:9061/minio/health/live
-    #     retries: 3
-    #     timeout: 5s
-    #   networks:
-    #     isatis:
-    #       ipv4_address: "172.20.0.80" # Assign the desired static IP address
+        ipv4_address: "172.20.0.70"
 
 networks:
   isatis:

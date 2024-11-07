@@ -1,4 +1,4 @@
-import FullScreenLoading from '@/components/Elements/loadings/FullScreenLoading';
+import FullScreenLoading from '@/components/modules/loadings/FullScreenLoading';
 
 const loading = () => {
   return <FullScreenLoading />;

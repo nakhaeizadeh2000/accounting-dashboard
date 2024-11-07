@@ -34,11 +34,13 @@ import IconMenuMore from '@/components/icon/menu/icon-menu-more';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTranslation } from '@/i18n';
 import { removeAccessTokenCookie } from '@/shared/functions/access-token-cookie';
+import { useSignOutMutation } from '@/store/features/auth/sign-out/sign-out.api';
 
 const Header = () => {
   const pathname = usePathname();
   const dispatch = useDispatch();
   const router = useRouter();
+  const [signOut, { isLoading: isLoadingLogout }] = useSignOutMutation();
   const { t, i18n } = getTranslation();
 
   useEffect(() => {
@@ -154,8 +156,8 @@ const Header = () => {
     setNotifications(notifications.filter((user) => user.id !== value));
   };
 
-  const handleLogout = () => {
-    // Replace 'your_cookie_name' with the actual name of your cookie
+  const handleLogout = async () => {
+    await signOut({}).unwrap();
     removeAccessTokenCookie();
   };
 
@@ -270,12 +272,12 @@ const Header = () => {
                     themeConfig.theme === 'dark' &&
                     'flex items-center rounded-full bg-white-light/40 p-2 hover:bg-white-light/90 hover:text-primary dark:bg-dark/40 dark:hover:bg-dark/60'
                   }`}
-                  onClick={() => dispatch(toggleTheme('system'))}
+                  onClick={() => dispatch(toggleTheme('light'))}
                 >
                   <IconMoon />
                 </button>
               )}
-              {themeConfig.theme === 'system' && (
+              {/* {themeConfig.theme === 'system' && (
                 <button
                   className={`${
                     themeConfig.theme === 'system' &&
@@ -285,7 +287,7 @@ const Header = () => {
                 >
                   <IconLaptop />
                 </button>
-              )}
+              )} */}
             </div>
             <div className="dropdown shrink-0">
               <Dropdown

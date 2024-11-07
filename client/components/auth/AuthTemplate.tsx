@@ -11,7 +11,7 @@ const AuthTemplate = ({ children }: { children: React.ReactNode }) => {
                 <div className="g-0 lg:flex lg:flex-wrap">
                   {/* Right column container */}
                   <div className="px-4 md:px-0 lg:w-6/12">
-                    <div className="pt-2 md:mx-6 md:p-12 xl:mx-16 xl:p-16">
+                    <div className="py-6 px-2 md:mx-6 md:p-12 xl:mx-16 xl:p-16">
                       {/* Logo */}
                       <div className="text-center">
                         <Image
@@ -22,7 +22,7 @@ const AuthTemplate = ({ children }: { children: React.ReactNode }) => {
                           height={48} // Set height according to your design
                         />
 
-                        <h4 className="mb-12 mt-1 pb-1 text-base font-normal sm:text-lg">
+                        <h4 className="mb-6 mt-1 pb-1 text-base font-normal sm:text-lg">
                           شرکت کویر سرخ
                         </h4>
                       </div>
