@@ -1,15 +1,18 @@
 # dev command 
 build-dev:
-	# make pre-setup
+	make pre-setup
 	docker compose -f docker-compose.dev.yml build --parallel
 build-dev-no-cache:
 	make pre-setup
 	docker compose -f docker-compose.dev.yml build --parallel --no-cache
 build-dev-api:
+	make pre-setup
 	docker compose -f docker-compose.dev.yml build api
 build-dev-client:
+	make pre-setup
 	docker compose -f docker-compose.dev.yml build client
 build-daemon-dev:
+	make pre-setup
 	docker compose -f docker-compose.dev.yml up -d --build
 dev:
 	docker compose -f docker-compose.dev.yml up
@@ -24,16 +27,13 @@ client-dev:
 # prod command 
 build-prod:
 	# make pre-setup
-	docker compose -f docker-compose.prod.yml build --parallel
-build-prod-no-cache:
-	make pre-setup
 	docker compose -f docker-compose.prod.yml build --parallel --no-cache
 build-prod-api:
-	docker compose -f docker-compose.prod.yml build api
+	docker compose -f docker-compose.prod.yml build api  --no-cache
 build-prod-client:
-	docker compose -f docker-compose.prod.yml build client
+	docker compose -f docker-compose.prod.yml build client  --no-cache
 build-daemon-prod:
-	docker compose -f docker-compose.prod.yml up -d --build
+	docker compose -f docker-compose.prod.yml up -d --build  --no-cache
 prod:
 	docker compose -f docker-compose.prod.yml up
 prod-daemon:
