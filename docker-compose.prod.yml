@@ -10,6 +10,8 @@ services:
       - "80:80" # HTTP
       - "443:443" # HTTPS
     volumes:
+      ### switch between default-ssl and default to disable and enable of having ssl
+      # - ./nginx/default-ssl.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/default.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro # SSL certificates for production
     depends_on:
