@@ -29,13 +29,13 @@ COPY ./dev-env/files/mui-crack-files/verifyLicense.js ./node_modules/@mui/x-lice
 COPY ./dev-env/files/mui-crack-files/node/verifyLicense.js ./node_modules/@mui/x-license/node/verifyLicense/
 COPY ./dev-env/files/mui-crack-files/node/useLicenseVerifier.js ./node_modules/@mui/x-license/node/useLicenseVerifier/
 
-# Build the Next.js application for production
-RUN npm run build 
-
 # Change ownership to non-root user
 RUN chown -R node:node /home/app/client
 
 USER node 
+
+# Build the Next.js application for production
+RUN npm run build 
 
 # Command to run the application in production mode
 CMD ["npm", "start"]

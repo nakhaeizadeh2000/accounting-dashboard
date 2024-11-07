@@ -4,6 +4,8 @@ services:
   nginx:
     container_name: nginx
     image: nginx:alpine
+    env_file:
+      - .env.production
     ports:
       - "80:80" # HTTP
       - "443:443" # HTTPS
@@ -27,8 +29,14 @@ services:
         NODE_ENV: production # Set environment to production
     env_file:
       - .env.production # Use a different env file for production if needed
-    volumes:
-      - .:/home/app # You may choose to adjust this for production to avoid mounting the entire app directory.
+    # volumes:
+    #   - .:/home/app # You may choose to adjust this for production to avoid mounting the entire app directory.
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.20" # Assign the desired static IP address
+    depends_on:
+      - postgres
+      - redis
 
   # Note that in production, you may want to avoid mounting the entire app directory.
   # You can also consider using a multi-stage build to copy only the necessary files.
@@ -43,8 +51,11 @@ services:
         NODE_ENV: production # Set environment to production
     env_file:
       - .env.production # Use a different env file for production if needed
-    volumes:
-      - .:/home/app # Again, consider adjusting this for production.
+    # volumes:
+    #   - .:/home/app # Again, consider adjusting this for production.
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.40" # Assign the desired static IP address
 
   # Note that in production, you may want to avoid mounting the entire app directory.
   # You can also consider using a multi-stage build to copy only the necessary files.

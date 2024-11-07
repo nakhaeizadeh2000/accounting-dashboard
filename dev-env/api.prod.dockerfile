@@ -35,9 +35,6 @@ USER node
 # Build the app
 RUN npm run build
 
-# Command to run the application
-# CMD ["npm", "run", "start"]
-
 # Set entrypoint to keep the container running
 # ENTRYPOINT ["tail", "-f", "/dev/null"]
 
