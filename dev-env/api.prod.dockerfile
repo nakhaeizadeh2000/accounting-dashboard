@@ -33,13 +33,10 @@ RUN chown -R node:node /home/app
 USER node
 
 # Build the app
-# RUN npm run build
-
-# Command to run the application
-# CMD ["npm", "run", "start"]
+RUN npm run build
 
 # Set entrypoint to keep the container running
 # ENTRYPOINT ["tail", "-f", "/dev/null"]
 
 # Command to run the application in production mode.
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "start:prod"]
