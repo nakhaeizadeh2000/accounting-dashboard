@@ -18,6 +18,7 @@ services:
         ipv4_address: "172.20.0.10"
 
   api:
+    image: accounting-dashboard-api-prod:latest
     container_name: api
     build:
       context: .
@@ -33,6 +34,7 @@ services:
   # You can also consider using a multi-stage build to copy only the necessary files.
 
   client:
+    image: accounting-dashboard-client-prod:latest
     container_name: client
     build:
       context: .
