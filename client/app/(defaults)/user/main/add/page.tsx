@@ -2,9 +2,9 @@
 import DataGridPremiumDemo from '@/components/modules/data-grid/PremiumTest';
 import React from 'react';
 
-type Props = {
-  name?: string;
-};
+// type Props = {
+//   name?: string;
+// };
 
 const UserAddComponent = (props: Props) => {
   return (

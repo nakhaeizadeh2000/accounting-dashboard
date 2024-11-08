@@ -15,6 +15,7 @@ import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { DatePicker } from '@mui/x-date-pickers-pro';
 import { useState } from 'react';
 
+import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -108,6 +109,7 @@ const Sales = () => {
           }}
         />
         <DatePicker label="تاریخ" value={selectedDate} onChange={handleDateChange} />
+        <FileUpload />
         <button type="submit">Submit</button>
       </form>
     </div>
