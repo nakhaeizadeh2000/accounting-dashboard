@@ -10,6 +10,7 @@ import { PermissionModule } from './permissions/permission.module';
 import { RoleModule } from './role/role.module';
 import { CaslModule } from './casl/casl.module';
 import { ArticleModule } from './article/article.module';
+import { FilesModule } from './files/files.module';
 
 @Module({
   imports: [
@@ -32,10 +33,11 @@ import { ArticleModule } from './article/article.module';
     PermissionModule,
     RoleModule,
     CaslModule,
+    FilesModule,
     ArticleModule,
   ],
   controllers: [],
   providers: [],
   exports: [],
 })
-export class AppModule {}
+export class AppModule { }

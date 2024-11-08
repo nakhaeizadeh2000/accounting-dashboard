@@ -34,8 +34,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const request = context.switchToHttp().getRequest<FastifyRequest>();
     const response = context.switchToHttp().getResponse<FastifyReply>();
 
-    console.log(this);
-
     return from(this.handleToken(request, response)).pipe(
       mergeMap(() => super.canActivate(context) as Observable<boolean>),
     );
@@ -101,7 +99,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       });
       // Update the request object with the new token in the cookies
       request.cookies['access_token'] = access_token;
-      console.log(response);
     } else {
       response.clearCookie('access_token');
       throw new UnauthorizedException('Login please');

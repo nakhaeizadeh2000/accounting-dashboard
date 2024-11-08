@@ -12,6 +12,7 @@ import UserSingleSelectWidget from './UserSingleSelectWidget';
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
+import Image from 'next/image';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -93,6 +94,13 @@ const Sales = () => {
         <FileUpload />
         <button type="submit">Submit</button>
       </form>
+      <Image
+        src="http://localhost/api/files/test.jpg"
+        width={500}
+        height={500}
+        alt="Picture of the author"
+        unoptimized
+      />
     </div>
   );
 };
