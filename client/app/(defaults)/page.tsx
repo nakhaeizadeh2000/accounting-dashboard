@@ -16,7 +16,6 @@ import { DatePicker, PickerValidDate } from '@mui/x-date-pickers-pro';
 import { useState } from 'react';
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
-import { faIR } from '@mui/material/locale';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -29,9 +28,8 @@ const Sales = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const handleDateChange = (date: Date | null) => {
     setSelectedDate(date);
+    console.log(date, 'date');
   };
-
-  let myData: PickerValidDate;
 
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
@@ -42,6 +40,12 @@ const Sales = () => {
     const formData = new FormData(event.currentTarget);
     // TODO: work on these sections
     // formData.append()
+  };
+
+  const persianDayFormatter = (date: Date) => {
+    const persianDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+    const dayIndex = date.getDay();
+    return persianDays[dayIndex];
   };
 
   return (
@@ -115,8 +119,9 @@ const Sales = () => {
           label="تاریخ"
           value={selectedDate}
           onChange={handleDateChange}
-          views={['day']}
           // openTo='' this config for when client click on date calender
+          dayOfWeekFormatter={persianDayFormatter}
+          // dayOfWeekFormatter={(weekday) => `${weekday.format('dd')}.`}
         />
         <StaticDatePicker orientation="landscape" />
         <FileUpload />
@@ -127,3 +132,4 @@ const Sales = () => {
 };
 
 export default Sales;
+//TODO config the fa or jalali date picker (start week day,.....)
