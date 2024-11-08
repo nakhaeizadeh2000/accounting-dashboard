@@ -8,7 +8,7 @@ services:
       - "80:80" # HTTP
       - "443:443" # HTTPS (if needed)
     volumes:
-      - ./nginx/default.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/default.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro # SSL certificates (optional for dev)
     depends_on:
       - api
