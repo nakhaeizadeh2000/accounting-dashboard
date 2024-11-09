@@ -42,6 +42,49 @@ services:
       - postgres
       - redis
 
+  minio1:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z.fips
+    hostname: minio
+    command: server --console-address ":9001" /data
+    restart: unless-stopped
+    container_name: minio
+    env_file:
+      - .env
+      - ./minio/.env.minio
+    # expose:
+    #   - "9000"
+    #   - "9001"
+    # ports:
+    # - 127.0.0.1:9000:9000
+    # - 9001:9001
+    environment:
+      MINIO_BROWSER_REDIRECT_URL: https://localhost/minio/console
+      # MINIO_ROOT_USER: minioadmin
+      # MINIO_ROOT_PASSWORD: minioadmin
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - ./minio/data:/data
+    # secrets:
+    #   - source: minio-ca
+    #     target: /root/.minio/certs/CAs/myCA.crt
+    #     # uid: "1001" # long syntax only works in swarm mode, added for documentation
+    #     # gid: "1001"
+    #   - source: minio-certs
+    #     target: /root/.minio/certs/public.crt
+    #     # uid: "1001"
+    #     # gid: "1001"
+    #   - source: minio-key
+    #     target: /root/.minio/certs/private.key
+    #     # uid: "1001"
+    #     # gid: "1001"
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.30"
+
   client:
     container_name: client
     build:

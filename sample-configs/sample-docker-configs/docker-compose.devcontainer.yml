@@ -1,0 +1,38 @@
+version: "3"
+
+x-template:
+  dev-service: &dev
+    volumes:
+      - ./:/home/app
+      - ./libs:/home/app/front/libs
+      - ./libs:/home/app/back/libs
+      - back-packages:/home/app/back/node_modules
+      - front-packages:/home/app/front/node_modules
+      - schematics-packages:/home/app/front/libs/schematics/node_modules
+      - ./libs/schematics/conf/bashrc:/home/node/.bashrc
+
+services:
+  nginx:
+    depends_on:
+      - back
+      - front
+  back:
+    <<: *dev
+    command: /bin/sh -c "while sleep 50400; do :; done"
+    privileged: true
+    ports:
+      - 9229:9229
+      - 3002:3002
+      - 8229:8228
+
+  front:
+    <<: *dev
+    command: /bin/sh -c "while sleep 50400; do :; done"
+    ports:
+      - 4201:4201
+      - 8228:8228
+
+volumes:
+  back-packages:
+  front-packages:
+  schematics-packages:

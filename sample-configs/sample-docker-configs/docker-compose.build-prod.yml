@@ -1,0 +1,33 @@
+version: "3"
+
+services:
+  back:
+    build:
+      context: ./
+      dockerfile: ./back/Dockerfile.prod
+      cache_from:
+        - "harbor.hyvatech.com/maskan/back:production"
+ 
+
+  front:
+    build:
+      context: ./
+      dockerfile: ./front/Dockerfile.prod
+      cache_from:
+        - "harbor.hyvatech.com/maskan/front:production"
+
+  front-test:
+    build:
+      context: ./
+      args:
+        - mode=testProd
+      dockerfile: ./front/Dockerfile.prod
+      cache_from:
+        - "harbor.hyvatech.com/maskan/front:test-production"
+    image: harbor.hyvatech.com/maskan/front:test-production
+
+  nginx:
+    build:
+      context: ./
+      dockerfile: ./nginx/Dockerfile.prod
+    image: harbor.hyvatech.com/maskan/nginx:${prod_tag:-production}

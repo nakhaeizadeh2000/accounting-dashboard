@@ -1,0 +1,37 @@
+version: "3"
+services:
+  minio1:
+    image: minio/minio:RELEASE.2023-09-16T01-01-47Z.fips
+  back:
+      image: ${CI_REGISTRY}/maskan/back:${CI_COMMIT_REF_SLUG:-latest}
+      volumes:
+        - back-packages:/home/app/back/node_modules
+        - ./back:/home/app/back
+        - ./libs:/home/app/back/libs
+  front:
+      image: ${CI_REGISTRY}/maskan/front:${CI_COMMIT_REF_SLUG:-latest}
+      volumes:
+        - front-packages:/home/app/front/node_modules
+        - ./front:/home/app/front
+        - ./libs:/home/app/front/libs
+  nginx:
+    image: nginx:alpine 
+    build:
+      context: ./
+      dockerfile: ./nginx/Dockerfile
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+        
+  postgres:
+    image: postgres:15.4-alpine
+
+  redis:
+    image: redis:7.2-alpine
+
+volumes:
+  front-packages:
+  back-packages:
+networks:
+  main:
+    driver: bridge
+    name: maskan_network
