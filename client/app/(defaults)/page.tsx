@@ -26,6 +26,7 @@ import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 
 const Sales = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [cleared, setCleared] = useState<boolean>(false);
   const handleDateChange = (date: Date | null) => {
     setSelectedDate(date);
     console.log(date, 'date');
@@ -121,6 +122,12 @@ const Sales = () => {
           onChange={handleDateChange}
           // openTo='' this config for when client click on date calender
           dayOfWeekFormatter={persianDayFormatter}
+          disabled={false}
+          readOnly={false}
+          disablePast={true}
+          slotProps={{
+            field: { clearable: false, onClear: () => setCleared(true) },
+          }}
         />
         <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
         <FileUpload />
@@ -131,3 +138,5 @@ const Sales = () => {
 };
 
 export default Sales;
+
+//TODO config all the props in calendar and separate the component date picker

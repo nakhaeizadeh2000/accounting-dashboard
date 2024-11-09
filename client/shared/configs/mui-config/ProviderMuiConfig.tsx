@@ -67,4 +67,4 @@ const ProviderMuiConfig = ({ children }: Props) => {
 
 export default ProviderMuiConfig;
 
-//TODO add type local for fa and en
+//TODO add type local for fa and en (https://mui.com/x/react-date-pickers/localization/) please check this site
