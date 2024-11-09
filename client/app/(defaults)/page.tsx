@@ -43,7 +43,7 @@ const Sales = () => {
   };
 
   const persianDayFormatter = (date: Date) => {
-    const persianDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+    const persianDays = ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'];
     const dayIndex = date.getDay();
     return persianDays[dayIndex];
   };
@@ -121,9 +121,8 @@ const Sales = () => {
           onChange={handleDateChange}
           // openTo='' this config for when client click on date calender
           dayOfWeekFormatter={persianDayFormatter}
-          // dayOfWeekFormatter={(weekday) => `${weekday.format('dd')}.`}
         />
-        <StaticDatePicker orientation="landscape" />
+        <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
         <FileUpload />
         <button type="submit">Submit</button>
       </form>
@@ -132,4 +131,3 @@ const Sales = () => {
 };
 
 export default Sales;
-//TODO config the fa or jalali date picker (start week day,.....)

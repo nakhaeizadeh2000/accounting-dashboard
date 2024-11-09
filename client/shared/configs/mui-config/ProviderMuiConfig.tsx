@@ -33,13 +33,13 @@ const ProviderMuiConfig = ({ children }: Props) => {
   // set dark mode
   const [configMui, SetConfigMui] = useState<configMui>();
 
-  const customEnLocale: Locale = {
-    ...faIR,
-    options: {
-      ...faIR.options,
-      weekStartsOn: 1, // Monday
-    },
-  };
+  // const customEnLocale: Locale = {
+  //   ...faIR,
+  //   options: {
+  //     ...faIR.options,
+  //     // weekStartsOn: 0, // Monday
+  //   },
+  // };
 
   // change state when the theme is changed
   useEffect(() => {
@@ -56,12 +56,7 @@ const ProviderMuiConfig = ({ children }: Props) => {
       <ThemeProvider theme={configMui?.theme === 'dark' ? darkTheme : lightTheme}>
         <LocalizationProvider
           dateAdapter={configMui?.calenderType === 'jalali' ? AdapterDateFnsJalali : AdapterDateFns}
-          // adapterLocale={{
-          //   ...
-          //   options: {
-          //     weekStartsOn: 1,
-          //   },
-          // }}
+          // adapterLocale={customEnLocale}
         >
           {children}
         </LocalizationProvider>
