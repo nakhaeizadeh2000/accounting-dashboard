@@ -1,51 +1,50 @@
-import { Param, Res } from '@nestjs/common';
-import { FastifyReply } from 'fastify';
-import {
-  filesControllerDecorators,
-  filesFindOneEndpointDecorators,
-} from './combined-decorators';
+// controllers/file.controller.ts
+import { Controller, Get, Param, Post, Req, Body } from '@nestjs/common';
+import { FastifyRequest } from 'fastify';
+import { MinioService } from '../services/files.service';
 
-@filesControllerDecorators()
-export class FilesController {
-  // constructor(private readonly permissionService: PermissionService) { }
+@Controller('api/files')
+export class FileController {
+  constructor(private readonly minioService: MinioService) { }
 
-  // @permissionCreateEndpointDecorators()
-  // create(@Body() createPermissionDto: CreatePermissionDto) {
-  //   return this.permissionService.create(createPermissionDto);
-  // }
+  // Upload file to MinIO bucket
+  @Post('upload/:bucket')
+  async uploadFile(
+    @Param('bucket') bucket: string,
+    @Req() req: FastifyRequest, // Use FastifyRequest to access the multipart data
+  ) {
+    const data = await req.file(); // Get the uploaded file data (stream)
 
-  // @permissionFindAllEndpointDecorators()
-  // getAll() {
-  //   return this.permissionService.getAll();
-  // }
+    // Access file metadata
+    const fileStream = data.file;
+    const filename = data.filename; // Filename from the multipart form
+    const mimetype = data.mimetype; // MIME type from the multipart form
 
-  @filesFindOneEndpointDecorators()
-  findOne(@Param('filename') filename: string, @Res({ passthrough: true }) response: FastifyReply) {
-    console.log('filename: ', filename);
+    // Save file stream to MinIO (use stream handling)
+    const buffer: Buffer = await this.streamToBuffer(fileStream); // Convert stream to buffer
 
-    response.header('X-Accel-Redirect', `/api/files/${filename}`);
-    response.send();
+    await this.minioService.uploadFile(bucket, filename, buffer, { 'Content-Type': mimetype });
 
-    // Perform permission check here
-    // if (await this.hasPermission(filename)) {
-    //   // Set the X-Accel-Redirect header
-    //   res.header('X-Accel-Redirect', `/protected-files/${filename}`);
-    //   res.send();
-    // } else {
-    //   res.status(403).send('Access denied');
-    // }
+    return { message: 'File uploaded successfully', fileName: filename };
   }
 
-  // @permissionUpdateEndpointDecorators()
-  // update(
-  //   @Param('id') id: number,
-  //   @Body() updatePermissionDto: UpdatePermissionDto,
-  // ) {
-  //   return this.permissionService.update(id.toString(), updatePermissionDto);
-  // }
+  // Generate a pre-signed URL for downloading a file
+  @Get('download/:bucket/:filename')
+  async downloadFile(
+    @Param('bucket') bucket: string,
+    @Param('filename') filename: string,
+  ) {
+    const url = await this.minioService.getDownloadUrl(bucket, filename);
+    return { url };
+  }
 
-  // @permissionDeleteEndpointDecorators()
-  // remove(@Param('id') id: number) {
-  //   return this.permissionService.remove(id.toString());
-  // }
+  // Helper function to convert the stream to a buffer
+  private async streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', chunk => chunks.push(chunk));
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+      stream.on('error', reject);
+    });
+  }
 }

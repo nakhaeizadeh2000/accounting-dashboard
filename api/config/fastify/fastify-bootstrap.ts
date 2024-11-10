@@ -1,6 +1,6 @@
 /** import fastify and modules */
 import compression from '@fastify/compress';
-import fmp from '@fastify/multipart';
+import fastifyMultipart from '@fastify/multipart';
 import { fastifySwagger } from '@fastify/swagger';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { FastifyInstance } from 'fastify/types/instance';
@@ -12,7 +12,7 @@ export async function fastifyBootstrap(
 ) {
   await app.register(fastifyHelmet);
   app.register(compression, { encodings: ['gzip', 'deflate'] });
-  app.register(fmp);
+  app.register(fastifyMultipart);
   app.register(fastifySwagger);
   app.register(fastifyCookie, {
     secret: process.env.COOKIE_SECRET,

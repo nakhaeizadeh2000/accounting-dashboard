@@ -1,80 +1,28 @@
-// import { Injectable, Inject } from '@nestjs/common';
-// import { InjectRepository } from '@nestjs/typeorm';
-// import { Repository } from 'typeorm';
-// import { Permission } from '../entities/permission.entity';
-// import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
-// import { CreatePermissionDto } from '../dto/create-permission.dto';
-// import { UpdatePermissionDto } from '../dto/update-permission.dto';
-// import { plainToInstance } from 'class-transformer';
-// import { ResponsePermissionDto } from '../dto/response-permission.dto';
+import { Injectable } from '@nestjs/common';
+import { MinioConfigService } from 'config/minio/minio.ocnfig';
+import { Client } from 'minio';
 
-// @Injectable()
-// export class PermissionService {
-//   constructor(
-//     @InjectRepository(Permission)
-//     private permissionRepository: Repository<Permission>,
-//     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-//   ) {}
+@Injectable()
+export class MinioService {
+  private minioClient: Client;
 
-//   async create(createPermissionDto: CreatePermissionDto): Promise<Permission> {
-//     const permission = this.permissionRepository.create(createPermissionDto);
-//     await this.permissionRepository.save(permission);
-//     return permission;
-//   }
+  constructor(private minioConfigService: MinioConfigService) {
+    this.minioClient = this.minioConfigService.getClient();
+  }
 
-//   async getAll(): Promise<Permission[]> {
-//     const permissions = await this.permissionRepository.find();
-//     return permissions;
-//   }
+  async uploadFile(bucket: string, objectName: string, buffer: Buffer, metaData: any) {
+    await this.minioClient.putObject(bucket, objectName, buffer, metaData);
+  }
 
-//   async findOne(id: string): Promise<ResponsePermissionDto> {
-//     const role = await this.permissionRepository.findOne({
-//       where: { id },
-//     });
-//     return plainToInstance(ResponsePermissionDto, role, {
-//       excludeExtraneousValues: true,
-//     });
-//   }
+  async getDownloadUrl(bucket: string, objectName: string): Promise<string> {
+    return this.minioClient.presignedUrl('GET', bucket, objectName, 24 * 60 * 60); // 24-hour expiry
+  }
 
-//   async update(
-//     id: string,
-//     updatePermissionDto: UpdatePermissionDto,
-//   ): Promise<ResponsePermissionDto> {
-//     await this.permissionRepository.update(id, updatePermissionDto);
-//     const { roles, ...permission } = await this.permissionRepository.findOne({
-//       where: { id },
-//       relations: {
-//         roles: { users: true },
-//       },
-//     });
+  async initiateMultipartUpload(bucket: string, objectName: string) {
+    return this.minioClient.initiateNewMultipartUpload(bucket, objectName, {});
+  }
 
-//     roles.forEach(async (role) =>
-//       role.users.forEach(async (user) => {
-//         await this.cacheManager.del(`ability_rules_by_user_id_${user.id}`);
-//         const refreshTokenCacheKey = `refresh_tokens_by_user_id_${user.id}`;
-//         await this.cacheManager.del(refreshTokenCacheKey);
-//       }),
-//     );
-//     const response = plainToInstance(ResponsePermissionDto, permission, {
-//       excludeExtraneousValues: true,
-//     });
-//     return response;
-//   }
-
-//   async remove(id: string): Promise<void> {
-//     await this.permissionRepository.delete(id);
-//     const { roles, ...permission } = await this.permissionRepository.findOne({
-//       where: { id },
-//       relations: {
-//         roles: { users: true },
-//       },
-//     });
-//     roles.forEach(async (role) =>
-//       role.users.forEach(async (user) => {
-//         await this.cacheManager.del(`ability_rules_by_user_id_${user.id}`);
-//         const refreshTokenCacheKey = `refresh_tokens_by_user_id_${user.id}`;
-//         await this.cacheManager.del(refreshTokenCacheKey);
-//       }),
-//     );
-//   }
-// }
+  async completeMultipartUpload(bucket: string, objectName: string, uploadId: string, etags: any[]) {
+    return this.minioClient.completeMultipartUpload(bucket, objectName, uploadId, etags);
+  }
+}
