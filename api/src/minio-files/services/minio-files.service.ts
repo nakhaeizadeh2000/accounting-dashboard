@@ -4,7 +4,7 @@ import { MinioConfigService } from 'config/minio/minio.ocnfig';
 import { Client } from 'minio';
 
 @Injectable()
-export class MinioService {
+export class MinioFilesService {
   private minioClient: Client;
 
   constructor(private minioConfigService: MinioConfigService) {

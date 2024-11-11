@@ -1,11 +1,11 @@
 // controllers/file.controller.ts
 import { Controller, Get, Param, Post, Req, Body } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
-import { MinioService } from '../services/files.service';
+import { MinioFilesService } from '../services/minio-files.service';
 
 @Controller('api/files')
-export class FileController {
-  constructor(private readonly minioService: MinioService) { }
+export class MinioFilesController {
+  constructor(private readonly minioService: MinioFilesService) { }
 
   // Upload file to MinIO bucket
   @Post('upload/:bucket')

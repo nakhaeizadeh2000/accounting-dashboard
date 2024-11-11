@@ -10,7 +10,7 @@ import { PermissionModule } from './permissions/permission.module';
 import { RoleModule } from './role/role.module';
 import { CaslModule } from './casl/casl.module';
 import { ArticleModule } from './article/article.module';
-import { FilesModule } from './files/files.module';
+import { MinioFilesModule } from './minio-files/minio-files.module';
 
 @Module({
   imports: [
@@ -33,7 +33,7 @@ import { FilesModule } from './files/files.module';
     PermissionModule,
     RoleModule,
     CaslModule,
-    FilesModule,
+    MinioFilesModule,
     ArticleModule,
   ],
   controllers: [],
