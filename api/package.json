@@ -10,7 +10,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch --host 0.0.0.0 --port 4000",
-    "start:debug": "nest start --debug --watch",
+    "start:debug": "nest start --debug --watch --host 0.0.0.0 --port 4000",
     "start:prod": "node dist/src/main",
     "typeorm": "node -r tsconfig-paths/register -r ts-node/register ./node_modules/typeorm/cli.js",
     "migration:create": "npm run build && npm run typeorm -- migration:create",

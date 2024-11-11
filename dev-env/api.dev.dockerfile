@@ -42,4 +42,4 @@ USER node
 # ENTRYPOINT ["tail", "-f", "/dev/null"]
 
 # Command to run the application in development mode.
-CMD ["npm", "run", "start:dev"]
+CMD ["npm", "run", "start:debug"]
