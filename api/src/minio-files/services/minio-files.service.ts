@@ -13,13 +13,14 @@ export class MinioFilesService {
 
   async uploadFile(bucket: string, objectName: string, fileStream: BusboyFileStream, metaData: any) {
     try {
+      // Upload the file directly to MinIO (streaming)
       await this.minioClient.putObject(bucket, objectName, fileStream, metaData);
       console.log(`File "${objectName}" uploaded successfully to bucket "${bucket}".`);
     } catch (error) {
       console.error('Error uploading file:', error);
       throw error; // Rethrow the error for further handling
     }
-  }
+  };
 
   async getDownloadUrl(bucket: string, objectName: string): Promise<string> {
     try {

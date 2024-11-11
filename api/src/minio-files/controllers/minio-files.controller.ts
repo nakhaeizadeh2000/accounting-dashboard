@@ -16,23 +16,33 @@ import { MinioFilesService } from '../services/minio-files.service';
 export class MinioFilesController {
   constructor(private readonly minioService: MinioFilesService) {}
 
-  // Upload file to MinIO bucket
+   // Upload multiple files to MinIO bucket
   @Post('upload/:bucket')
-  async uploadFile(
+  async uploadFiles(
     @Param('bucket') bucket: string,
     @Req() req: FastifyRequest, // Use FastifyRequest to access the multipart data
   ) {
     try {
-      const data = await req.file();
-      const fileStream = data.file;
-      const filename = data.filename;
-      const mimetype = data.mimetype;
+      const files = await req.files(); // Get multiple files from the request
 
-      await this.minioService.uploadFile(bucket, filename, fileStream, {
-        'Content-Type': mimetype,
-      });
+      // Create a list of upload promises that stream files directly to MinIO
+      const uploadPromises = [];
 
-      return { message: 'File uploaded successfully', fileName: filename };
+      for await (const file of files) {
+        const { file: fileStream, filename, mimetype } = file;
+
+        // Use the file stream directly to upload to MinIO
+        const uploadPromise = this.minioService.uploadFile(bucket, filename, fileStream, {
+          'Content-Type': mimetype,
+        });
+
+        uploadPromises.push(uploadPromise);
+      }
+
+      // Wait for all file uploads to finish
+      await Promise.all(uploadPromises);
+
+      return { message: 'All files uploaded successfully' };
     } catch (error) {
       console.error('File upload error:', error);
       throw new HttpException(

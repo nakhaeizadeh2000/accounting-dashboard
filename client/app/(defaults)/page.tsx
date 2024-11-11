@@ -14,6 +14,7 @@ import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 import Image from 'next/image';
 import { useUploadFileMutation } from '@/store/features/files/files.api';
+import { FileUploads } from '@/components/modules/upload-files/FileUploads';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -36,6 +37,18 @@ const Sales = () => {
   };
 
   const handleFileChange = async (selectedFile: File | null) => {
+    console.log('file: ', selectedFile);
+
+    try {
+      await uploadFile({ bucket: 'test', file: selectedFile }).unwrap();
+      alert('File uploaded successfully');
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('File upload failed');
+    }
+  };
+
+  const handleFilesChange = async (selectedFile: File[] | null) => {
     console.log('file: ', selectedFile);
 
     try {
@@ -105,7 +118,8 @@ const Sales = () => {
             // icon: { Icon: MdOutlineAlternateEmail },
           }}
         />
-        <FileUpload onFileChange={handleFileChange} />
+        {/* <FileUpload onFileChange={handleFileChange} /> */}
+        <FileUploads isMulti={true} onFileChange={handleFilesChange} />
         <button type="submit">Submit</button>
       </form>
       <Image

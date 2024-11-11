@@ -16,6 +16,7 @@ export async function fastifyBootstrap(
     limits: {
       fileSize: 100 * 1024 * 1024, // 100MB limit (example)
       // files: 1, // Limit number of files per request
+      files: Infinity,
     },
   });
   app.register(fastifySwagger);
