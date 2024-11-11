@@ -2,6 +2,8 @@ import { Module, forwardRef } from '@nestjs/common';
 import { CaslModule } from 'src/casl/casl.module';
 import { JwtService } from '@nestjs/jwt';
 import { MinioFilesController } from './controllers/minio-files.controller';
+import { MinioFilesService } from './services/minio-files.service';
+import { MinioConfigService } from 'config/minio/minio.ocnfig';
 
 @Module({
   imports: [
@@ -11,7 +13,9 @@ import { MinioFilesController } from './controllers/minio-files.controller';
   controllers: [MinioFilesController],
   providers: [
     // PermissionService,
-    JwtService
+    JwtService,
+    MinioConfigService,
+    MinioFilesService
   ],
   // exports: [PermissionService],
 })

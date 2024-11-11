@@ -13,6 +13,7 @@ import AnimatedInputElement from '@/components/modules/input-elements/AnimatedIn
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 import Image from 'next/image';
+import { useUploadFileMutation } from '@/store/features/files/files.api';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -22,6 +23,7 @@ import Image from 'next/image';
 // };
 
 const Sales = () => {
+  const [uploadFile, { isLoading, isError, data }] = useUploadFileMutation();
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
   };
@@ -31,6 +33,18 @@ const Sales = () => {
     const formData = new FormData(event.currentTarget);
     // TODO: work on these sections
     // formData.append()
+  };
+
+  const handleFileChange = async (selectedFile: File | null) => {
+    console.log('file: ', selectedFile);
+
+    try {
+      await uploadFile({ bucket: 'test', file: selectedFile }).unwrap();
+      alert('File uploaded successfully');
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('File upload failed');
+    }
   };
 
   return (
@@ -91,7 +105,7 @@ const Sales = () => {
             // icon: { Icon: MdOutlineAlternateEmail },
           }}
         />
-        <FileUpload />
+        <FileUpload onFileChange={handleFileChange} />
         <button type="submit">Submit</button>
       </form>
       <Image

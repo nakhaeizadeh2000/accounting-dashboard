@@ -3,7 +3,7 @@ import { Controller, Get, Param, Post, Req, Body } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
 import { MinioFilesService } from '../services/minio-files.service';
 
-@Controller('api/files')
+@Controller('files')
 export class MinioFilesController {
   constructor(private readonly minioService: MinioFilesService) { }
 

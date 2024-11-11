@@ -1,9 +1,22 @@
 'use client';
 import { useState } from 'react';
 
-export const FileUpload = () => {
+type FileUploadProps = {
+  onFileChange: (file: File | null) => void;
+};
+
+export const FileUpload = ({ onFileChange }: FileUploadProps) => {
   const [file, setFile] = useState<string>();
+  const [fileObject, setFileObject] = useState<File | null>(null); // Store the actual file
   const [fileEnter, setFileEnter] = useState(false);
+
+  const handleFileSelect = (selectedFile: File) => {
+    const blobUrl = URL.createObjectURL(selectedFile);
+    setFile(blobUrl);
+    setFileObject(selectedFile);
+    onFileChange(selectedFile); // Pass the file to the parent component
+  };
+
   return (
     <div className="container mx-auto max-w-5xl px-4">
       {!file ? (
@@ -12,31 +25,16 @@ export const FileUpload = () => {
             e.preventDefault();
             setFileEnter(true);
           }}
-          onDragLeave={(e) => {
-            setFileEnter(false);
-          }}
-          onDragEnd={(e) => {
-            e.preventDefault();
-            setFileEnter(false);
-          }}
+          onDragLeave={() => setFileEnter(false)}
           onDrop={(e) => {
             e.preventDefault();
             setFileEnter(false);
             if (e.dataTransfer.items) {
-              [...e.dataTransfer.items].forEach((item, i) => {
-                if (item.kind === 'file') {
-                  const file = item.getAsFile();
-                  if (file) {
-                    const blobUrl = URL.createObjectURL(file);
-                    setFile(blobUrl);
-                  }
-                  console.log(`items file[${i}].name = ${file?.name}`);
-                }
-              });
-            } else {
-              [...e.dataTransfer.files].forEach((file, i) => {
-                console.log(`… file[${i}].name = ${file.name}`);
-              });
+              const item = e.dataTransfer.items[0];
+              if (item.kind === 'file') {
+                const droppedFile = item.getAsFile();
+                if (droppedFile) handleFileSelect(droppedFile);
+              }
             }
           }}
           className={`${
@@ -51,12 +49,8 @@ export const FileUpload = () => {
             type="file"
             className="hidden"
             onChange={(e) => {
-              console.log(e.target.files);
               const files = e.target.files;
-              if (files && files[0]) {
-                const blobUrl = URL.createObjectURL(files[0]);
-                setFile(blobUrl);
-              }
+              if (files && files[0]) handleFileSelect(files[0]);
             }}
           />
         </div>
@@ -65,10 +59,14 @@ export const FileUpload = () => {
           <object
             className="h-72 w-full max-w-xs rounded-md"
             data={file}
-            type="image/png" //need to be updated based on type of file
+            type="image/png" // Adjust this for other file types as needed
           />
           <button
-            onClick={() => setFile('')}
+            onClick={() => {
+              setFile('');
+              setFileObject(null);
+              onFileChange(null); // Reset the file in parent as well
+            }}
             className="mt-10 rounded bg-red-600 px-4 py-2 uppercase tracking-widest text-white outline-none"
           >
             Reset
