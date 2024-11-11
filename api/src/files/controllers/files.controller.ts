@@ -21,9 +21,9 @@ export class FileController {
     const mimetype = data.mimetype; // MIME type from the multipart form
 
     // Save file stream to MinIO (use stream handling)
-    const buffer: Buffer = await this.streamToBuffer(fileStream); // Convert stream to buffer
+    // const buffer: Buffer = await this.streamToBuffer(fileStream); // Convert stream to buffer
 
-    await this.minioService.uploadFile(bucket, filename, buffer, { 'Content-Type': mimetype });
+    await this.minioService.uploadFile(bucket, filename, fileStream, { 'Content-Type': mimetype });
 
     return { message: 'File uploaded successfully', fileName: filename };
   }

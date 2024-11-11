@@ -1,3 +1,4 @@
+import { BusboyFileStream } from '@fastify/busboy';
 import { Injectable } from '@nestjs/common';
 import { MinioConfigService } from 'config/minio/minio.ocnfig';
 import { Client } from 'minio';
@@ -10,8 +11,8 @@ export class MinioService {
     this.minioClient = this.minioConfigService.getClient();
   }
 
-  async uploadFile(bucket: string, objectName: string, buffer: Buffer, metaData: any) {
-    await this.minioClient.putObject(bucket, objectName, buffer, metaData);
+  async uploadFile(bucket: string, objectName: string, fileStream: BusboyFileStream, metaData: any) {
+    await this.minioClient.putObject(bucket, objectName, fileStream, metaData);
   }
 
   async getDownloadUrl(bucket: string, objectName: string): Promise<string> {
