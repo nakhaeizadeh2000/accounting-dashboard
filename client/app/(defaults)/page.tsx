@@ -16,6 +16,9 @@ import { DatePicker, PickerValidDate } from '@mui/x-date-pickers-pro';
 import { useState } from 'react';
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
+import { useSelector } from 'react-redux';
+import { IRootState } from '@/store';
+import faIRPickers from '@/components/modules/date-pickers/persian-local-text';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -31,6 +34,7 @@ const Sales = () => {
     setSelectedDate(date);
     console.log(date, 'date');
   };
+  const calType = useSelector((state: IRootState) => state.themeConfig.calenderType);
 
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
@@ -120,13 +124,17 @@ const Sales = () => {
           label="تاریخ"
           value={selectedDate}
           onChange={handleDateChange}
-          // openTo='' this config for when client click on date calender
-          dayOfWeekFormatter={persianDayFormatter}
+          localeText={faIRPickers}
+          // openTo="year"
+          // views={['year', 'month']}
+          // yearsOrder="desc"
+          // dayOfWeekFormatter={calType === 'jalali' ? faIRPickers.weekdayFormatter(day) : undefined}
+
           disabled={false}
           readOnly={false}
           disablePast={true}
           slotProps={{
-            field: { clearable: false, onClear: () => setCleared(true) },
+            field: { clearable: true, onClear: () => setCleared(true) },
           }}
         />
         <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
@@ -140,3 +148,5 @@ const Sales = () => {
 export default Sales;
 
 //TODO config all the props in calendar and separate the component date picker
+//TODO when change the language the format of header is not change
+//TODO fix dayofweekformatter in date picker
