@@ -12,7 +12,12 @@ export async function fastifyBootstrap(
 ) {
   await app.register(fastifyHelmet);
   app.register(compression, { encodings: ['gzip', 'deflate'] });
-  app.register(fastifyMultipart);
+  app.register(fastifyMultipart, {
+    limits: {
+      fileSize: 100 * 1024 * 1024, // 100MB limit (example)
+      // files: 1, // Limit number of files per request
+    },
+  });
   app.register(fastifySwagger);
   app.register(fastifyCookie, {
     secret: process.env.COOKIE_SECRET,

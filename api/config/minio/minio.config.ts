@@ -10,9 +10,11 @@ export class MinioConfigService {
     this.minioClient = new Client({
       endPoint: this.configService.get<string>('MINIO_ENDPOINT'),
       port: +this.configService.get<string>('MINIO_PORT'),
-      // useSSL: this.configService.get<string>('MINIO_USE_SSL') === 'true',
-      accessKey: this.configService.get<string>('MINIO_ACCESS_KEY'),
-      secretKey: this.configService.get<string>('MINIO_SECRET_KEY'),
+      useSSL: this.configService.get<string>('MINIO_USE_SSL') === 'true',
+      // accessKey: this.configService.get<string>('MINIO_ROOT_USER'),
+      // secretKey: this.configService.get<string>('MINIO_ROOT_PASSWORD'),
+      accessKey: 'XAdRh79rIBpCJyqemMol',
+      secretKey: 'rDAVxJ7yHSKg7lNNBW8KKVN3BgdCl7mIyWmyWrnyXxc=',
     });
   }
 

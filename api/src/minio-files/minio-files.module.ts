@@ -3,7 +3,7 @@ import { CaslModule } from 'src/casl/casl.module';
 import { JwtService } from '@nestjs/jwt';
 import { MinioFilesController } from './controllers/minio-files.controller';
 import { MinioFilesService } from './services/minio-files.service';
-import { MinioConfigService } from 'config/minio/minio.ocnfig';
+import { MinioConfigService } from 'config/minio/minio.config';
 
 @Module({
   imports: [
