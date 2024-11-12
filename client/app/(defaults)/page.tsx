@@ -12,13 +12,10 @@ import UserSingleSelectWidget from './UserSingleSelectWidget';
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 // import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { DatePicker, PickerValidDate } from '@mui/x-date-pickers-pro';
-import { useState } from 'react';
+import { DatePicker, DateViewRendererProps, PickerValidDate } from '@mui/x-date-pickers-pro';
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
-import { useSelector } from 'react-redux';
-import { IRootState } from '@/store';
-import faIRPickers from '@/components/modules/date-pickers/persian-local-text';
+
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -28,14 +25,6 @@ import faIRPickers from '@/components/modules/date-pickers/persian-local-text';
 // };
 
 const Sales = () => {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [cleared, setCleared] = useState<boolean>(false);
-  const handleDateChange = (date: Date | null) => {
-    setSelectedDate(date);
-    console.log(date, 'date');
-  };
-  const calType = useSelector((state: IRootState) => state.themeConfig.calenderType);
-
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
   };
@@ -120,31 +109,7 @@ const Sales = () => {
             // icon: { Icon: MdOutlineAlternateEmail },
           }}
         />
-        <DatePicker
-          label="تاریخ"
-          value={selectedDate}
-          onChange={handleDateChange}
-          // localeText={calType === 'jalali' ? faIRPickers : {}}
-          openTo="month"
-          views={['year', 'month', 'day']}
-          onMonthChange={(month) => {
-            const dateObject = new Date(month)?.toISOString();
 
-            console.log(dateObject);
-            // if (faIRPickers.monthFormatter) console.log(month.getUTCMonth());
-            // console.log(faIRPickers.monthFormatter(month.getMonth()));
-          }}
-          // format="fa"
-          // displayWeekNumber={true}
-          // yearsOrder="desc"
-          dayOfWeekFormatter={calType === 'jalali' ? faIRPickers.weekdayFormatter : undefined}
-          disabled={false}
-          readOnly={false}
-          disablePast={false}
-          slotProps={{
-            field: { clearable: true, onClear: () => setCleared(true) },
-          }}
-        />
         <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
         <FileUpload />
         <button type="submit">Submit</button>
@@ -154,7 +119,3 @@ const Sales = () => {
 };
 
 export default Sales;
-
-//TODO config all the props in calendar and separate the component date picker
-//TODO when change the language the format of header is not change
-//TODO fix dayofweekformatter in date picker
