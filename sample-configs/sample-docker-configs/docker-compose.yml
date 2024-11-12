@@ -60,9 +60,9 @@ services:
     image: harbor.hyvatech.com/maskan/back:${BACK_IMAGE_TAG:-latest}
     secrets:
       - source: postgres-user
-        target: ${POSTGRE_USER_FILE}
+        target: ${POSTGRES_USER_FILE}
       - source: postgres-password
-        target: ${POSTGRE_PASSWORD_FILE}
+        target: ${POSTGRES_PASSWORD_FILE}
 
     healthcheck:
       test: wget -qO- --header='ignoreT:true' localhost:3000/api/casl-rule
@@ -122,13 +122,13 @@ services:
     volumes:
       - ./.data/db:/var/lib/postgresql/data
     environment:
-      POSTGRE_USER_FILE: ${POSTGRE_USER_FILE}
-      POSTGRE_PASSWORD_FILE: ${POSTGRE_PASSWORD_FILE}
+      POSTGRES_USER_FILE: ${POSTGRES_USER_FILE}
+      POSTGRES_PASSWORD_FILE: ${POSTGRES_PASSWORD_FILE}
     secrets:
       - source: postgres-user
-        target: ${POSTGRE_USER_FILE}
+        target: ${POSTGRES_USER_FILE}
       - source: postgres-password
-        target: ${POSTGRE_PASSWORD_FILE}
+        target: ${POSTGRES_PASSWORD_FILE}
       - source: postgres-certs
         target: /var/lib/postgresql/certs/server.crt
         # uid: "70"  ### long syntax only works in swarm mode, added for documentation...

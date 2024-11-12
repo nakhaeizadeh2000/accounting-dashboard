@@ -13,12 +13,12 @@ import { Global, Module } from '@nestjs/common';
         try {
           const dataSource = new DataSource({
             type: 'postgres',
-            host: process.env.POSTGRE_HOST,
-            port: +process.env.POSTGRE_PORT,
-            database: process.env.POSTGRE_DB,
-            username: process.env.POSTGRE_USER,
-            password: process.env.POSTGRE_PASSWORD,
-            synchronize: process.env.POSTGRE_SYNC && false,
+            host: process.env.POSTGRES_HOST,
+            port: +process.env.POSTGRES_PORT,
+            database: process.env.POSTGRES_DB,
+            username: process.env.POSTGRES_USER,
+            password: process.env.POSTGRES_PASSWORD,
+            synchronize: process.env.POSTGRES_SYNC && false,
             cache: {
               type: 'redis',
               options: {
