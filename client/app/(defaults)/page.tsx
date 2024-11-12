@@ -13,8 +13,10 @@ import AnimatedInputElement from '@/components/modules/input-elements/AnimatedIn
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 import Image from 'next/image';
-import { useUploadFileMutation } from '@/store/features/files/files.api';
+import { useDownloadFileUrlQuery, useUploadFileMutation } from '@/store/features/files/files.api';
 import { FileUploads } from '@/components/modules/upload-files/FileUploads';
+import { useEffect, useState } from 'react';
+import { Button } from '@mui/material';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -25,6 +27,7 @@ import { FileUploads } from '@/components/modules/upload-files/FileUploads';
 
 const Sales = () => {
   const [uploadFile, { isLoading, isError, data }] = useUploadFileMutation();
+  const [imagePath, setImagePath] = useState<string | undefined>(undefined);
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
   };
@@ -62,6 +65,11 @@ const Sales = () => {
     }
   };
 
+  const handleDownloadFile = () => {
+    const { data } = useDownloadFileUrlQuery({ bucket: 'test', filename: 'images.jpeg' });
+    setImagePath(data?.url);
+  };
+
   return (
     <div>
       <p className="font-sans">This will use font-sans</p>
@@ -92,7 +100,7 @@ const Sales = () => {
               onChange: handleDropdownChange,
             }}
           /> */}
-          {/* <AnimatedInputElement
+          {/* <AnimatedInputElementp
             options={{
               key: 'email',
               label: 'ایمیل',
@@ -124,6 +132,12 @@ const Sales = () => {
         <FileUploads isMulti={true} onFileChange={handleFilesChange} />
         <button type="submit">Submit</button>
       </form>
+      {imagePath ? (
+        <Image src={imagePath} width={500} height={500} alt="Picture of the author" unoptimized />
+      ) : null}
+      <Button onClick={handleDownloadFile} variant="contained">
+        Contained
+      </Button>
       <Image
         src="http://localhost/api/files/test.jpg"
         width={500}

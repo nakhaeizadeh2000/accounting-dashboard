@@ -17,7 +17,7 @@ const filesApi = baseApi.injectEndpoints({
       },
       invalidatesTags: ['Files'], // Optionally invalidate cache for 'File' data
     }),
-    downloadFileUrl: builder.query({
+    downloadFileUrl: builder.query<a, { bucket: string, filename: string }>({
       query: ({ bucket, filename }) => ({
         url: `files/download/${bucket}/${filename}`,
         method: 'GET',
@@ -28,3 +28,5 @@ const filesApi = baseApi.injectEndpoints({
 });
 
 export const { useUploadFileMutation, useDownloadFileUrlQuery } = filesApi;
+
+type a = { url: string }
