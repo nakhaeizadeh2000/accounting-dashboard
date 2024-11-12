@@ -124,14 +124,23 @@ const Sales = () => {
           label="تاریخ"
           value={selectedDate}
           onChange={handleDateChange}
-          localeText={calType === 'jalali' ? faIRPickers : {}}
+          // localeText={calType === 'jalali' ? faIRPickers : {}}
           openTo="month"
           views={['year', 'month', 'day']}
+          onMonthChange={(month) => {
+            const dateObject = new Date(month)?.toISOString();
+
+            console.log(dateObject);
+            // if (faIRPickers.monthFormatter) console.log(month.getUTCMonth());
+            // console.log(faIRPickers.monthFormatter(month.getMonth()));
+          }}
+          // format="fa"
+          // displayWeekNumber={true}
           // yearsOrder="desc"
           dayOfWeekFormatter={calType === 'jalali' ? faIRPickers.weekdayFormatter : undefined}
           disabled={false}
           readOnly={false}
-          disablePast={true}
+          disablePast={false}
           slotProps={{
             field: { clearable: true, onClear: () => setCleared(true) },
           }}
