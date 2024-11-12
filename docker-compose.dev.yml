@@ -26,7 +26,7 @@ services:
       args:
         NODE_ENV: development # Set environment to development
     env_file:
-      # - .env
+      - .env
       - ./minio/minio.env
     volumes:
       - .:/home/app
