@@ -11,3 +11,5 @@ test/node_modules
 .vscode-server
 client/Heap.*
 minio/data
+redis/data
+postgres/data
