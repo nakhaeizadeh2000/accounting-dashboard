@@ -27,15 +27,8 @@ x-minio-common: &minio-common
   secrets:
     - source: minio-pass
 
-
   healthcheck:
-    test:
-      [
-        "CMD",
-        "curl",
-        "-f",
-        "https://localhost:9000/minio/health/live"
-      ]
+    test: ["CMD", "curl", "-f", "https://localhost:9000/minio/health/live"]
     interval: 30s
     timeout: 20s
     retries: 3
@@ -67,9 +60,9 @@ services:
     image: harbor.hyvatech.com/maskan/back:${BACK_IMAGE_TAG:-latest}
     secrets:
       - source: postgres-user
-        target: ${POSTGRES_USER_FILE}
+        target: ${POSTGRE_USER_FILE}
       - source: postgres-password
-        target: ${POSTGRES_PASSWORD_FILE}
+        target: ${POSTGRE_PASSWORD_FILE}
 
     healthcheck:
       test: wget -qO- --header='ignoreT:true' localhost:3000/api/casl-rule
@@ -129,13 +122,13 @@ services:
     volumes:
       - ./.data/db:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER_FILE: ${POSTGRES_USER_FILE}
-      POSTGRES_PASSWORD_FILE: ${POSTGRES_PASSWORD_FILE}
+      POSTGRE_USER_FILE: ${POSTGRE_USER_FILE}
+      POSTGRE_PASSWORD_FILE: ${POSTGRE_PASSWORD_FILE}
     secrets:
       - source: postgres-user
-        target: ${POSTGRES_USER_FILE}
+        target: ${POSTGRE_USER_FILE}
       - source: postgres-password
-        target: ${POSTGRES_PASSWORD_FILE}
+        target: ${POSTGRE_PASSWORD_FILE}
       - source: postgres-certs
         target: /var/lib/postgresql/certs/server.crt
         # uid: "70"  ### long syntax only works in swarm mode, added for documentation...
@@ -146,7 +139,7 @@ services:
         # uid: "70"
         # gid: "70"
         # mode: 0600
-    
+
     command: >
       postgres -c ssl=on
                -c ssl_cert_file=/var/lib/postgresql/certs/server.crt
@@ -186,17 +179,17 @@ networks:
 
 secrets:
   minio-ca:
-   file: ./minio/certs/CAs/myCA.crt
+    file: ./minio/certs/CAs/myCA.crt
   minio-certs:
-   file: ./minio/certs/public.crt
+    file: ./minio/certs/public.crt
   minio-key:
     file: ./minio/certs/private.key
   redis-certs:
-   file: ./redis/certs/server.crt
+    file: ./redis/certs/server.crt
   redis-key:
     file: ./redis/certs/server.key
   postgres-certs:
-   file: ./postgresql/certs/server.crt
+    file: ./postgresql/certs/server.crt
   postgres-key:
     file: ./postgresql/certs/server.key
   postgres-password:

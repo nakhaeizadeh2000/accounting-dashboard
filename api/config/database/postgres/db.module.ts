@@ -6,12 +6,12 @@ export const DbModule = TypeOrmModule.forRootAsync({
   useFactory: (configService: ConfigService) => {
     const option = {
       type: 'postgres',
-      host: configService.get<string>('POSTGRES_HOST'),
-      port: +configService.get<string>('POSTGRES_PORT'),
-      database: configService.get<string>('POSTGRES_DB'),
-      username: configService.get<string>('POSTGRES_USER'),
-      password: configService.get<string>('POSTGRES_PASSWORD'),
-      synchronize: configService.get<boolean>('POSTGRES_SYNC', false),
+      host: configService.get<string>('POSTGRE_HOST'),
+      port: +configService.get<string>('POSTGRE_PORT'),
+      database: configService.get<string>('POSTGRE_DB'),
+      username: configService.get<string>('POSTGRE_USER'),
+      password: configService.get<string>('POSTGRE_PASSWORD'),
+      synchronize: configService.get<boolean>('POSTGRE_SYNC', false),
       cache: {
         type: 'redis',
         options: {

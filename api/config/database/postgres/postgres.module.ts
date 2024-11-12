@@ -7,11 +7,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.POSTGRES_HOST,
-      port: +process.env.POSTGRES_PORT,
-      database: process.env.POSTGRES_DB,
-      username: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD,
+      host: process.env.POSTGRE_HOST,
+      port: +process.env.POSTGRE_PORT,
+      database: process.env.POSTGRE_DB,
+      username: process.env.POSTGRE_USER,
+      password: process.env.POSTGRE_PASSWORD,
       synchronize: true,
       cache: {
         type: 'redis',
@@ -28,4 +28,4 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   ],
   exports: [TypeOrmModule],
 })
-export class PostgresModule {}
+export class PostgresModule { }
