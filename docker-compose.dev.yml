@@ -26,6 +26,7 @@ services:
       args:
         NODE_ENV: development # Set environment to development
     env_file:
+      - ./minio/minio.env
       - .env
     volumes:
       - .:/home/app
@@ -50,8 +51,7 @@ services:
     # restart: unless-stopped
     container_name: minio
     env_file:
-      - .env
-      - ./minio/.env.minio
+      - ./minio/minio.env
     # expose:
     #   - "9000"
     #   - "9001"
