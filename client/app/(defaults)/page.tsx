@@ -124,12 +124,11 @@ const Sales = () => {
           label="تاریخ"
           value={selectedDate}
           onChange={handleDateChange}
-          localeText={faIRPickers}
-          // openTo="year"
-          // views={['year', 'month']}
+          localeText={calType === 'jalali' ? faIRPickers : {}}
+          openTo="month"
+          views={['year', 'month', 'day']}
           // yearsOrder="desc"
-          // dayOfWeekFormatter={calType === 'jalali' ? faIRPickers.weekdayFormatter(day) : undefined}
-
+          dayOfWeekFormatter={calType === 'jalali' ? faIRPickers.weekdayFormatter : undefined}
           disabled={false}
           readOnly={false}
           disablePast={true}

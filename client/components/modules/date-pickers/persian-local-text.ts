@@ -103,7 +103,7 @@ const timeViews: Record<string, string> = {
 };
 
 const faIRPickers: Partial<PickersLocaleText<any>> & {
-  weekdayFormatter?: (dayIndex: number) => string;
+  weekdayFormatter?: (date: Date) => string;
   monthFormatter?: (monthIndex: number) => string;
 } = {
   // Calendar navigation
@@ -197,11 +197,10 @@ const faIRPickers: Partial<PickersLocaleText<any>> & {
   empty: 'خالی',
 
   //formatter
-  weekdayFormatter: (dayIndex: number) => {
+  weekdayFormatter: (date: Date) => {
     const weekdays = ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'];
+    const dayIndex = date.getDay();
     return weekdays[dayIndex];
-    // const dayIndex = date.getDay() as Date;
-    // return persianDays[dayIndex];
   },
 
   monthFormatter: (monthIndex: number) => {
