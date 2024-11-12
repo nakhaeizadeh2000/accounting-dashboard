@@ -28,9 +28,16 @@ import { Button } from '@mui/material';
 const Sales = () => {
   const [uploadFile, { isLoading, isError, data }] = useUploadFileMutation();
   const [imagePath, setImagePath] = useState<string | undefined>(undefined);
+  const { data: dataa } = useDownloadFileUrlQuery({ bucket: 'test', filename: 'images.jpeg' });
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
   };
+
+  useEffect(() => {
+    if (data) {
+      setImagePath(dataa?.url);
+    }
+  }, [dataa]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -66,8 +73,7 @@ const Sales = () => {
   };
 
   const handleDownloadFile = () => {
-    const { data } = useDownloadFileUrlQuery({ bucket: 'test', filename: 'images.jpeg' });
-    setImagePath(data?.url);
+    setImagePath(dataa?.url);
   };
 
   return (
