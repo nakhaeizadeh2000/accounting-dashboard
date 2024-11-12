@@ -26,10 +26,10 @@ services:
       args:
         NODE_ENV: development # Set environment to development
     env_file:
+      - .env
       - ./minio/minio.env
       - ./redis/redis.env
       - ./postgres/postgres.env
-      - .env
     volumes:
       - .:/home/app
       - /home/app/api/node_modules
