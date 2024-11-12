@@ -16,7 +16,7 @@ import { MinioFilesService } from '../services/minio-files.service';
 export class MinioFilesController {
   constructor(private readonly minioService: MinioFilesService) {}
 
-   // Upload multiple files to MinIO bucket
+  // Upload multiple files to MinIO bucket
   @Post('upload/:bucket')
   async uploadFiles(
     @Param('bucket') bucket: string,
@@ -24,22 +24,32 @@ export class MinioFilesController {
   ) {
     try {
       const files = await req.files(); // Get multiple files from the request
-
-      // Create a list of upload promises that stream files directly to MinIO
       const uploadPromises = [];
 
-      for await (const file of files) {
-        const { file: fileStream, filename, mimetype } = file;
+      // Manually iterate over the AsyncGenerator with .next()
+      let file = await files.next();
+      while (!file.done) {
+        // Extract file properties
+        const { file: fileStream, filename, mimetype } = file.value;
 
-        // Use the file stream directly to upload to MinIO
-        const uploadPromise = this.minioService.uploadFile(bucket, filename, fileStream, {
-          'Content-Type': mimetype,
-        });
+        console.log(`Processing file: ${filename}, MIME type: ${mimetype}`);
 
+        // Stream file to MinIO without buffering
+        const uploadPromise = this.minioService.uploadFile(
+          bucket,
+          filename,
+          fileStream,
+          {
+            'Content-Type': mimetype,
+          },
+        );
         uploadPromises.push(uploadPromise);
+
+        // Move to the next file
+        file = await files.next();
       }
 
-      // Wait for all file uploads to finish
+      // Wait for all uploads to complete
       await Promise.all(uploadPromises);
 
       return { message: 'All files uploaded successfully' };

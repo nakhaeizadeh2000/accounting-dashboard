@@ -36,27 +36,29 @@ const Sales = () => {
     // formData.append()
   };
 
-  const handleFileChange = async (selectedFile: File | null) => {
-    console.log('file: ', selectedFile);
+  // const handleFileChange = async (selectedFile: File | null) => {
+  //   console.log('file: ', selectedFile);
 
-    try {
-      await uploadFile({ bucket: 'test', file: selectedFile }).unwrap();
-      alert('File uploaded successfully');
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('File upload failed');
-    }
-  };
+  //   try {
+  //     await uploadFile({ bucket: 'test', file: selectedFile }).unwrap();
+  //     alert('File uploaded successfully');
+  //   } catch (error) {
+  //     console.error('Upload failed:', error);
+  //     alert('File upload failed');
+  //   }
+  // };
 
   const handleFilesChange = async (selectedFile: File[] | null) => {
     console.log('file: ', selectedFile);
 
-    try {
-      await uploadFile({ bucket: 'test', file: selectedFile }).unwrap();
-      alert('File uploaded successfully');
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('File upload failed');
+    if (Array.isArray(selectedFile)) {
+      try {
+        await uploadFile({ bucket: 'test', files: selectedFile }).unwrap();
+        alert('File uploaded successfully');
+      } catch (error) {
+        console.error('Upload failed:', error);
+        alert('File upload failed');
+      }
     }
   };
 

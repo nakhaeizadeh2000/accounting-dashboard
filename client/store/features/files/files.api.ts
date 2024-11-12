@@ -3,9 +3,11 @@ import { baseApi } from '@/store/api';
 const filesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     uploadFile: builder.mutation({
-      query: ({ bucket, file }) => {
+      query: ({ bucket, files }: { bucket: string; files: File[] }) => {
         const formData = new FormData();
-        formData.append('file', file); // Attach the file to form data
+        for (let file of files) {
+          formData.append(file.name, file); // Attach the file to form data
+        }
 
         return {
           url: `files/upload/${bucket}`,

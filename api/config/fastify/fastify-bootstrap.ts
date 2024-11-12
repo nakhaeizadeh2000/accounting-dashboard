@@ -14,8 +14,7 @@ export async function fastifyBootstrap(
   app.register(compression, { encodings: ['gzip', 'deflate'] });
   app.register(fastifyMultipart, {
     limits: {
-      fileSize: 100 * 1024 * 1024, // 100MB limit (example)
-      // files: 1, // Limit number of files per request
+      fileSize: Infinity,
       files: Infinity,
     },
   });
