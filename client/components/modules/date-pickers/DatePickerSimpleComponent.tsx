@@ -5,13 +5,24 @@ import faIRPickers from '@/components/modules/date-pickers/persian-local-text';
 import { useSelector } from 'react-redux';
 import { IRootState } from '@/store';
 import { Button, Grid2 } from '@mui/material';
-// type Props = {};
 
-const DatePickerSimpleComponent = (props: any) => {
+type Props = {
+  options: {
+    getValue: (value: Date | null) => void;
+    disabled?: boolean;
+    readOnly?: boolean;
+    disablePast?: boolean | undefined;
+    showClearable?: boolean;
+  };
+};
+
+const DatePickerSimpleComponent = ({ options }: Props) => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [cleared, setCleared] = useState<boolean>(false);
+  // console.log(options:{})
   const handleDateChange = (date: Date | null) => {
     setSelectedDate(date);
+    options?.getValue(date);
     console.log(date, 'date');
   };
   const calType = useSelector((state: IRootState) => state.themeConfig.calenderType);
@@ -59,7 +70,7 @@ const DatePickerSimpleComponent = (props: any) => {
       label="تاریخ"
       value={selectedDate}
       onChange={handleDateChange}
-      // localeText={calType === 'jalali' ? faIRPickers : {}}
+      localeText={calType === 'jalali' ? faIRPickers : {}}
       openTo="month"
       views={['year', 'month', 'day']}
       onMonthChange={(month) => {
@@ -78,11 +89,11 @@ const DatePickerSimpleComponent = (props: any) => {
       //   monthButton:{<Button></Button>}
       // }}
       dayOfWeekFormatter={calType === 'jalali' ? faIRPickers.weekdayFormatter : undefined}
-      disabled={false}
-      readOnly={false}
-      disablePast={false}
+      disabled={options?.disabled}
+      readOnly={options?.readOnly}
+      disablePast={options?.disablePast}
       slotProps={{
-        field: { clearable: true, onClear: () => setCleared(true) },
+        field: { clearable: options?.showClearable, onClear: () => setCleared(true) },
       }}
     />
   );

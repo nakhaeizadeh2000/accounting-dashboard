@@ -15,6 +15,8 @@ import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { DatePicker, DateViewRendererProps, PickerValidDate } from '@mui/x-date-pickers-pro';
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
+import DatePickerSimpleComponent from '@/components/modules/date-pickers/DatePickerSimpleComponent';
+import { useState } from 'react';
 
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
@@ -28,6 +30,9 @@ const Sales = () => {
   const handleUserSelectedChange = (value: ItemType[]) => {
     // This function can be used for additional logic if needed
   };
+
+  const [date, setDate] = useState<Date | null>();
+  console.log(date, 'parent comp');
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -111,6 +116,7 @@ const Sales = () => {
         />
 
         <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
+        <DatePickerSimpleComponent options={{ getValue: setDate }} />
         <FileUpload />
         <button type="submit">Submit</button>
       </form>
