@@ -56,6 +56,7 @@ const ProviderMuiConfig = ({ children }: Props) => {
       <ThemeProvider theme={configMui?.theme === 'dark' ? darkTheme : lightTheme}>
         <LocalizationProvider
           dateAdapter={configMui?.calenderType === 'jalali' ? AdapterDateFnsJalali : AdapterDateFns}
+          dateFormats={{ monthShort: 'MMMM' }}
         >
           {children}
         </LocalizationProvider>
