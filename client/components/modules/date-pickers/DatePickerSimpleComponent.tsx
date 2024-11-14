@@ -9,11 +9,14 @@ const DatePicker = dynamic(() => import('@mui/x-date-pickers-pro').then((mod) =>
 
 type Props = {
   options: {
+    label: string;
     getValue: (value: Date | null) => void;
     disabled?: boolean;
     readOnly?: boolean;
     disablePast?: boolean | undefined;
     showClearable?: boolean;
+    views?: Array<'year' | 'month' | 'day'>;
+    openModalDefault?: 'day' | 'month' | 'year';
   };
 };
 
@@ -29,12 +32,12 @@ const DatePickerSimpleComponent = ({ options }: Props) => {
   const calType = useSelector((state: IRootState) => state.themeConfig.calenderType);
   return (
     <DatePicker
-      label="تاریخ"
+      label={options?.label}
       value={selectedDate}
       onChange={handleDateChange}
       localeText={calType === 'jalali' ? faIRPickers : {}}
-      openTo="month"
-      views={['year', 'month', 'day']}
+      openTo={options?.openModalDefault}
+      views={options.views}
       dayOfWeekFormatter={calType === 'jalali' ? faIRPickers.weekdayFormatter : undefined}
       disabled={options?.disabled}
       readOnly={options?.readOnly}

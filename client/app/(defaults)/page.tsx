@@ -31,8 +31,9 @@ const Sales = () => {
     // This function can be used for additional logic if needed
   };
 
-  const [date, setDate] = useState<Date | null>();
-  console.log(date, 'parent comp');
+  const setDate = (date: Date | null) => {
+    console.log(new Date().toISOString(), 'parent');
+  };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -116,7 +117,9 @@ const Sales = () => {
         />
 
         <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
-        <DatePickerSimpleComponent options={{ getValue: setDate }} />
+        <DatePickerSimpleComponent
+          options={{ label: 'تاریخ', getValue: setDate, showClearable: true }}
+        />
         <FileUpload />
         <button type="submit">Submit</button>
       </form>
