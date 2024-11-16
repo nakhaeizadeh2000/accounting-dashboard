@@ -51,5 +51,3 @@ const DatePickerSimpleComponent = ({ options }: Props) => {
 
 export default DatePickerSimpleComponent;
 //TODO config all the props in calendar and separate the component date picker
-//TODO when change the language the format of header is not change
-//TODO fix dayofweekformatter in date picker

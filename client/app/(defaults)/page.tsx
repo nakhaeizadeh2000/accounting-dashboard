@@ -12,11 +12,10 @@ import UserSingleSelectWidget from './UserSingleSelectWidget';
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 // import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { DatePicker, DateViewRendererProps, PickerValidDate } from '@mui/x-date-pickers-pro';
+
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 import DatePickerSimpleComponent from '@/components/modules/date-pickers/DatePickerSimpleComponent';
-import { useState } from 'react';
 
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
@@ -32,7 +31,11 @@ const Sales = () => {
   };
 
   const setDate = (date: Date | null) => {
-    console.log(new Date().toISOString(), 'parent');
+    if (date) {
+      const localDate = new Date(date);
+      const utcDate = localDate.toISOString();
+      console.log(utcDate, 'parent');
+    }
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
