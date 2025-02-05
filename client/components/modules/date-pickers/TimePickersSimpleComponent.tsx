@@ -3,6 +3,10 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { TextField } from '@mui/material';
 import { renderTimeViewClock } from '@mui/x-date-pickers-pro';
+import { BsAlarmFill } from 'react-icons/bs';
+import faIRPickers from './persian-local-text';
+import { useSelector } from 'react-redux';
+import { IRootState } from '@/store';
 
 const TimePicker = dynamic(() => import('@mui/x-date-pickers-pro').then((mod) => mod.TimePicker));
 
@@ -31,21 +35,25 @@ const TimePickersSimpleComponent = ({ options }: Props) => {
       console.log('Selected Time (UTC):', utcTime);
     }
   };
+  const calType = useSelector((state: IRootState) => state.themeConfig.calenderType);
   return (
     <TimePicker
       label={options?.label}
       value={selectedTime}
+      localeText={calType === 'jalali' ? faIRPickers : {}}
       onChange={handleTimeChange}
       ampm={false} // Use 24-hour format
-      // minTime={new Date(0, 0, 0, 9, 0)} // Earliest time allowed (09:00 AM)
-      // maxTime={new Date(0, 0, 0, 18, 0)} // Latest time allowed (06:00 PM)
-      // renderInput={(params: any) => <TextField {...params} fullWidth variant="outlined" />}
+      slots={{
+        // OpenPickerIcon: AlarmIcon,
+        openPickerIcon: BsAlarmFill,
+      }}
       slotProps={{
         field: {
           clearable: true,
           onClear: () => setCleared(true),
         },
       }}
+
       // viewRenderers={{
       //   hours: renderTimeViewClock,
       //   minutes: renderTimeViewClock,

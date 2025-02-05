@@ -10,8 +10,7 @@ import { IRootState } from '@/store';
 import { LocalizationProvider } from '@mui/x-date-pickers-pro';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import { AdapterDateFnsJalali } from '@mui/x-date-pickers/AdapterDateFnsJalaliV3';
-import { Locale } from 'date-fns';
-import { faIR } from 'date-fns/locale';
+import { faIR } from 'date-fns-jalali/locale';
 
 type Props = {
   children: React.ReactNode;
@@ -26,20 +25,12 @@ type configMui = {
 const ProviderMuiConfig = ({ children }: Props) => {
   //get theme in store and local storage
   const themeConfig = useSelector((state: IRootState) => state.themeConfig);
-  const calType = useSelector((state: IRootState) => state.themeConfig.calenderType);
+  const callType = useSelector((state: IRootState) => state.themeConfig.calenderType);
 
   const dispatch = useDispatch();
 
   // set dark mode
   const [configMui, SetConfigMui] = useState<configMui>();
-
-  // const customEnLocale: Locale = {
-  //   ...faIR,
-  //   options: {
-  //     ...faIR.options,
-  //     // weekStartsOn: 0, // Monday
-  //   },
-  // };
 
   // change state when the theme is changed
   useEffect(() => {
@@ -49,13 +40,14 @@ const ProviderMuiConfig = ({ children }: Props) => {
       theme: themeMode.payload,
       calenderType,
     });
-  }, [dispatch, themeConfig.theme, calType]);
+  }, [dispatch, themeConfig.theme, callType]);
 
   return (
     <CacheProvider value={rtlCache}>
       <ThemeProvider theme={configMui?.theme === 'dark' ? darkTheme : lightTheme}>
         <LocalizationProvider
           dateAdapter={configMui?.calenderType === 'jalali' ? AdapterDateFnsJalali : AdapterDateFns}
+          adapterLocale={faIR}
           dateFormats={{ monthShort: 'MMMM' }}
         >
           {children}

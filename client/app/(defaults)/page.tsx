@@ -16,13 +16,14 @@ import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 import DatePickerSimpleComponent from '@/components/modules/date-pickers/DatePickerSimpleComponent';
+import TimePickersSimpleComponent from '@/components/modules/date-pickers/TimePickersSimpleComponent';
 
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
 
 // export const metadata: Metadata = {
-//   title: 'Sales Admin',
+//   title: 'SalsetDatees Admin',
 // };
 
 const Sales = () => {
@@ -35,6 +36,12 @@ const Sales = () => {
       const localDate = new Date(date);
       const utcDate = localDate.toISOString();
       console.log(utcDate, 'parent');
+    }
+  };
+
+  const setTime = (time: string) => {
+    if (time) {
+      console.log(time, 'parent time');
     }
   };
 
@@ -118,11 +125,14 @@ const Sales = () => {
             // icon: { Icon: MdOutlineAlternateEmail },
           }}
         />
+        <div className="m-2 mt-3 flex w-full justify-center gap-2">
+          <DatePickerSimpleComponent
+            options={{ label: 'تاریخ', getValue: setDate, showClearable: true }}
+          />
+          <TimePickersSimpleComponent options={{ label: 'ساعت', getValue: setTime }} />
+        </div>
 
         <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
-        <DatePickerSimpleComponent
-          options={{ label: 'تاریخ', getValue: setDate, showClearable: true }}
-        />
         <FileUpload />
         <button type="submit">Submit</button>
       </form>

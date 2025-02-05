@@ -129,7 +129,7 @@ const faIRPickers: Partial<PickersLocaleText<any>> & {
   // Action bar
   cancelButtonLabel: 'لغو',
   clearButtonLabel: 'پاک کردن',
-  okButtonLabel: 'اوکی',
+  okButtonLabel: 'تایید',
   todayButtonLabel: 'امروز',
 
   // Toolbar titles

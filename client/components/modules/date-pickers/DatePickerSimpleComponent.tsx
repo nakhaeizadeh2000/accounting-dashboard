@@ -29,22 +29,23 @@ const DatePickerSimpleComponent = ({ options }: Props) => {
     options?.getValue(date);
     console.log(date, 'date');
   };
-  const calType = useSelector((state: IRootState) => state.themeConfig.calenderType);
+  const calenderType = useSelector((state: IRootState) => state.themeConfig.calenderType);
   return (
     <DatePicker
       label={options?.label}
       value={selectedDate}
       onChange={handleDateChange}
-      localeText={calType === 'jalali' ? faIRPickers : {}}
+      localeText={calenderType === 'jalali' ? faIRPickers : {}}
       openTo={options?.openModalDefault}
       views={options.views}
-      dayOfWeekFormatter={calType === 'jalali' ? faIRPickers.weekdayFormatter : undefined}
+      dayOfWeekFormatter={calenderType === 'jalali' ? faIRPickers.weekdayFormatter : undefined}
       disabled={options?.disabled}
       readOnly={options?.readOnly}
       disablePast={options?.disablePast}
       slotProps={{
         field: { clearable: options?.showClearable, onClear: () => setCleared(true) },
       }}
+      format={calenderType === 'jalali' ? 'yyyy/MM/dd' : undefined}
     />
   );
 };
