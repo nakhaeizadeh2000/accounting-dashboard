@@ -35,12 +35,12 @@ const TimePickersSimpleComponent = ({ options }: Props) => {
       console.log('Selected Time (UTC):', utcTime);
     }
   };
-  const calType = useSelector((state: IRootState) => state.themeConfig.calenderType);
+  const callenderType = useSelector((state: IRootState) => state.themeConfig.calenderType);
   return (
     <TimePicker
       label={options?.label}
       value={selectedTime}
-      localeText={calType === 'jalali' ? faIRPickers : {}}
+      localeText={callenderType === 'jalali' ? faIRPickers : {}}
       onChange={handleTimeChange}
       ampm={false} // Use 24-hour format
       slots={{

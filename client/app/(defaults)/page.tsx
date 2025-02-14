@@ -17,6 +17,8 @@ import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 import DatePickerSimpleComponent from '@/components/modules/date-pickers/DatePickerSimpleComponent';
 import TimePickersSimpleComponent from '@/components/modules/date-pickers/TimePickersSimpleComponent';
+import { FaLandMineOn } from 'react-icons/fa6';
+
 
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
@@ -127,9 +129,18 @@ const Sales = () => {
         />
         <div className="m-2 mt-3 flex w-full justify-center gap-2">
           <DatePickerSimpleComponent
-            options={{ label: 'تاریخ', getValue: setDate, showClearable: true }}
+            options={{
+              label: 'Select Date',
+              getValue: (date) => console.log('Selected Date:', date),
+              views: ['year', 'month', 'day'],
+              openModalDefault: 'day',
+              showClearable: true,
+              disablePast: true,
+              openButtonIcon:FaLandMineOn
+
+            }}
           />
-          <TimePickersSimpleComponent options={{ label: 'ساعت', getValue: setTime }} />
+          {/* <TimePickersSimpleComponent options={{ label: 'ساعت', getValue: setTime }} /> */}
         </div>
 
         <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
