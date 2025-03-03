@@ -19,7 +19,7 @@ type DatePickerOptions = {
   showClearable?: boolean;
   views?: Array<'year' | 'month' | 'day'>;
   openModalDefault?: 'day' | 'month' | 'year';
-  openButtonIcon?:IconType | ComponentType<IconBaseProps>
+  openButtonIcon?: IconType | ComponentType<IconBaseProps>;
 };
 
 type DatePickerSimpleComponentProps = {
@@ -51,7 +51,7 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
   };
 
   const localeConfig = getLocaleConfig();
-  const {openButtonIcon} = options
+  const { openButtonIcon } = options;
 
   return (
     <DatePicker
@@ -67,10 +67,9 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
         field: { clearable: options.showClearable, onClear: () => setSelectedDate(null) },
       }}
       slots={{
-        openPickerIcon:options?.openButtonIcon
-        ? (props) => <IconWrapper icon={options.openButtonIcon} {...props} />
+        openPickerIcon: options?.openButtonIcon
+          ? (props) => <IconWrapper icon={options.openButtonIcon} {...props} />
           : undefined,
-
       }}
       {...localeConfig} // Spread locale-specific configurations
     />
@@ -78,9 +77,6 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
 };
 
 export default DatePickerSimpleComponent;
-
-
-
 
 //       label={options?.label}
 //       value={selectedDate}
@@ -96,6 +92,5 @@ export default DatePickerSimpleComponent;
 //         field: { clearable: options?.showClearable, onClear: () => setCleared(true) },
 //       }}
 //       format={calenderType === 'jalali' ? 'yyyy/MM/dd' : undefined}
-
 
 // //TODO config all the props in calendar and separate the component date picker

@@ -38,3 +38,5 @@ COPY ./dev-env/files/mui-crack-files/node/useLicenseVerifier.js ./node_modules/@
 
 # Command to run the application in development mode
 CMD ["npm", "run", "dev"]
+
+# //TODO fix issue and level up security and write best practice 
