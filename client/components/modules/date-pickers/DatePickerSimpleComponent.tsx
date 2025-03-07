@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import faIRPickers from '@/components/modules/date-pickers/persian-local-text';
 import { IconBaseProps, IconType } from 'react-icons';
 import IconWrapper from '@/shared/wrapper/icon-wrapper/IconWrapper';
+import { TextField } from '@mui/material';
 
 // Dynamically import DatePicker to reduce initial bundle size
 const DatePicker = dynamic(() => import('@mui/x-date-pickers-pro').then((mod) => mod.DatePicker));
@@ -72,6 +73,23 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
           : undefined,
       }}
       {...localeConfig} // Spread locale-specific configurations
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          fullWidth
+          variant="outlined"
+          sx={{
+            '& .MuiInputBase-input': {
+              direction: 'rtl', // Right-to-left for Persian
+            },
+          }}
+        />
+      )}
+      componentsProps={{
+        actionBar: {
+          actions: ['clear', 'today'],
+        },
+      }}
     />
   );
 };

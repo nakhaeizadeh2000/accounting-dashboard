@@ -5,6 +5,9 @@ FROM node:20-alpine as development
 # Install git on container for Next.js project
 RUN apk add --no-cache git
 
+# Install npm 
+RUN npm install -g npm@10
+
 # Create app directory
 WORKDIR /home/app/client
 
