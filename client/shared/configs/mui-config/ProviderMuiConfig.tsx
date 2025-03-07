@@ -9,8 +9,8 @@ import { darkTheme, lightTheme } from './theme-mui';
 import { IRootState } from '@/store';
 import { LocalizationProvider } from '@mui/x-date-pickers-pro';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
-import { AdapterDateFnsJalali } from '@mui/x-date-pickers/AdapterDateFnsJalaliV3';
 import { faIR } from 'date-fns-jalali/locale';
+import { PersianAdapter } from './persian-adpter/persian-adapter';
 
 type Props = {
   children: React.ReactNode;
@@ -46,8 +46,8 @@ const ProviderMuiConfig = ({ children }: Props) => {
     <CacheProvider value={rtlCache}>
       <ThemeProvider theme={configMui?.theme === 'dark' ? darkTheme : lightTheme}>
         <LocalizationProvider
-          dateAdapter={configMui?.calenderType === 'jalali' ? AdapterDateFnsJalali : AdapterDateFns}
-          adapterLocale={faIR}
+          dateAdapter={configMui?.calenderType === 'jalali' ? PersianAdapter : AdapterDateFns}
+          adapterLocale={configMui?.calenderType === 'jalali' ? faIR : undefined}
           dateFormats={{ monthShort: 'MMMM' }}
         >
           {children}

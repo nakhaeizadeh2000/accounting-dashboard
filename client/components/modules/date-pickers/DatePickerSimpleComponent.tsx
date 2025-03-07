@@ -1,12 +1,13 @@
 'use client';
-import React, { ComponentType, useState } from 'react';
+import React, { ComponentType, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { IRootState } from '@/store';
 import dynamic from 'next/dynamic';
 import faIRPickers from '@/components/modules/date-pickers/persian-local-text';
 import { IconBaseProps, IconType } from 'react-icons';
 import IconWrapper from '@/shared/wrapper/icon-wrapper/IconWrapper';
-import { TextField } from '@mui/material';
+import { TextField, TextFieldProps } from '@mui/material';
+import { faIR } from 'date-fns-jalali/locale';
 
 // Dynamically import DatePicker to reduce initial bundle size
 const DatePicker = dynamic(() => import('@mui/x-date-pickers-pro').then((mod) => mod.DatePicker));
@@ -33,6 +34,10 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
   // Get calendar type from Redux store
   const calenderType = useSelector((state: IRootState) => state.themeConfig.calenderType);
 
+  useEffect(() => {
+    options.getValue(selectedDate);
+  }, [selectedDate, options]);
+
   // Handle date change
   const handleDateChange = (date: Date | null) => {
     setSelectedDate(date);
@@ -40,19 +45,22 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
   };
 
   // Determine locale text and format based on calendar type
-  const getLocaleConfig = () => {
+  const localeConfig = useMemo(() => {
     if (calenderType === 'jalali') {
       return {
+        adapterLocale: faIR,
         localeText: faIRPickers,
         format: 'yyyy/MM/dd',
         dayOfWeekFormatter: faIRPickers.weekdayFormatter,
       };
     }
-    return {};
-  };
-
-  const localeConfig = getLocaleConfig();
-  const { openButtonIcon } = options;
+    return {
+      adapterLocale: undefined, // Default to browser locale
+      localeText: undefined,
+      format: 'MM/dd/yyyy', // Default Gregorian format
+      dayOfWeekFormatter: undefined,
+    };
+  }, [calenderType]);
 
   return (
     <DatePicker
@@ -66,49 +74,24 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
       disablePast={options.disablePast}
       slotProps={{
         field: { clearable: options.showClearable, onClear: () => setSelectedDate(null) },
+        actionBar: {
+          actions: ['clear', 'today'],
+        },
       }}
       slots={{
         openPickerIcon: options?.openButtonIcon
           ? (props) => <IconWrapper icon={options.openButtonIcon} {...props} />
           : undefined,
-      }}
-      {...localeConfig} // Spread locale-specific configurations
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          fullWidth
-          variant="outlined"
-          sx={{
-            '& .MuiInputBase-input': {
-              direction: 'rtl', // Right-to-left for Persian
-            },
-          }}
-        />
-      )}
-      componentsProps={{
-        actionBar: {
-          actions: ['clear', 'today'],
+        yearPicker: (props) => {
+          const jalaliYear = getJalaliYear(props.date);
+          return <div>{jalaliYear}</div>; // Customize rendering here
         },
       }}
+      {...localeConfig} // Spread locale-specific configurations
     />
   );
 };
 
 export default DatePickerSimpleComponent;
-
-//       label={options?.label}
-//       value={selectedDate}
-//       onChange={handleDateChange}
-//       localeText={calenderType === 'jalali' ? faIRPickers : {}}
-//       openTo={options?.openModalDefault}
-//       views={options.views}
-//       dayOfWeekFormatter={calenderType === 'jalali' ? faIRPickers.weekdayFormatter : undefined}
-//       disabled={options?.disabled}
-//       readOnly={options?.readOnly}
-//       disablePast={options?.disablePast}
-//       slotProps={{
-//         field: { clearable: options?.showClearable, onClear: () => setCleared(true) },
-//       }}
-//       format={calenderType === 'jalali' ? 'yyyy/MM/dd' : undefined}
 
 // //TODO config all the props in calendar and separate the component date picker
