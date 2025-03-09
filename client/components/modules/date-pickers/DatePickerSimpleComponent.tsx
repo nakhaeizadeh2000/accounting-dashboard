@@ -6,8 +6,7 @@ import dynamic from 'next/dynamic';
 import faIRPickers from '@/components/modules/date-pickers/persian-local-text';
 import { IconBaseProps, IconType } from 'react-icons';
 import IconWrapper from '@/shared/wrapper/icon-wrapper/IconWrapper';
-import { TextField, TextFieldProps } from '@mui/material';
-import { faIR } from 'date-fns-jalali/locale';
+import { format, startOfToday } from 'date-fns-jalali';
 
 // Dynamically import DatePicker to reduce initial bundle size
 const DatePicker = dynamic(() => import('@mui/x-date-pickers-pro').then((mod) => mod.DatePicker));
@@ -29,7 +28,7 @@ type DatePickerSimpleComponentProps = {
 };
 
 const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) => {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() => startOfToday());
 
   // Get calendar type from Redux store
   const calenderType = useSelector((state: IRootState) => state.themeConfig.calenderType);
@@ -44,22 +43,9 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
     options.getValue(date);
   };
 
-  // Determine locale text and format based on calendar type
-  const localeConfig = useMemo(() => {
-    if (calenderType === 'jalali') {
-      return {
-        adapterLocale: faIR,
-        localeText: faIRPickers,
-        format: 'yyyy/MM/dd',
-        dayOfWeekFormatter: faIRPickers.weekdayFormatter,
-      };
-    }
-    return {
-      adapterLocale: undefined, // Default to browser locale
-      localeText: undefined,
-      format: 'MM/dd/yyyy', // Default Gregorian format
-      dayOfWeekFormatter: undefined,
-    };
+  // Determine locale text based on calendar type
+  const localeText = useMemo(() => {
+    return calenderType === 'jalali' ? faIRPickers : undefined;
   }, [calenderType]);
 
   return (
@@ -72,26 +58,30 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
       disabled={options.disabled}
       readOnly={options.readOnly}
       disablePast={options.disablePast}
+      localeText={localeText}
+      format={calenderType === 'jalali' ? 'yyyy/MM/dd' : 'MM/dd/yyyy'}
       slotProps={{
-        field: { clearable: options.showClearable, onClear: () => setSelectedDate(null) },
+        field: {
+          clearable: options.showClearable,
+          onClear: () => setSelectedDate(null),
+        },
         actionBar: {
           actions: ['clear', 'today'],
+        },
+        textField: {
+          InputProps: {
+            // Right-to-left support for Persian
+            dir: calenderType === 'jalali' ? 'rtl' : 'ltr',
+          },
         },
       }}
       slots={{
         openPickerIcon: options?.openButtonIcon
           ? (props) => <IconWrapper icon={options.openButtonIcon} {...props} />
           : undefined,
-        yearPicker: (props) => {
-          const jalaliYear = getJalaliYear(props.date);
-          return <div>{jalaliYear}</div>; // Customize rendering here
-        },
       }}
-      {...localeConfig} // Spread locale-specific configurations
     />
   );
 };
 
 export default DatePickerSimpleComponent;
-
-// //TODO config all the props in calendar and separate the component date picker
