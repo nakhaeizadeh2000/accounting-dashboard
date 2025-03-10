@@ -7,6 +7,7 @@ import faIRPickers from '@/components/modules/date-pickers/persian-local-text';
 import { IconBaseProps, IconType } from 'react-icons';
 import IconWrapper from '@/shared/wrapper/icon-wrapper/IconWrapper';
 import { format, startOfToday } from 'date-fns-jalali';
+import { faIR } from 'date-fns-jalali/locale/fa-IR';
 
 // Dynamically import DatePicker to reduce initial bundle size
 const DatePicker = dynamic(() => import('@mui/x-date-pickers-pro').then((mod) => mod.DatePicker));
@@ -45,42 +46,62 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
 
   // Determine locale text based on calendar type
   const localeText = useMemo(() => {
+    console.log(calenderType);
     return calenderType === 'jalali' ? faIRPickers : undefined;
   }, [calenderType]);
 
   return (
     <DatePicker
-      label={options.label}
-      value={selectedDate}
-      onChange={handleDateChange}
-      openTo={options.openModalDefault}
-      views={options.views}
-      disabled={options.disabled}
-      readOnly={options.readOnly}
-      disablePast={options.disablePast}
-      localeText={localeText}
+      localeText={calenderType === 'jalali' ? faIRPickers : undefined}
       format={calenderType === 'jalali' ? 'yyyy/MM/dd' : 'MM/dd/yyyy'}
-      slotProps={{
-        field: {
-          clearable: options.showClearable,
-          onClear: () => setSelectedDate(null),
-        },
-        actionBar: {
-          actions: ['clear', 'today'],
-        },
-        textField: {
-          InputProps: {
-            // Right-to-left support for Persian
-            dir: calenderType === 'jalali' ? 'rtl' : 'ltr',
-          },
-        },
-      }}
       slots={{
         openPickerIcon: options?.openButtonIcon
           ? (props) => <IconWrapper icon={options.openButtonIcon} {...props} />
           : undefined,
+        yearButton: (dayProps) => {
+          const { day } = dayProps;
+          return (
+            <div>
+              {calenderType === 'jalali' && faIRPickers.weekdayFormatter
+                ? faIRPickers.weekdayFormatter(day)
+                : day.getDate().toString()}
+            </div>
+          );
+        },
       }}
     />
+    // <DatePicker
+    //   label={options.label}
+    //   value={selectedDate}
+    //   onChange={handleDateChange}
+    //   openTo={options.openModalDefault}
+    //   views={options.views}
+    //   disabled={options.disabled}
+    //   readOnly={options.readOnly}
+    //   disablePast={options.disablePast}
+    //   localeText={faIRPickers}
+    //   format={calenderType === 'jalali' ? 'yyyy/MM/dd' : 'MM/dd/yyyy'}
+    //   slotProps={{
+    //     field: {
+    //       clearable: options.showClearable,
+    //       onClear: () => setSelectedDate(null),
+    //     },
+    //     actionBar: {
+    //       actions: ['clear', 'today'],
+    //     },
+    //     textField: {
+    //       InputProps: {
+    //         // Right-to-left support for Persian
+    //         dir: calenderType === 'jalali' ? 'rtl' : 'ltr',
+    //       },
+    //     },
+    //   }}
+    //   slots={{
+    //     openPickerIcon: options?.openButtonIcon
+    //       ? (props) => <IconWrapper icon={options.openButtonIcon} {...props} />
+    //       : undefined,
+    //   }}
+    // />
   );
 };
 
