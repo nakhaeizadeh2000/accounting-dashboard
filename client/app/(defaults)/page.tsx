@@ -18,6 +18,7 @@ import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 import DatePickerSimpleComponent from '@/components/modules/date-pickers/DatePickerSimpleComponent';
 import TimePickersSimpleComponent from '@/components/modules/date-pickers/TimePickersSimpleComponent';
 import { FaLandMineOn } from 'react-icons/fa6';
+import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
 
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
@@ -135,7 +136,7 @@ const Sales = () => {
               openModalDefault: 'day',
               showClearable: true,
               disablePast: true,
-              openButtonIcon: FaLandMineOn,
+              openButtonIcon: PiAirplaneTakeoffDuotone,
             }}
           />
           {/* <TimePickersSimpleComponent options={{ label: 'ساعت', getValue: setTime }} /> */}

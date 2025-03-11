@@ -85,8 +85,10 @@ const Header = () => {
     //* set the language for chosen rtl or ltr
 
     if (flag.toLowerCase() === 'ae' || flag.toLowerCase() === 'ir') {
+      dispatch(toggleCalenderType('jalali'));
       dispatch(toggleRTL('rtl'));
     } else {
+      dispatch(toggleCalenderType('gregorian'));
       dispatch(toggleRTL('ltr'));
     }
     router.refresh();
@@ -319,7 +321,6 @@ const Header = () => {
                           onClick={() => {
                             i18n.changeLanguage(item.code);
                             setLocale(item.code);
-                            dispatch(toggleCalenderType(item?.code));
                           }}
                         >
                           <img

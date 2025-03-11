@@ -40,6 +40,7 @@ const ProviderMuiConfig = ({ children }: Props) => {
       theme: themeMode.payload,
       calenderType,
     });
+    console.log(calenderType);
   }, [dispatch, themeConfig.theme, callType]);
 
   return (

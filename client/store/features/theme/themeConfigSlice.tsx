@@ -84,12 +84,12 @@ const themeConfigSlice = createSlice({
       state.sidebar = false;
     },
     toggleCalenderType(state, { payload }) {
-      if (payload === 'ir') {
+      payload = payload || state.calenderType;
+      localStorage.setItem('calenderType', payload);
+      if (payload === 'jalali') {
         state.calenderType = 'jalali';
-        localStorage.setItem('calenderType', 'jalali');
       } else {
         state.calenderType = 'gregorian';
-        localStorage.setItem('calenderType', 'gregorian');
       }
     },
   },
