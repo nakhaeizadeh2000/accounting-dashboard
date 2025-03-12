@@ -8,6 +8,7 @@ import { useDownloadFileUrlQuery, useUploadFileMutation } from '@/store/features
 import { FileUploads } from '@/components/modules/upload-files/FileUploads';
 import { useEffect, useState } from 'react';
 import { Button } from '@mui/material';
+import NewFileUploads from '@/components/modules/upload-files/NewFileUpload';
 
 const TestForm = () => {
   const [uploadFile, { isLoading, isError, data }] = useUploadFileMutation();
@@ -61,9 +62,9 @@ const TestForm = () => {
   };
 
   return (
-    <div>
+    <div className="gap-2 rounded-lg bg-neutral-300 p-4">
       <form onSubmit={handleSubmit}>
-        <div className="flex w-full justify-center gap-2">
+        <div className="flex w-full flex-col justify-center gap-4">
           <UserSingleSelectWidget
             options={{
               containerClass: 'w-5/6 sm:w-5/6',
@@ -71,13 +72,14 @@ const TestForm = () => {
               value: [],
             }}
           />
+          <NewFileUploads />
+          {/* <FileUploads isMulti={true} onFileChange={handleFilesChange} /> */}
+          {/* <Button onClick={handleDownloadFile} variant="contained">
+            Contained
+          </Button> */}
         </div>
         <button type="submit">Submit</button>
       </form>
-      <FileUploads isMulti={true} onFileChange={handleFilesChange} />
-      <Button onClick={handleDownloadFile} variant="contained">
-        Contained
-      </Button>
       {imagePath ? (
         <Image src={imagePath} width={500} height={500} alt="Picture of the author" unoptimized />
       ) : null}
