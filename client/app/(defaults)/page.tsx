@@ -139,7 +139,9 @@ const Sales = () => {
               openButtonIcon: PiAirplaneTakeoffDuotone,
             }}
           />
-          {/* <TimePickersSimpleComponent options={{ label: 'ساعت', getValue: setTime }} /> */}
+          <TimePickersSimpleComponent
+            options={{ label: 'ساعت', getValue: setTime, formatTime: 'HH:mm' }}
+          />
         </div>
 
         <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />

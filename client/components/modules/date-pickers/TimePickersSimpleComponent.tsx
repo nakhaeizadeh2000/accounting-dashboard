@@ -10,19 +10,22 @@ import { IRootState } from '@/store';
 
 const TimePicker = dynamic(() => import('@mui/x-date-pickers-pro').then((mod) => mod.TimePicker));
 
-type Props = {
-  options: {
-    label: string;
-    getValue?: (item: string) => void;
-    disabled?: boolean;
-    readOnly?: boolean;
-    views?: Array<'hours' | 'minutes' | 'seconds'>;
-    format?: string;
-    openModalDefault?: 'hours' | 'minutes' | 'seconds';
-  };
+type TimePickerOptions = {
+  label: string;
+  getValue?: (item: string) => void;
+  disabled?: boolean;
+  readOnly?: boolean;
+  views?: Array<'hours' | 'minutes' | 'seconds'>;
+  format?: string;
+  openModalDefault?: 'hours' | 'minutes' | 'seconds';
+  formatTime?: string;
 };
 
-const TimePickersSimpleComponent = ({ options }: Props) => {
+type TimePickerSimpleComponentProps = {
+  options: TimePickerOptions;
+};
+
+const TimePickersSimpleComponent = ({ options }: TimePickerSimpleComponentProps) => {
   const [selectedTime, setSelectedTime] = useState<Date | null>(null);
   const [cleared, setCleared] = useState(false);
 
@@ -38,6 +41,7 @@ const TimePickersSimpleComponent = ({ options }: Props) => {
   const callenderType = useSelector((state: IRootState) => state.themeConfig.calenderType);
   return (
     <TimePicker
+      className="min-h-[auto] leading-[1.6]"
       label={options?.label}
       value={selectedTime}
       localeText={callenderType === 'jalali' ? faIRPickers : {}}
@@ -53,12 +57,12 @@ const TimePickersSimpleComponent = ({ options }: Props) => {
           onClear: () => setCleared(true),
         },
       }}
-
-      // viewRenderers={{
-      //   hours: renderTimeViewClock,
-      //   minutes: renderTimeViewClock,
-      //   seconds: renderTimeViewClock,
-      // }}
+      viewRenderers={{
+        hours: renderTimeViewClock,
+        minutes: renderTimeViewClock,
+        seconds: renderTimeViewClock,
+      }}
+      format={options?.formatTime}
     />
   );
 };

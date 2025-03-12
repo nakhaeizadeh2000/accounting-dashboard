@@ -1,0 +1,6 @@
+.MuiInputBase-root {
+  @apply h-fit
+}
+.MuiInputBase-input{
+  @apply leading-[1.6]  min-h-[auto] py-[0.32rem] px-3 !important
+}
