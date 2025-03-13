@@ -19,6 +19,7 @@ import DatePickerSimpleComponent from '@/components/modules/date-pickers/DatePic
 import TimePickersSimpleComponent from '@/components/modules/date-pickers/TimePickersSimpleComponent';
 import { FaLandMineOn } from 'react-icons/fa6';
 import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
+import { TextField } from '@mui/material';
 
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
@@ -118,19 +119,15 @@ const Sales = () => {
             // icon: { Icon: MdOutlineAlternateEmail },
           }}
         />
-        <AnimatedInputElement
-          options={{
-            key: 'email',
-            label: 'ایمیل',
-            type: 'text',
-            fieldError: [],
-            // icon: { Icon: MdOutlineAlternateEmail },
-          }}
-        />
+        <FileUpload />
+        <button type="submit">Submit</button>
         <div className="m-2 mt-3 flex w-full justify-center gap-2">
+          <TimePickersSimpleComponent
+            options={{ label: 'ساعت', getValue: setTime, formatTime: 'HH:mm' }}
+          />
           <DatePickerSimpleComponent
             options={{
-              label: 'Select Date',
+              label: 'تاریخ',
               getValue: (date) => console.log('Selected Date:', date),
               views: ['year', 'month', 'day'],
               openModalDefault: 'day',
@@ -139,14 +136,9 @@ const Sales = () => {
               openButtonIcon: PiAirplaneTakeoffDuotone,
             }}
           />
-          <TimePickersSimpleComponent
-            options={{ label: 'ساعت', getValue: setTime, formatTime: 'HH:mm' }}
-          />
+          <TextField id="outlined-basic" label="ایمیل" variant="outlined" size="small" />
+          <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
         </div>
-
-        <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
-        <FileUpload />
-        <button type="submit">Submit</button>
       </form>
     </div>
   );

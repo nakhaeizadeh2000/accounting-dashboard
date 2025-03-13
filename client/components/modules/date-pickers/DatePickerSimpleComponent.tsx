@@ -66,6 +66,7 @@ const DatePickerSimpleComponent = ({ options }: DatePickerSimpleComponentProps) 
           clearable: options.showClearable,
           onClear: () => setSelectedDate(null),
         },
+        textField: { size: 'small' },
       }}
       slots={{
         openPickerIcon: options?.openButtonIcon

@@ -56,6 +56,7 @@ const TimePickersSimpleComponent = ({ options }: TimePickerSimpleComponentProps)
           clearable: true,
           onClear: () => setCleared(true),
         },
+        textField: { size: 'small' },
       }}
       viewRenderers={{
         hours: renderTimeViewClock,
