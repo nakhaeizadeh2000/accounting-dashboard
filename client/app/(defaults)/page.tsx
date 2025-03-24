@@ -12,6 +12,8 @@ import UserSingleSelectWidget from './UserSingleSelectWidget';
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
+import { useEffect, useState } from 'react';
+import TiptapEditor from '@/components/modules/tiptap-editor/TipTapEditorComponent';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -25,12 +27,18 @@ const Sales = () => {
     // This function can be used for additional logic if needed
   };
 
+  const [editorLoaded, setEditorLoaded] = useState(false);
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     // TODO: work on these sections
     // formData.append()
   };
+
+  useEffect(() => {
+    setEditorLoaded(true);
+  }, []);
 
   return (
     <div>
@@ -90,6 +98,9 @@ const Sales = () => {
             // icon: { Icon: MdOutlineAlternateEmail },
           }}
         />
+
+        <TiptapEditor />
+
         <FileUpload />
         <button type="submit">Submit</button>
       </form>

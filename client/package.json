@@ -31,6 +31,8 @@
     "@reduxjs/toolkit": "^2.2.7",
     "@tailwind-plugin/expose-colors": "^1.1.8",
     "@tippyjs/react": "^4.2.6",
+    "@tiptap/react": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
     "@types/react-dom": "^18.3.0",
     "framer-motion": "^11.5.4",
     "i18next": "^23.12.2",
