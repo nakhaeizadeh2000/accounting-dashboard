@@ -1,80 +1,60 @@
-'use client';
-
 import { useState, useRef } from 'react';
-import SingleFileUpload from '@/components/modules/upload-files/SingleFileUpload';
-import { useUploadFileMutation } from '@/store/features/files/files.api';
 
-export type FileUploadProps = {
-  id: string; // Unique identifier for this upload component
-  bucket?: string;
-  acceptedFileTypes?: string;
-  maxSizeMB?: number;
-  type?: 'single' | 'multiple';
-  onUploadSuccess?: (result: any) => void;
-  onUploadError?: (error: any) => void;
-  onFileSelect?: (file: File | null) => void;
-};
-
-// Upload status type
 export type UploadStatus = 'idle' | 'selected' | 'uploading' | 'completed' | 'failed';
 
-const FileUpload = ({
-  id,
-  bucket = 'default',
-  acceptedFileTypes = 'image/jpeg,image/png,application/pdf',
-  maxSizeMB = 5,
-  type = 'single',
-  onUploadSuccess,
-  onUploadError,
-  onFileSelect: externalFileSelectHandler,
-}: FileUploadProps) => {
-  // Local state instead of Redux
+type UploadOptions = {
+  bucket?: string;
+  onSuccess?: (result: any) => void;
+  onError?: (error: any) => void;
+  resetAfterUpload?: boolean;
+};
+
+const useFileUpload = (bucket = 'default') => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const [uploadFile] = useUploadFileMutation();
   const uploadPromiseRef = useRef<any>(null);
 
-  const handleFileSelect = (file: File | null) => {
+  const selectFile = (file: File | null) => {
     setSelectedFile(file);
-
     if (file) {
       setUploadStatus('selected');
       setErrorMessage('');
     } else {
-      resetUploadState();
-    }
-
-    // Call external handler if provided
-    if (externalFileSelectHandler) {
-      externalFileSelectHandler(file);
+      resetUpload();
     }
   };
 
-  const handleFileReject = (reason: string) => {
+  const rejectFile = (reason: string) => {
     setSelectedFile(null);
     setUploadStatus('failed');
     setErrorMessage(reason);
   };
 
-  const handleUploadStart = async () => {
-    if (!selectedFile) return;
+  const startUpload = async (options: UploadOptions = {}) => {
+    if (!selectedFile) return null;
+
+    const {
+      bucket: optionsBucket = bucket,
+      onSuccess,
+      onError,
+      resetAfterUpload = false,
+    } = options;
 
     setUploadStatus('uploading');
     setUploadProgress(0);
 
     try {
-      // Create a component-specific abort controller
+      // Create a controller for aborting the upload
       const controller = new AbortController();
       const signal = controller.signal;
 
-      // Create a custom upload function that uses XMLHttpRequest to track progress
+      // Custom upload function using XMLHttpRequest to track progress
       const uploadWithProgress = async (file: File) => {
         return new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open('POST', `/api/files/upload/${bucket}`, true);
+          xhr.open('POST', `/api/files/upload/${optionsBucket}`, true);
 
           // Add abort listener
           signal.addEventListener('abort', () => {
@@ -118,27 +98,32 @@ const FileUpload = ({
         });
       };
 
-      // Store the controller for possible cancellation
+      // Store reference for potential cancellation
       uploadPromiseRef.current = {
         abort: () => controller.abort(),
         promise: uploadWithProgress(selectedFile),
       };
 
-      // Wait for the upload to complete
+      // Wait for upload to complete
       const result = await uploadPromiseRef.current.promise;
 
       // Update state on success
       setUploadStatus('completed');
       setUploadProgress(100);
 
-      // Call success callback if provided
-      if (onUploadSuccess) {
-        onUploadSuccess(result);
+      if (onSuccess) {
+        onSuccess(result);
+      }
+
+      if (resetAfterUpload) {
+        setTimeout(() => {
+          resetUpload();
+        }, 2000); // Reset after showing completed state for 2 seconds
       }
 
       return result;
     } catch (error: any) {
-      // Check if this was canceled
+      // Check if this was cancelled
       if (error.status === 'aborted') {
         setUploadStatus('failed');
         setErrorMessage('Upload cancelled');
@@ -146,20 +131,18 @@ const FileUpload = ({
         setUploadStatus('failed');
         setErrorMessage(error.message || 'Upload failed');
 
-        // Call error callback if provided
-        if (onUploadError) {
-          onUploadError(error);
+        if (onError) {
+          onError(error);
         }
       }
 
       return null;
     } finally {
-      // Clear the promise reference
       uploadPromiseRef.current = null;
     }
   };
 
-  const handleUploadCancel = () => {
+  const cancelUpload = () => {
     if (uploadPromiseRef.current && uploadPromiseRef.current.abort) {
       uploadPromiseRef.current.abort();
       uploadPromiseRef.current = null;
@@ -168,34 +151,34 @@ const FileUpload = ({
     }
   };
 
-  const handleRemoveFile = () => {
-    resetUploadState();
-  };
-
-  const resetUploadState = () => {
+  const resetUpload = () => {
     setSelectedFile(null);
     setUploadStatus('idle');
     setUploadProgress(0);
     setErrorMessage('');
   };
 
-  return (
-    <div data-upload-id={id}>
-      <SingleFileUpload
-        type={type}
-        acceptedFileTypes={acceptedFileTypes}
-        maxSizeMB={maxSizeMB}
-        onFileSelect={handleFileSelect}
-        onFileReject={handleFileReject}
-        uploadStatus={uploadStatus}
-        uploadProgress={uploadProgress}
-        errorMessage={errorMessage}
-        onUploadStart={handleUploadStart}
-        onUploadCancel={handleUploadCancel}
-        onRemoveFile={handleRemoveFile}
-      />
-    </div>
-  );
+  return {
+    selectedFile,
+    uploadStatus,
+    uploadProgress,
+    errorMessage,
+    selectFile,
+    rejectFile,
+    startUpload,
+    cancelUpload,
+    resetUpload,
+    uploadProps: {
+      onFileSelect: selectFile,
+      onFileReject: rejectFile,
+      uploadStatus,
+      uploadProgress,
+      errorMessage,
+      onUploadStart: () => startUpload(),
+      onUploadCancel: cancelUpload,
+      onRemoveFile: resetUpload,
+    },
+  };
 };
 
-export default FileUpload;
+export default useFileUpload;
