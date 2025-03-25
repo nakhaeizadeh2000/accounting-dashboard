@@ -13,7 +13,8 @@ import AnimatedInputElement from '@/components/modules/input-elements/AnimatedIn
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { FileUpload } from '@/components/modules/upload-files/FileUpload';
 import { useEffect, useState } from 'react';
-import TiptapEditor from '@/components/modules/tiptap-editor/TipTapEditorComponent';
+import TiptapEditor from '@/components/modules/editor/TipTapEditorComponent';
+import Editor from '@/components/modules/editor/TinyMceComponent';
 // const AnimatedInputElement = dynamic(
 //   () => import('@/components/Elements/widgets/input-elements/AnimatedInputElement'),
 // );
@@ -99,7 +100,8 @@ const Sales = () => {
           }}
         />
 
-        <TiptapEditor />
+        {/* <TiptapEditor /> */}
+        <Editor onChange={(val) => console.log(val)} />
 
         <FileUpload />
         <button type="submit">Submit</button>
