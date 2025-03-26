@@ -33,7 +33,10 @@
     "@next/bundle-analyzer": "^14.2.8",
     "@reduxjs/toolkit": "^2.2.7",
     "@tailwind-plugin/expose-colors": "^1.1.8",
+    "@tinymce/tinymce-react": "^6.0.0",
     "@tippyjs/react": "^4.2.6",
+    "@tiptap/react": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
     "@types/react-dom": "^18.3.0",
     "date-fns": "^4.1.0",
     "date-fns-jalali": "^3.2.0-0",
@@ -58,6 +61,7 @@
     "stylis": "^4.3.4",
     "stylis-plugin-rtl": "^2.1.1",
     "tailwind-scrollbar": "^3.1.0",
+    "tinymce": "^7.7.2",
     "universal-cookie": "^7.2.0",
     "yup": "^1.4.0",
     "zod": "^3.23.8"
