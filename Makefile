@@ -44,7 +44,7 @@ prod-daemon:
 down:
 	docker compose down
 down-volume:
-	docker compose down -v
+	docker compose down -v --remove-orphans
 stop:
 	docker compose stop
 

@@ -21,17 +21,16 @@ const nextConfig = {
       fullUrl: true,
     },
   },
-  // Uncomment and configure if using remote images
-  // images: {
-  //   remotePatterns: [
-  //     {
-  //       protocol: 'https',
-  //       hostname: 's3.amazonaws.com',
-  //       port: '',
-  //       pathname: '/my-bucket/**',
-  //     },
-  //   ],
-  // },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '',
+        pathname: '/api/files/**',
+      },
+    ],
+  },
   webpack: (config, { buildId, dev, isServer, defaultLoaders, nextRuntime, webpack }) => {
     // if (config.cache && !dev) {
     //   config.cache = Object.freeze({

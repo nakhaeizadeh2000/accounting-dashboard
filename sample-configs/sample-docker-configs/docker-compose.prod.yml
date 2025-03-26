@@ -1,0 +1,232 @@
+x-template:
+  base-service: &base
+    networks:
+      - main
+    env_file:
+      - .env
+  live-service: &live
+    <<: *base
+    restart: unless-stopped
+
+# Settings and configurations that are common for all containers
+x-minio-common: &minio-common
+  <<: *live
+  image: harbor.hyvatech.com/library/minio/minio:RELEASE.2023-09-16T01-01-47Z.fips
+  command: server --console-address ":9001" /data
+  expose:
+    - "9000"
+    - "9001"
+  environment:
+    MINIO_BROWSER_REDIRECT_URL: https://localhost/minio/console
+    # MINIO_ROOT_USER: minioadmin
+    # MINIO_ROOT_PASSWORD: minioadmin
+  secrets:
+    - source: minio-pass
+
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "curl",
+        "-f",
+        --insecure,
+        "https://localhost:9000/minio/health/live",
+      ]
+    interval: 15s
+    timeout: 20s
+    retries: 3
+
+services:
+  minio1:
+    <<: *minio-common
+    hostname: minio
+    volumes:
+      - minio-data:/data
+    secrets:
+      - source: minio-ca
+        target: /root/.minio/certs/CAs/myCA.crt
+        # uid: "1001" # long syntax only works in swarm mode, added for documentation
+        # gid: "1001"
+      - source: minio-certs
+        target: /root/.minio/certs/public.crt
+        # uid: "1001"
+        # gid: "1001"
+      - source: minio-key
+        target: /root/.minio/certs/private.key
+        # uid: "1001"
+        # gid: "1001"
+    env_file:
+      - ./minio/.env.minio
+    # ports:
+    #   - 127.0.0.1:9001:9001
+    #   - 127.0.0.1:9000:9000
+
+  back:
+    <<: *live
+    image: "harbor.hyvatech.com/maskan/back:${PROD_TAG}"
+    secrets:
+      - source: postgres-user
+        target: ${POSTGRES_USER_FILE}
+      - source: postgres-password
+        target: ${POSTGRES_PASSWORD_FILE}
+
+    healthcheck:
+      test: wget -qO- 127.0.0.1:3000/api/casl-rule
+      interval: 8s
+      timeout: 15s
+      retries: 50
+      start_period: 70s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+      - ./minio/.env.minio
+      - ./redis/.env.redis
+      - .env.secrets
+      - .env.prod
+    # ports:
+    #   - 127.0.0.1:3000:3000
+    #   - 127.0.0.1:3001:3001
+
+  front:
+    <<: *live
+    image: "harbor.hyvatech.com/maskan/front:${PROD_TAG}"
+    # environment: # TODO: delete
+    #   - APPNAME=base
+    #   - REQUESTNAME=nestjs
+    #   - ROUTEPATH=src/api-routes
+    #   - ENTITYPATH=src/model-form-request
+    #   - UTILSPATH=src/domains/share/app/utils
+    restart: unless-stopped
+    healthcheck:
+      test: wget -qO- 127.0.0.1:4200
+      interval: 5s
+      timeout: 15s
+      retries: 20
+      start_period: 20s
+
+    # ports:
+    #   - 127.0.0.1:4200:4200
+
+  nginx:
+    image: "harbor.hyvatech.com/maskan/nginx:${PROD_TAG}"
+    restart: unless-stopped
+    networks:
+      - main
+    ports:
+      - ${NGINX_HTTP_PORT:-80}:80
+      - ${NGINX_HTTPS_PORT:-443}:443
+    volumes:
+      - ./nginx/config/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/config/prod.conf:/etc/nginx/conf.d/prod.conf:ro
+      - ./nginx/config/security_headers.conf:/etc/nginx/conf.d/security_headers.conf:ro
+      - ./nginx/config/servername.config:/etc/nginx/conf.d/servername.config:ro
+      - ./nginx/config/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
+      - ./nginx/config/ssl_params.conf:/etc/nginx/conf.d/ssl_params.conf:ro
+      - ./nginx/dhparam.pem:/etc/nginx/ssl/dhparam.pem:ro
+      - /etc/letsencrypt/live/hamsazhiva.com/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/hamsazhiva.com/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
+    depends_on:
+      back:
+        condition: service_healthy
+      front:
+        condition: service_healthy
+      minio1:
+        condition: service_healthy
+
+  postgres:
+    <<: *live
+    image: harbor.hyvatech.com/library/postgres:15.4-alpine
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER_FILE: ${POSTGRES_USER_FILE}
+      POSTGRES_PASSWORD_FILE: ${POSTGRES_PASSWORD_FILE}
+    secrets:
+      - source: postgres-user
+        target: ${POSTGRES_USER_FILE}
+      - source: postgres-password
+        target: ${POSTGRES_PASSWORD_FILE}
+      - source: postgres-certs
+        target: /var/lib/postgresql/certs/server.crt
+        # uid: "70"  ### long syntax only works in swarm mode, added for documentation...
+        # gid: "70"
+        # mode: 0600
+      - source: postgres-key
+        target: /var/lib/postgresql/certs/server.key
+        # uid: "70"
+        # gid: "70"
+        # mode: 0600
+    # ports:
+    #   - 127.0.0.1:5432:5432
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $(cat /run/secrets/postgres-user) -d ${POSTGRES_DB}",
+        ]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+    command: >
+      postgres -c ssl=on
+               -c ssl_cert_file=/var/lib/postgresql/certs/server.crt
+               -c ssl_key_file=/var/lib/postgresql/certs/server.key
+
+  redis:
+    <<: *live
+    image: harbor.hyvatech.com/library/redis:7.2-alpine
+    secrets:
+      - source: redis-certs
+        target: /usr/local/etc/redis/server.crt
+      - source: redis-key
+        target: /usr/local/etc/redis/server.key
+    # ports:
+    #   - 127.0.0.1:6379:6379
+    # this is how to prevent assigment of REDIS_HOST_PASSWORD in docker compose commands execution: pay attention to "sh -c"
+    command: >
+      sh -c "redis-server
+      --requirepass $$REDIS_HOST_PASSWORD
+      --tls-port 6379
+      --port 0
+      --tls-cert-file /usr/local/etc/redis/server.crt
+      --tls-key-file /usr/local/etc/redis/server.key
+      --tls-ca-cert-file /usr/local/etc/redis/server.crt
+      --tls-auth-clients no
+      --tls-replication yes"
+    env_file:
+      - ./redis/.env.redis
+
+volumes:
+  minio-data:
+  postgres-data:
+
+networks:
+  main:
+    driver: bridge
+    name: maskan_network
+
+secrets:
+  minio-ca:
+    file: ./minio/certs/CAs/myCA.crt
+  minio-certs:
+    file: ./minio/certs/public.crt
+  minio-key:
+    file: ./minio/certs/private.key
+  redis-certs:
+    file: ./redis/certs/server.crt
+  redis-key:
+    file: ./redis/certs/server.key
+  postgres-certs:
+    file: ./postgresql/certs/server.crt
+  postgres-key:
+    file: ./postgresql/certs/server.key
+  postgres-password:
+    file: ./postgresql/credentials/password.txt
+  postgres-user:
+    file: ./postgresql/credentials/user.txt
