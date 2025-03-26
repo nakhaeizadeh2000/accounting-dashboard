@@ -44,6 +44,7 @@ function App({ children }: PropsWithChildren) {
     themeConfig.navbar,
     themeConfig.locale,
     themeConfig.semidark,
+    themeConfig.calenderType,
   ]);
 
   return (

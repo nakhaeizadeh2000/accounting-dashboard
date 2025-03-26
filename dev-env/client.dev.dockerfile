@@ -5,6 +5,9 @@ FROM node:20-alpine as development
 # Install git on container for Next.js project
 RUN apk add --no-cache git
 
+# Install npm 
+RUN npm install -g npm@10
+
 # Create app directory
 WORKDIR /home/app/client
 
@@ -38,3 +41,5 @@ COPY ./dev-env/files/mui-crack-files/node/useLicenseVerifier.js ./node_modules/@
 
 # Command to run the application in development mode
 CMD ["npm", "run", "dev"]
+
+# //TODO fix issue and level up security and write best practice 
