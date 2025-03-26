@@ -1,3 +1,5 @@
+'use client';
+
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import DropDownWidget from '@/components/modules/drop-downs/DropDownWidget';
 import { UserFormData } from '@/schemas/validations/users/user.schema';

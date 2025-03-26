@@ -1,9 +1,9 @@
+'use client';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { TextField } from '@mui/material';
 import { renderTimeViewClock } from '@mui/x-date-pickers-pro';
-import { BsAlarmFill } from 'react-icons/bs';
+// import { BsAlarmFill } from 'react-icons/bs';
 import faIRPickers from './persian-local-text';
 import { useSelector } from 'react-redux';
 import { IRootState } from '@/store';
@@ -47,10 +47,12 @@ const TimePickersSimpleComponent = ({ options }: TimePickerSimpleComponentProps)
       localeText={callenderType === 'jalali' ? faIRPickers : {}}
       onChange={handleTimeChange}
       ampm={false} // Use 24-hour format
-      slots={{
-        // OpenPickerIcon: AlarmIcon,
-        openPickerIcon: BsAlarmFill,
-      }}
+      slots={
+        {
+          // OpenPickerIcon: AlarmIcon,
+          // openPickerIcon: BsAlarmFill,
+        }
+      }
       slotProps={{
         field: {
           clearable: true,
