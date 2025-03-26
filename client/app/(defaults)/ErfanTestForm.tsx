@@ -2,6 +2,7 @@
 
 import DatePickerSimpleComponent from '@/components/modules/date-pickers/DatePickerSimpleComponent';
 import TimePickersSimpleComponent from '@/components/modules/date-pickers/TimePickersSimpleComponent';
+import Editor from '@/components/modules/editor/TinyMceComponent';
 import { TextField } from '@mui/material';
 import { StaticDatePicker } from '@mui/x-date-pickers-pro';
 import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
@@ -45,6 +46,7 @@ const ErfanTestForm = () => {
       />
       <TextField id="outlined-basic" label="ایمیل" variant="outlined" size="small" />
       <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
+      <Editor onChange={(data) => console.log(data)} />
     </div>
   );
 };
