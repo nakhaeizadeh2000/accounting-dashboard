@@ -144,9 +144,9 @@ const FullExampleUsage = () => {
         />
 
         {selectedFiles.length > 0 && (
-          <div className="mt-4 rounded border border-blue-200 bg-blue-50 p-3">
+          <div className="modern-scroll mt-4 overflow-scroll rounded border border-blue-200 bg-blue-50 p-3">
             <h3 className="mb-2 font-medium text-blue-800">Selected Files</h3>
-            <ul className="list-disc pl-5">
+            <ul className="list-disc px-5">
               {selectedFiles.map((file, index) => (
                 <li key={index}>
                   {file.name} ({(file.size / 1024).toFixed(2)} KB)

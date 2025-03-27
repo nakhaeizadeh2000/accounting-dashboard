@@ -84,45 +84,161 @@ const FileUpload = ({
   const multiUploadRefs = useRef<Record<string, AbortController | null>>({});
   const activeFileIdRef = useRef<string | null>(null);
 
-  // ========== SYNC WITH REDUX STATE ==========
+  // Helper function to update overall status based on all files
+  const updateOverallStatus = () => {
+    if (Object.keys(files).length === 0) {
+      setOverallStatus('idle');
+
+      // Update Redux state to match
+      dispatch(setUploadStatus('idle' as UploadStatus));
+      return;
+    }
+
+    const hasUploading = Object.values(files).some((file) => file.status === 'uploading');
+    const hasSelected = Object.values(files).some((file) => file.status === 'selected');
+    const hasFailed = Object.values(files).some((file) => file.status === 'failed');
+    const hasCompleted = Object.values(files).some((file) => file.status === 'completed');
+
+    let newStatus: UploadStatus = 'idle';
+
+    if (hasUploading) {
+      newStatus = 'uploading';
+    } else if (hasSelected) {
+      newStatus = 'selected';
+    } else if (hasFailed) {
+      // If we have both completed and failed files, prioritize the failed status
+      newStatus = 'failed';
+    } else if (hasCompleted) {
+      newStatus = 'completed';
+    }
+
+    if (newStatus !== overallStatus) {
+      setOverallStatus(newStatus);
+
+      // Update Redux state to match the new overall status
+      dispatch(setUploadStatus(newStatus));
+    }
+  };
+
+  // ========== SYNC WITH REDUX STATE FOR SINGLE UPLOAD ==========
   useEffect(() => {
-    if (mode === 'single' && singleUploadStatus === 'uploading') {
-      // Update local state from Redux
-      setSingleUploadProgress(uploadReduxState.progress);
+    if (mode !== 'single' || singleUploadStatus !== 'uploading') return;
 
-      // Update status if needed
-      if (uploadReduxState.status !== 'uploading' && singleUploadStatus === 'uploading') {
-        setSingleUploadStatus(uploadReduxState.status);
-        setSingleErrorMessage(uploadReduxState.errorMessage);
-      }
-    } else if (mode === 'multiple' && overallStatus === 'uploading' && activeFileIdRef.current) {
-      // Update progress for the active file
-      const fileId = activeFileIdRef.current;
+    // Update progress from Redux state
+    setSingleUploadProgress(uploadReduxState.progress);
 
-      setMultiUploadProgress((prev) => ({
-        ...prev,
-        [fileId]: uploadReduxState.progress,
-      }));
+    // Update status if needed
+    if (uploadReduxState.status !== 'uploading' && singleUploadStatus === 'uploading') {
+      setSingleUploadStatus(uploadReduxState.status);
+      setSingleErrorMessage(uploadReduxState.errorMessage);
+    }
+  }, [uploadReduxState, mode, singleUploadStatus]);
 
-      // Update file status if needed
-      if (uploadReduxState.status !== 'uploading' && files[fileId]?.status === 'uploading') {
-        setFiles((prev) => ({
-          ...prev,
-          [fileId]: {
-            ...prev[fileId],
-            status: uploadReduxState.status,
-          },
-        }));
+  // ========== SYNC WITH REDUX STATE FOR MULTI UPLOAD ==========
+  useEffect(() => {
+    // Only proceed if we're in multiple mode
+    if (mode !== 'multiple') return;
 
-        if (uploadReduxState.status === 'failed') {
-          setMultiUploadErrors((prev) => ({
+    // Check if all uploads are complete and update status
+    const areAllFilesComplete = () => {
+      // If no files, consider it complete
+      if (Object.keys(files).length === 0) return true;
+
+      // Check if any file is still uploading
+      const anyUploading = Object.values(files).some((file) => file.status === 'uploading');
+
+      // If none are uploading, all are complete (or failed)
+      return !anyUploading;
+    };
+
+    // If we're currently in uploading state but all files are done, update the status
+    if (overallStatus === 'uploading' && areAllFilesComplete()) {
+      updateOverallStatus();
+    }
+
+    // If we don't have an active file or no files at all, just return
+    if (!activeFileIdRef.current || Object.keys(files).length === 0) {
+      // But if we have files and overall status is 'uploading' and uploadReduxState.progress > 0
+      if (
+        Object.keys(files).length > 0 &&
+        overallStatus === 'uploading' &&
+        uploadReduxState.progress > 0
+      ) {
+        // Find files that are in uploading state
+        const uploadingFiles = Object.entries(files).filter(
+          ([_, file]) => file.status === 'uploading',
+        );
+        if (uploadingFiles.length > 0) {
+          // Just update the first one we find
+          const [fileIdToUpdate] = uploadingFiles[0];
+
+          setMultiUploadProgress((prev) => ({
             ...prev,
-            [fileId]: uploadReduxState.errorMessage,
+            [fileIdToUpdate]: uploadReduxState.progress,
           }));
         }
       }
+      return;
     }
-  }, [uploadReduxState, mode, singleUploadStatus, overallStatus, files]);
+
+    const fileId = activeFileIdRef.current;
+
+    // Only update if the file exists in our state
+    if (!files[fileId]) {
+      return;
+    }
+
+    // Update progress for the active file regardless of uploadReduxState.status
+    // This ensures progress updates even if the status remains 'idle'
+    if (uploadReduxState.progress > 0) {
+      console.log('Updating progress for active file:', fileId, uploadReduxState.progress);
+      setMultiUploadProgress((prev) => {
+        const newProgress = {
+          ...prev,
+          [fileId]: uploadReduxState.progress,
+        };
+        return newProgress;
+      });
+    }
+
+    // Update file status if Redux status indicates completion or failure
+    if (uploadReduxState.status === 'completed' || uploadReduxState.status === 'failed') {
+      // Update the specific file status
+      setFiles((prev) => {
+        const updated = {
+          ...prev,
+          [fileId]: {
+            ...prev[fileId],
+            status: uploadReduxState.status as UploadStatus,
+          },
+        };
+        return updated;
+      });
+
+      // Update the file-specific error if needed
+      if (uploadReduxState.status === 'failed') {
+        setMultiUploadErrors((prev) => {
+          const updated = {
+            ...prev,
+            [fileId]: uploadReduxState.errorMessage,
+          };
+          return updated;
+        });
+      }
+
+      // Clear active file ref since this file is done
+      activeFileIdRef.current = null;
+
+      // Check if this was the last file being uploaded
+      const anyStillUploading = Object.values(files)
+        .filter((f) => f.id !== fileId) // Exclude the current file
+        .some((f) => f.status === 'uploading');
+
+      if (!anyStillUploading) {
+        updateOverallStatus();
+      }
+    }
+  }, [uploadReduxState, mode, files, overallStatus]);
 
   // ========== SINGLE FILE UPLOAD HANDLERS ==========
   const handleSingleFileSelect = (file: File | null) => {
@@ -131,6 +247,9 @@ const FileUpload = ({
     if (file) {
       setSingleUploadStatus('selected');
       setSingleErrorMessage('');
+
+      // Update Redux state to match
+      dispatch(setUploadStatus('selected' as UploadStatus));
     } else {
       resetSingleUploadState();
     }
@@ -145,6 +264,10 @@ const FileUpload = ({
     setSelectedFile(null);
     setSingleUploadStatus('failed');
     setSingleErrorMessage(reason);
+
+    // Update Redux state to match
+    dispatch(setUploadStatus('failed' as UploadStatus));
+    dispatch(setUploadError(reason));
   };
 
   const handleSingleUploadStart = async () => {
@@ -152,7 +275,7 @@ const FileUpload = ({
 
     // Reset Redux state
     dispatch(resetUploadState());
-    dispatch(setUploadStatus('uploading'));
+    dispatch(setUploadStatus('uploading' as UploadStatus));
 
     // Update local state
     setSingleUploadStatus('uploading');
@@ -175,6 +298,10 @@ const FileUpload = ({
       setSingleUploadStatus('completed');
       setSingleUploadResult(result);
 
+      // Update Redux state to match
+      dispatch(setUploadStatus('completed' as UploadStatus));
+      dispatch(setUploadProgress(100));
+
       // Call success callback if provided
       if (onUploadSuccess) {
         onUploadSuccess(result);
@@ -190,6 +317,10 @@ const FileUpload = ({
 
       setSingleUploadStatus('failed');
       setSingleErrorMessage(errorMessage);
+
+      // Update Redux state to match
+      dispatch(setUploadStatus('failed' as UploadStatus));
+      dispatch(setUploadError(errorMessage));
 
       // Call error callback if provided
       if (onUploadError) {
@@ -211,7 +342,7 @@ const FileUpload = ({
       setSingleErrorMessage('Upload cancelled');
 
       // Update Redux state
-      dispatch(setUploadStatus('failed'));
+      dispatch(setUploadStatus('failed' as UploadStatus));
       dispatch(setUploadError('Upload cancelled'));
     }
   };
@@ -233,6 +364,7 @@ const FileUpload = ({
 
     // Reset Redux state
     dispatch(resetUploadState());
+    dispatch(setUploadStatus('idle' as UploadStatus));
   };
 
   // ========== MULTIPLE FILE UPLOAD HANDLERS ==========
@@ -246,32 +378,41 @@ const FileUpload = ({
 
     // Create a unique ID for each file
     const newFiles: Record<string, FileEntry> = {};
+    const fileList: File[] = [];
 
     selectedFiles.forEach((file) => {
       const fileId = generateFileId();
       newFiles[fileId] = {
         id: fileId,
         file,
-        status: 'selected',
+        status: 'selected' as UploadStatus,
       };
+      fileList.push(file);
     });
 
     // Update files state
-    setFiles((prev) => ({
-      ...prev,
-      ...newFiles,
-    }));
+    setFiles((prev) => {
+      const updated = { ...prev, ...newFiles };
+      return updated;
+    });
 
+    // Set the overall status to 'selected'
     setOverallStatus('selected');
+
+    // Update Redux state to match
+    dispatch(resetUploadState());
+    dispatch(setUploadStatus('selected' as UploadStatus));
 
     // Call external handler if provided
     if (onFilesSelect) {
-      onFilesSelect(selectedFiles);
+      onFilesSelect(fileList);
     }
   };
 
   const handleMultiFileReject = (reason: string) => {
-    console.warn('File rejected:', reason);
+    // Update Redux state to reflect the error
+    dispatch(setUploadStatus('failed' as UploadStatus));
+    dispatch(setUploadError(reason));
   };
 
   const handleMultiUploadStart = async () => {
@@ -280,12 +421,12 @@ const FileUpload = ({
       ([_, fileInfo]) => fileInfo.status === 'selected',
     );
 
-    if (filesToUpload.length === 0) return [];
+    if (filesToUpload.length === 0) {
+      console.log('No files to upload');
+      return [];
+    }
 
-    // Reset Redux state
-    dispatch(resetUploadState());
-
-    // Update overall status
+    // Update overall status immediately
     setOverallStatus('uploading');
 
     // Reset progress for files that are about to be uploaded
@@ -296,48 +437,63 @@ const FileUpload = ({
     setMultiUploadProgress(initialProgress);
 
     // Update file statuses to 'uploading'
-    const updatedFiles = { ...files };
-    filesToUpload.forEach(([fileId]) => {
-      updatedFiles[fileId].status = 'uploading';
+    setFiles((prev) => {
+      const updated = { ...prev };
+      filesToUpload.forEach(([fileId]) => {
+        updated[fileId] = {
+          ...updated[fileId],
+          status: 'uploading' as UploadStatus,
+        };
+      });
+      return updated;
     });
-    setFiles(updatedFiles);
 
     // Create a results object to collect all upload results
     const results: Record<string, any> = { ...multiUploadResults };
     const uploadedFileIds: string[] = [];
 
-    // Upload each file individually in sequence
-    for (const [fileId, fileInfo] of filesToUpload) {
+    // We'll use this to track when all uploads are complete
+    let completedCount = 0;
+    const totalFiles = filesToUpload.length;
+
+    // Create promises for all uploads
+    const uploadPromises = filesToUpload.map(async ([fileId, fileInfo]) => {
+      // Important: Set Redux state for this file upload to match our UploadStatus type
+      dispatch(resetUploadState());
+      dispatch(setUploadStatus('uploading' as UploadStatus));
+
+      // Set this as the active file for Redux tracking
+      activeFileIdRef.current = fileId;
+      console.log(`Starting upload for file ${fileId}, set as active`);
+
       try {
-        // Reset Redux state for new upload
-        dispatch(resetUploadState());
-        dispatch(setUploadStatus('uploading'));
-
-        // Set current file as active for progress tracking
-        activeFileIdRef.current = fileId;
-
         // Create a controller for abort
         const controller = new AbortController();
         multiUploadRefs.current[fileId] = controller;
 
-        // Upload the file
+        // Start the upload process
         const result = await uploadFile({
           bucket,
           files: [fileInfo.file],
         }).unwrap();
 
-        // Update state on success
-        setMultiUploadProgress((prev) => ({
-          ...prev,
-          [fileId]: 100,
-        }));
+        // Update Redux state to completed (ensuring we use the correct UploadStatus value)
+        dispatch(setUploadStatus('completed' as UploadStatus));
+        dispatch(setUploadProgress(100));
 
+        // Update file status to completed
         setFiles((prev) => ({
           ...prev,
           [fileId]: {
             ...prev[fileId],
-            status: 'completed',
+            status: 'completed' as UploadStatus,
           },
+        }));
+
+        // Set final progress for this file
+        setMultiUploadProgress((prev) => ({
+          ...prev,
+          [fileId]: 100,
         }));
 
         // Store the result
@@ -352,6 +508,8 @@ const FileUpload = ({
         if (onFileUploadSuccess) {
           onFileUploadSuccess(fileId, result);
         }
+
+        return { fileId, success: true, result };
       } catch (error: any) {
         // Check if this was canceled
         const errorMessage =
@@ -359,16 +517,21 @@ const FileUpload = ({
             ? 'Upload cancelled'
             : error.data || error.message || 'Upload failed';
 
+        // Update Redux state to failed (ensuring we use the correct UploadStatus value)
+        dispatch(setUploadStatus('failed' as UploadStatus));
+        dispatch(setUploadError(errorMessage));
+
         setMultiUploadErrors((prev) => ({
           ...prev,
           [fileId]: errorMessage,
         }));
 
+        // Update file status to failed
         setFiles((prev) => ({
           ...prev,
           [fileId]: {
             ...prev[fileId],
-            status: 'failed',
+            status: 'failed' as UploadStatus,
           },
         }));
 
@@ -376,26 +539,61 @@ const FileUpload = ({
         if (onFileUploadError) {
           onFileUploadError(fileId, error);
         }
+
+        return { fileId, success: false, error };
       } finally {
         // Clear the controller reference
         multiUploadRefs.current[fileId] = null;
+
+        // Increment completed count
+        completedCount++;
+
+        // Allow next file to become active by clearing this one
+        // Only if this is the current active file
+        if (activeFileIdRef.current === fileId) {
+          activeFileIdRef.current = null;
+        }
+
+        // Check if this was the last file to complete
+        if (completedCount === totalFiles) {
+          // Update overall status to reflect the final state of all files
+          setTimeout(() => {
+            updateOverallStatus();
+          }, 10);
+        }
       }
-    }
+    });
 
-    // Clear active file
-    activeFileIdRef.current = null;
-
-    // Check if all files have been processed
-    const allCompleted = Object.values(files).every(
-      (file) => file.status === 'completed' || file.status === 'failed',
-    );
-
-    if (allCompleted) {
-      const anyFailed = Object.values(files).some((file) => file.status === 'failed');
-      setOverallStatus(anyFailed ? 'failed' : 'completed');
-
-      // Reset Redux state
+    try {
+      // Wait for all uploads to complete (whether success or failure)
+      await Promise.all(uploadPromises);
+    } finally {
+      // Reset Redux state when all uploads are done - set it to appropriate status
       dispatch(resetUploadState());
+
+      // Clear active file (should already be null, but just to be safe)
+      activeFileIdRef.current = null;
+
+      // Update overall status based on current state of all files
+
+      // Determine final status
+      const anyFailed = Object.values(files).some((file) => file.status === 'failed');
+      const allCompleted = Object.values(files).every(
+        (file) => file.status === 'completed' || file.status === 'failed',
+      );
+
+      if (allCompleted) {
+        if (anyFailed) {
+          dispatch(setUploadStatus('failed' as UploadStatus));
+          setOverallStatus('failed');
+        } else {
+          dispatch(setUploadStatus('completed' as UploadStatus));
+          setOverallStatus('completed');
+        }
+      } else {
+        // This is a fallback; we shouldn't reach here if uploads were processed correctly
+        updateOverallStatus();
+      }
 
       // Call completion callback if provided
       if (onAllUploadsComplete) {
@@ -417,7 +615,7 @@ const FileUpload = ({
         ...prev,
         [fileId]: {
           ...prev[fileId],
-          status: 'failed',
+          status: 'failed' as UploadStatus,
         },
       }));
 
@@ -432,6 +630,9 @@ const FileUpload = ({
         dispatch(setUploadError('Upload cancelled'));
         activeFileIdRef.current = null;
       }
+
+      // Update overall status
+      updateOverallStatus();
     }
   };
 
@@ -467,35 +668,32 @@ const FileUpload = ({
       return updated;
     });
 
-    // Update overall status if no files left
-    if (Object.keys(files).length <= 1) {
-      // We're removing the last file
-      setOverallStatus('idle');
-      dispatch(resetUploadState());
-    } else {
-      // Recalculate overall status based on remaining files
-      const anyUploading = Object.entries(files)
-        .filter(([id]) => id !== fileId)
-        .some(([_, file]) => file.status === 'uploading');
+    // We need to update this after the state has been updated
+    // Using setTimeout ensures this runs after the state updates
+    setTimeout(() => {
+      updateOverallStatus();
 
-      const anyFailed = Object.entries(files)
-        .filter(([id]) => id !== fileId)
-        .some(([_, file]) => file.status === 'failed');
-
-      const anySelected = Object.entries(files)
-        .filter(([id]) => id !== fileId)
-        .some(([_, file]) => file.status === 'selected');
-
-      if (anyUploading) {
-        setOverallStatus('uploading');
-      } else if (anyFailed) {
-        setOverallStatus('failed');
-      } else if (anySelected) {
-        setOverallStatus('selected');
+      // Update Redux state based on remaining files
+      if (Object.keys(files).length <= 1) {
+        // We're removing the last file
+        dispatch(setUploadStatus('idle' as UploadStatus));
       } else {
-        setOverallStatus('completed');
+        // Determine the status based on remaining files
+        const remainingFiles = Object.values(files).filter((f) => f.id !== fileId);
+
+        if (remainingFiles.some((f) => f.status === 'uploading')) {
+          dispatch(setUploadStatus('uploading' as UploadStatus));
+        } else if (remainingFiles.some((f) => f.status === 'failed')) {
+          dispatch(setUploadStatus('failed' as UploadStatus));
+        } else if (remainingFiles.some((f) => f.status === 'selected')) {
+          dispatch(setUploadStatus('selected' as UploadStatus));
+        } else if (remainingFiles.some((f) => f.status === 'completed')) {
+          dispatch(setUploadStatus('completed' as UploadStatus));
+        } else {
+          dispatch(setUploadStatus('idle' as UploadStatus));
+        }
       }
-    }
+    }, 0);
   };
 
   const handleRetryFile = (fileId: string) => {
@@ -506,7 +704,7 @@ const FileUpload = ({
       ...prev,
       [fileId]: {
         ...prev[fileId],
-        status: 'selected',
+        status: 'selected' as UploadStatus,
       },
     }));
 
@@ -523,14 +721,16 @@ const FileUpload = ({
       [fileId]: 0,
     }));
 
-    // If we're not uploading anything else, set overall status to 'selected'
-    const anyUploading = Object.values(files).some((fileInfo) => fileInfo.status === 'uploading');
-    if (!anyUploading) {
-      setOverallStatus('selected');
-    }
+    // Update the overall status based on the new state
+    // Using setTimeout ensures this happens after state updates
+    setTimeout(() => {
+      updateOverallStatus();
+
+      // Update Redux state to 'selected' since we now have a file ready to upload
+      dispatch(setUploadStatus('selected' as UploadStatus));
+    }, 0);
   };
 
-  // Render the appropriate component based on mode
   return (
     <div data-upload-id={id}>
       {mode === 'single' ? (
@@ -548,22 +748,25 @@ const FileUpload = ({
           onRemoveFile={handleSingleRemoveFile}
         />
       ) : (
-        <MultiFileUpload
-          id={id}
-          acceptedFileTypes={acceptedFileTypes}
-          maxSizeMB={maxSizeMB}
-          maxFiles={maxFiles}
-          uploadingDependsToForm={uploadingDependsToForm}
-          onFilesSelect={handleFilesSelect}
-          onFileReject={handleMultiFileReject}
-          uploadStatus={overallStatus}
-          uploadProgress={multiUploadProgress}
-          uploadError={multiUploadErrors}
-          onUploadStart={handleMultiUploadStart}
-          onUploadCancel={handleMultiUploadCancel}
-          onRemoveFile={handleMultiRemoveFile}
-          onRetryFile={handleRetryFile}
-        />
+        <>
+          <MultiFileUpload
+            key={`multi-upload-${id}`} // Force re-render on changes
+            id={id}
+            acceptedFileTypes={acceptedFileTypes}
+            maxSizeMB={maxSizeMB}
+            maxFiles={maxFiles}
+            uploadingDependsToForm={uploadingDependsToForm}
+            onFilesSelect={handleFilesSelect}
+            onFileReject={handleMultiFileReject}
+            uploadStatus={overallStatus}
+            uploadProgress={multiUploadProgress}
+            uploadError={multiUploadErrors}
+            onUploadStart={handleMultiUploadStart}
+            onUploadCancel={handleMultiUploadCancel}
+            onRemoveFile={handleMultiRemoveFile}
+            onRetryFile={handleRetryFile}
+          />
+        </>
       )}
     </div>
   );

@@ -1,16 +1,9 @@
 'use client';
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import styles from '@/components/modules/upload-files/upload-file.module.scss';
-import XIcon from './icons/XIcon';
 import AddFileIcon from './icons/AddFileIcon';
-import ImageFileIcon from './icons/ImageFileIcon';
-import VideoFileIcon from './icons/VideoFileIcon';
-import AudioFileIcon from './icons/AudioFileIcon';
-import CompressedFileIcon from './icons/CompressedFileIcon';
-import DocumentFileIcon from './icons/DocumentFileIcon';
-import CompleteTickIcon from './icons/CompleteTickIcon';
-import FailedXmarkIcon from './icons/FailedXmarkIcon';
+import FileItem, { FileItemType, FileUploadStatus } from './FileItemComponent';
 
 export type MultiFileUploadProps = {
   id: string; // Unique identifier for this upload component
@@ -30,28 +23,7 @@ export type MultiFileUploadProps = {
   uploadingDependsToForm?: boolean;
 };
 
-export type FileUploadStatus = 'idle' | 'selected' | 'uploading' | 'completed' | 'failed';
-
-// Map file extensions to icons (reused from SingleFileUpload)
-const getFileIcon = (fileType: string) => {
-  if (fileType.startsWith('image/')) {
-    return ImageFileIcon;
-  } else if (fileType.startsWith('video/')) {
-    return VideoFileIcon;
-  } else if (fileType.startsWith('audio/')) {
-    return AudioFileIcon;
-  } else if (
-    fileType.includes('zip') ||
-    fileType.includes('rar') ||
-    fileType.includes('compressed')
-  ) {
-    return CompressedFileIcon;
-  } else {
-    return DocumentFileIcon;
-  }
-};
-
-// Format file size with appropriate units (reused from SingleFileUpload)
+// Format file size with appropriate units
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
 
@@ -63,15 +35,6 @@ const formatFileSize = (bytes: number): string => {
   const formattedSize = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
 
   return `${formattedSize} ${sizes[i]}`;
-};
-
-// File item for internal management
-type FileItem = {
-  id: string;
-  file: File;
-  name: string;
-  size: string;
-  type: string;
 };
 
 const MultiFileUpload = ({
@@ -92,9 +55,15 @@ const MultiFileUpload = ({
   uploadingDependsToForm = false,
 }: MultiFileUploadProps) => {
   // Internal state
-  const [selectedFiles, setSelectedFiles] = useState<FileItem[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<FileItemType[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Add a new state to track file statuses for better reactivity
+  const [fileStatuses, setFileStatuses] = useState<Record<string, FileUploadStatus>>({});
+
+  // Map to store original File objects by id
+  const [fileObjects, setFileObjects] = useState<Record<string, File>>({});
 
   // Derived values
   const isUploading = uploadStatus === 'uploading';
@@ -102,6 +71,53 @@ const MultiFileUpload = ({
   const hasNewFiles = selectedFiles.some(
     (file) => !uploadProgress[file.id] && uploadProgress[file.id] !== 0,
   );
+
+  // Update fileStatuses when uploadProgress or uploadError changes
+  useEffect(() => {
+    const newStatuses: Record<string, FileUploadStatus> = {};
+
+    selectedFiles.forEach((file) => {
+      // Recalculate the status for each file
+      const currentStatus = fileStatuses[file.id] || 'selected';
+      let newStatus = currentStatus;
+
+      // Calculate the new status based on current conditions
+      if (uploadError[file.id]) {
+        newStatus = 'failed';
+      } else if (uploadProgress[file.id] === 100) {
+        newStatus = 'completed';
+      } else if (uploadProgress[file.id] > 0) {
+        newStatus = 'uploading';
+      } else if (uploadStatus === 'uploading' && currentStatus === 'selected') {
+        // If overall status is uploading and this file is selected, mark it as uploading
+        newStatus = 'uploading';
+      }
+
+      // Log any status changes
+      if (newStatus !== currentStatus) {
+        console.log(`File ${file.id} status changing from ${currentStatus} to ${newStatus}`);
+      }
+
+      newStatuses[file.id] = newStatus;
+    });
+
+    // Only update state if there's an actual change
+    const hasChanges = selectedFiles.some((file) => newStatuses[file.id] !== fileStatuses[file.id]);
+
+    if (hasChanges) {
+      console.log('Updating file statuses:', newStatuses);
+      setFileStatuses(newStatuses);
+    } else {
+      console.log('No status changes detected');
+    }
+
+    // Force re-render every time uploadProgress changes to ensure FileItems update
+    // This is a fallback in case the status doesn't change
+    if (Object.keys(uploadProgress).length > 0) {
+      // For debugging purposes, trigger a re-render
+      setSelectedFiles((prev) => [...prev]);
+    }
+  }, [uploadProgress, uploadError, uploadStatus, selectedFiles]);
 
   // Calculate constraints for display
   const allowedTypes = acceptedFileTypes
@@ -121,6 +137,81 @@ const MultiFileUpload = ({
   if (maxFiles) {
     displayConstraints.push(`Max ${maxFiles} files`);
   }
+
+  // Get file status for a specific file - now uses the tracked statuses when available
+  const getFileStatus = (fileId: string): FileUploadStatus => {
+    // First check if we have a cached status
+    if (fileStatuses[fileId]) {
+      // For debugging
+      const previousStatus = fileStatuses[fileId];
+
+      // If this file has an error, it's failed regardless of cached status
+      if (uploadError[fileId]) {
+        if (previousStatus !== 'failed') {
+          console.log(
+            `File ${fileId} status changing from ${previousStatus} to failed due to error`,
+          );
+          return 'failed';
+        }
+        return 'failed';
+      }
+
+      // If this file has progress of 100, it's completed
+      if (uploadProgress[fileId] === 100) {
+        if (previousStatus !== 'completed') {
+          console.log(
+            `File ${fileId} status changing from ${previousStatus} to completed due to progress=100`,
+          );
+          return 'completed';
+        }
+        return 'completed';
+      }
+
+      // If this file has any progress > 0, it's uploading
+      if (uploadProgress[fileId] > 0) {
+        if (previousStatus !== 'uploading') {
+          console.log(
+            `File ${fileId} status changing from ${previousStatus} to uploading due to progress=${uploadProgress[fileId]}`,
+          );
+          return 'uploading';
+        }
+        return 'uploading';
+      }
+
+      // For debugging
+      console.log(`File ${fileId} status remains ${previousStatus}`, {
+        progress: uploadProgress[fileId],
+        hasError: !!uploadError[fileId],
+        overallStatus: uploadStatus,
+      });
+
+      // If overall status is uploading but this file has no progress yet, mark it as uploading
+      if (uploadStatus === 'uploading' && previousStatus === 'selected') {
+        console.log(`File ${fileId} status changing to uploading due to overall status`);
+        return 'uploading';
+      }
+
+      return previousStatus;
+    }
+
+    // If we don't have a cached status, determine based on current state
+    console.log(`Determining initial status for file ${fileId}`);
+
+    // If this file has an error, it's failed
+    if (uploadError[fileId]) return 'failed';
+
+    // If this file has progress of 100, it's completed
+    if (uploadProgress[fileId] === 100) return 'completed';
+
+    // If this file has any progress > 0, it's uploading
+    if (uploadProgress[fileId] > 0) return 'uploading';
+
+    // If overall status is uploading, set new files to uploading
+    if (uploadStatus === 'uploading') return 'uploading';
+
+    // Otherwise it's just selected
+    return 'selected';
+  };
 
   // Validate a single file
   const validateFile = (file: File): { valid: boolean; reason?: string } => {
@@ -164,21 +255,26 @@ const MultiFileUpload = ({
     }
 
     // Validate and convert files to FileItems
-    const newFiles: FileItem[] = [];
+    const newFiles: FileItemType[] = [];
+    const newFileObjects: Record<string, File> = { ...fileObjects };
     const rejectedFiles: string[] = [];
 
     filesArray.forEach((file) => {
       const { valid, reason } = validateFile(file);
 
       if (valid) {
+        const fileId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
         // Create a FileItem for the valid file
         newFiles.push({
-          id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-          file,
+          id: fileId,
           name: file.name,
           size: formatFileSize(file.size),
           type: file.type,
         });
+
+        // Store the original File object
+        newFileObjects[fileId] = file;
       } else if (reason) {
         rejectedFiles.push(reason);
       }
@@ -193,12 +289,23 @@ const MultiFileUpload = ({
 
     // Add valid files to state
     if (newFiles.length > 0) {
-      const updatedFiles = [...selectedFiles, ...newFiles];
-      setSelectedFiles(updatedFiles);
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
+      setFileObjects(newFileObjects);
 
-      // Notify parent component
+      // Initialize statuses for new files
+      const initialStatuses: Record<string, FileUploadStatus> = {};
+      newFiles.forEach((file) => {
+        initialStatuses[file.id] = 'selected';
+      });
+
+      setFileStatuses((prev) => ({
+        ...prev,
+        ...initialStatuses,
+      }));
+
+      // Notify parent component with original File objects
       if (onFilesSelect) {
-        onFilesSelect(newFiles.map((item) => item.file));
+        onFilesSelect(newFiles.map((item) => newFileObjects[item.id]));
       }
     }
 
@@ -267,6 +374,20 @@ const MultiFileUpload = ({
     // Update internal state
     setSelectedFiles((prev) => prev.filter((file) => file.id !== fileId));
 
+    // Remove from fileObjects
+    setFileObjects((prev) => {
+      const updated = { ...prev };
+      delete updated[fileId];
+      return updated;
+    });
+
+    // Also update fileStatuses
+    setFileStatuses((prev) => {
+      const updated = { ...prev };
+      delete updated[fileId];
+      return updated;
+    });
+
     // Notify parent component
     if (onRemoveFile) {
       onRemoveFile(fileId);
@@ -276,126 +397,14 @@ const MultiFileUpload = ({
   // Retry a failed upload
   const handleRetryFile = (fileId: string) => {
     if (onRetryFile) {
+      // Update our local status tracking
+      setFileStatuses((prev) => ({
+        ...prev,
+        [fileId]: 'selected',
+      }));
+
       onRetryFile(fileId);
     }
-  };
-
-  // Get file status for a specific file
-  const getFileStatus = (fileId: string): FileUploadStatus => {
-    // If this file has an error, it's failed
-    if (uploadError[fileId]) return 'failed';
-
-    // If this file has progress of 100, it's completed
-    if (uploadProgress[fileId] === 100) return 'completed';
-
-    // If this file has any progress > 0, it's uploading
-    if (uploadProgress[fileId] > 0) return 'uploading';
-
-    // Otherwise it's just selected
-    return 'selected';
-  };
-
-  // Render a single file item
-  const renderFileItem = (file: FileItem) => {
-    const FileIcon = getFileIcon(file.type);
-    const fileStatus = getFileStatus(file.id);
-    const fileProgress = uploadProgress[file.id] || 0;
-    const fileErrorMessage = uploadError[file.id];
-
-    const isUploading = fileStatus === 'uploading';
-    const isCompleted = fileStatus === 'completed';
-    const isFailed = fileStatus === 'failed';
-
-    return (
-      <div
-        key={file.id}
-        className="relative -right-[3px] flex h-16 w-full flex-row gap-2 overflow-hidden rounded-xl bg-gray-50"
-      >
-        <div className="flex w-3/5 flex-col justify-center px-4">
-          <p className="h-fit w-full truncate text-gray-700">{file.name}</p>
-          <div className="flex h-fit w-full flex-row items-center gap-2">
-            {isUploading && (
-              <>
-                <p className="flex text-blue-500">{fileProgress}%</p>
-                <div className="flex h-3/5 w-[2px] rounded-xl bg-gray-300"></div>
-                <p className="flex text-blue-500">uploading</p>
-              </>
-            )}
-
-            {isCompleted && (
-              <div className="flex items-center gap-1">
-                <CompleteTickIcon width={16} height={16} />
-                <p className="flex text-green-500">completed</p>
-              </div>
-            )}
-
-            {isFailed && (
-              <div className="flex items-center gap-1">
-                <FailedXmarkIcon width={16} height={16} />
-                <p className="flex text-red-500">{fileErrorMessage || 'failed'}</p>
-              </div>
-            )}
-
-            <div className="flex h-3/5 w-[2px] rounded-xl bg-gray-300"></div>
-            <p className="flex text-blue-500">{file.size}</p>
-          </div>
-        </div>
-
-        <div className="flex w-2/5 flex-row items-center gap-2 px-2">
-          {isUploading && (
-            <>
-              <div className="flex h-[.325rem] w-11/12 rounded-xl bg-gray-200">
-                <div
-                  className="h-full rounded-xl bg-blue-500"
-                  style={{ width: `${fileProgress}%` }}
-                ></div>
-              </div>
-              <button
-                onClick={() => handleCancelUpload(file.id)}
-                className="flex w-1/12 hover:text-red-500"
-              >
-                <XIcon />
-              </button>
-            </>
-          )}
-
-          {isCompleted && (
-            <button
-              onClick={() => handleRemoveFile(file.id)}
-              className="ml-auto rounded-md bg-gray-200 px-2 py-1 text-gray-600 hover:bg-gray-300"
-            >
-              Remove
-            </button>
-          )}
-
-          {isFailed && (
-            <div className="ml-auto flex gap-2">
-              <button
-                onClick={() => handleRetryFile(file.id)}
-                className="rounded-md bg-blue-100 px-2 py-1 text-blue-600 hover:bg-blue-200"
-              >
-                Retry
-              </button>
-              <button
-                onClick={() => handleRemoveFile(file.id)}
-                className="rounded-md bg-gray-200 px-2 py-1 text-gray-600 hover:bg-gray-300"
-              >
-                Remove
-              </button>
-            </div>
-          )}
-
-          {fileStatus === 'selected' && (
-            <button
-              onClick={() => handleRemoveFile(file.id)}
-              className="ml-auto rounded-md bg-gray-200 px-2 py-1 text-gray-600 hover:bg-gray-300"
-            >
-              Remove
-            </button>
-          )}
-        </div>
-      </div>
-    );
   };
 
   // Main render
@@ -475,13 +484,41 @@ const MultiFileUpload = ({
               No files selected
             </div>
           ) : (
-            selectedFiles.map(renderFileItem)
+            selectedFiles.map((file) => {
+              const fileStatus = getFileStatus(file.id);
+              const fileProgress = uploadProgress[file.id] || 0;
+
+              return (
+                <FileItem
+                  key={`${file.id}-${fileStatus}-${fileProgress}-${Date.now()}`}
+                  file={file}
+                  status={fileStatus}
+                  progress={fileProgress}
+                  errorMessage={uploadError[file.id]}
+                  onCancel={handleCancelUpload}
+                  onRemove={handleRemoveFile}
+                  onRetry={handleRetryFile}
+                />
+              );
+            })
           )}
         </div>
       </div>
 
       {/* Error message display */}
       {errorMessage && <div className="mt-2 text-red-500">{errorMessage}</div>}
+
+      {/* Debug info during development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-2 rounded border border-gray-300 bg-gray-100 p-2 text-xs">
+          <div>
+            <strong>Debug Info:</strong>
+          </div>
+          <div>Overall upload status: {uploadStatus}</div>
+          <div>Selected files: {selectedFiles.length}</div>
+          <div>File statuses: {JSON.stringify(fileStatuses)}</div>
+        </div>
+      )}
     </>
   );
 };
