@@ -5,7 +5,7 @@ import MultiFileUploadWrapper from '@/components/modules/upload-files/MultiFileU
 import SingleFileUpload from '@/components/modules/upload-files/SingleFileUpload';
 import MultiFileUpload from '@/components/modules/upload-files/MultiFileUpload';
 import { useMultiFileUpload, useSingleFileUpload } from '../hook/useFileUploadHook';
-import FileUpload from '../EnhancedFileUpload';
+import FileUpload from '../FileUpload';
 
 /**
  * Example component demonstrating various ways to use the file upload components

@@ -423,7 +423,7 @@ const MultiFileUpload = ({
               disabled={isUploading}
             />
 
-            <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-2">
               <AddFileIcon width={40} height={40} />
               <p className="text-xl leading-[1.125rem] text-neutral-400">
                 {isUploading
