@@ -1,4 +1,4 @@
-import MultiFileUpload from '@/components/modules/upload-files/MultiFileUpload';
+import FullExampleUsage from '@/components/modules/upload-files/example/FullExampleUsage';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -8,7 +8,10 @@ export const metadata: Metadata = {
 const Sales = () => {
   return (
     <>
-      <MultiFileUpload id="1" />
+      {/* <MultiFileUpload id="1" /> */}
+      {/* <MultiFileUploadExample /> */}
+      {/* <AdvancedUploadFileForm id="1" /> */}
+      <FullExampleUsage />
     </>
   );
 };

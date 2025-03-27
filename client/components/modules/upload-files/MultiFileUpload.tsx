@@ -288,7 +288,7 @@ const MultiFileUpload = ({
     // If this file has progress of 100, it's completed
     if (uploadProgress[fileId] === 100) return 'completed';
 
-    // If this file has any progress, it's uploading
+    // If this file has any progress > 0, it's uploading
     if (uploadProgress[fileId] > 0) return 'uploading';
 
     // Otherwise it's just selected
@@ -423,7 +423,7 @@ const MultiFileUpload = ({
               disabled={isUploading}
             />
 
-            <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-2">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4">
               <AddFileIcon width={40} height={40} />
               <p className="text-xl leading-[1.125rem] text-neutral-400">
                 {isUploading
