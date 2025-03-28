@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 
-import TestForm from './TestForm';
-import ErfanTestForm from './ErfanTestForm';
+import ExampleMultiUploadFile from '@/components/modules/upload-files/example/ExampleMultiUploadFile';
 
 export const metadata: Metadata = {
   title: 'SalsetDatees Admin',
@@ -10,8 +9,9 @@ export const metadata: Metadata = {
 const Sales = () => {
   return (
     <>
-      <TestForm />
-      <ErfanTestForm />
+      <ExampleMultiUploadFile />
+      {/* <TestForm /> */}
+      {/* <ErfanTestForm /> */}
     </>
   );
 };

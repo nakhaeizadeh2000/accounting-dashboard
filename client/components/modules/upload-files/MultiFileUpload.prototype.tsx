@@ -1,6 +1,6 @@
 'use client';
 
-import styles from 'components/modules/upload-files/upload-file.module.scss';
+import styles from 'components/modules/upload-files/styles/upload-file.module.scss';
 import XIcon from './icons/XIcon';
 
 const MultiFileUpload = () => {
