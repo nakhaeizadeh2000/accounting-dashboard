@@ -2,7 +2,6 @@
 
 import styles from 'components/modules/upload-files/upload-file.module.scss';
 import XIcon from './icons/XIcon';
-import SingleFileUpload from '@/components/modules/upload-files/SingleFileUpload';
 
 const MultiFileUpload = () => {
   return (
