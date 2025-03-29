@@ -17,6 +17,7 @@ import styles from 'components/modules/upload-files/styles/upload-file.module.sc
 import { cancelUploadRequest } from '@/store/features/files/files.api';
 
 export interface MultiFileUploadProps {
+  id?: string; // Unique instance ID for component
   bucket?: string;
   acceptedFileTypes?: string;
   maxSizeMB?: number;
@@ -92,6 +93,7 @@ const getStatusText = (status: string): string => {
 };
 
 const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
+  id,
   bucket = 'default',
   acceptedFileTypes = 'image/jpeg,image/png,application/pdf',
   maxSizeMB = 10,
@@ -104,6 +106,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const {
+    componentId,
     queue,
     queueStatus,
     currentUploadingFile,
@@ -117,6 +120,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
     retryAllFailed,
     resetForMoreFiles,
   } = useMultiFileUpload({
+    id, // Pass component ID for isolation
     bucket,
     onUploadComplete,
     onAllUploadsComplete,
@@ -271,6 +275,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
         onDrop={handleDrop}
         role="button"
         tabIndex={0}
+        data-upload-id={id || componentId}
       >
         <input
           type="file"
@@ -531,6 +536,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
 
 // Add PropTypes validation to satisfy ESLint
 MultiFileUpload.propTypes = {
+  id: PropTypes.string,
   bucket: PropTypes.string,
   acceptedFileTypes: PropTypes.string,
   maxSizeMB: PropTypes.number,

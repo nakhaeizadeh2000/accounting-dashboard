@@ -30,10 +30,16 @@ const ExampleMultiUploadFile = () => {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4">
-      <h1 className="text-2xl font-bold">File Upload</h1>
+    <div className="mx-auto mb-8 flex w-full max-w-6xl flex-col gap-6 p-4">
+      <h1 className="text-2xl font-bold">Multi-File Upload Example</h1>
+      <p className="text-gray-600">
+        This component allows multiple files to be uploaded at once. Try uploading several files to
+        see how it works. Note that this example uses isolation, so files selected here won&apos;t
+        appear in other upload components.
+      </p>
 
       <MultiFileUpload
+        id="example-multi-upload-1" // Unique ID for this component instance
         bucket="default"
         acceptedFileTypes="image/*,application/pdf,application/msword"
         maxSizeMB={10}

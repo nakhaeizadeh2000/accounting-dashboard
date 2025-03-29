@@ -6,13 +6,13 @@ import {
   FileUploadInfo,
   setFileUploading,
   clearFileUploading,
+  QueueStatus,
 } from './progress-slice';
 import { createSelector } from '@reduxjs/toolkit';
 import { IRootState } from '@/store';
 import { throttleUpload, clearUploadState, isUploadInProgress } from './upload-utils';
 
 // Add this line to ensure the Files tag is registered with RTK Query
-// This will fix the "Tag type 'Files' was used, but not specified in `tagTypes`!" error
 baseApi.enhanceEndpoints({ addTagTypes: ['Files'] });
 
 // Add type declaration for global window object
@@ -64,43 +64,90 @@ export const cancelUploadRequest = (fileId: string): void => {
   }
 };
 
-// Selectors for accessing upload state
+// Base selector for accessing upload state
 const selectUploadState = (state: IRootState) => state.upload;
 
-export const selectUploadQueue = createSelector(
+// Generic selector for all files (not recommended to use directly)
+export const selectAllFiles = createSelector(
   [selectUploadState],
   (uploadState) => uploadState.queue,
 );
 
-export const selectQueueStatus = createSelector(
-  [selectUploadState],
-  (uploadState) => uploadState.queueStatus,
-);
+// Get files for a specific component by owner ID
+export const selectFilesByOwnerId = (ownerId: string) =>
+  createSelector([selectUploadState], (uploadState) =>
+    uploadState.queue.filter((item) => item.ownerId === ownerId),
+  );
 
-export const selectCurrentUploadingFile = createSelector([selectUploadState], (uploadState) => {
-  if (uploadState.currentUploadIndex !== null) {
-    return uploadState.queue[uploadState.currentUploadIndex];
-  }
-  return null;
-});
+// Get queue status for a specific component
+export const selectQueueStatusByOwnerId = (ownerId: string) =>
+  createSelector([selectUploadState], (uploadState) => {
+    const componentFiles = uploadState.queue.filter((item) => item.ownerId === ownerId);
 
-export const selectAllFilesHandled = createSelector(
-  [selectUploadState],
-  (uploadState) => uploadState.allFilesHandled,
-);
+    // If no files for this component, it's idle
+    if (componentFiles.length === 0) {
+      return 'idle' as QueueStatus;
+    }
 
+    // Check if all files are completed or failed
+    const allHandled = componentFiles.every(
+      (item) => item.status === 'completed' || item.status === 'failed',
+    );
+
+    if (allHandled) {
+      const anyFailed = componentFiles.some((item) => item.status === 'failed');
+      return anyFailed ? ('failed' as QueueStatus) : ('completed' as QueueStatus);
+    }
+
+    // If any file is uploading, the queue is uploading
+    const anyUploading = componentFiles.some((item) => item.status === 'uploading');
+    if (anyUploading) {
+      return 'uploading' as QueueStatus;
+    }
+
+    return 'selected' as QueueStatus;
+  });
+
+// Get current uploading file for a specific component
+export const selectCurrentUploadingFileByOwnerId = (ownerId: string) =>
+  createSelector([selectUploadState], (uploadState) => {
+    return (
+      uploadState.queue.find((item) => item.ownerId === ownerId && item.status === 'uploading') ||
+      null
+    );
+  });
+
+// Check if all files for a component have been handled (completed or failed)
+export const selectAllFilesHandledByOwnerId = (ownerId: string) =>
+  createSelector([selectUploadState], (uploadState) => {
+    const componentFiles = uploadState.queue.filter((item) => item.ownerId === ownerId);
+
+    // If no files, consider them "handled"
+    if (componentFiles.length === 0) {
+      return true;
+    }
+
+    // Check if all files are either completed or failed
+    return componentFiles.every((item) => item.status === 'completed' || item.status === 'failed');
+  });
+
+// Get all uploaded files for a component
+export const selectUploadedFilesByOwnerId = (ownerId: string) =>
+  createSelector([selectUploadState], (uploadState) =>
+    uploadState.queue.filter((item) => item.ownerId === ownerId && item.status === 'completed'),
+  );
+
+// Get all failed files for a component
+export const selectFailedFilesByOwnerId = (ownerId: string) =>
+  createSelector([selectUploadState], (uploadState) =>
+    uploadState.queue.filter((item) => item.ownerId === ownerId && item.status === 'failed'),
+  );
+
+// Get a specific file by ID
 export const selectFileById = (fileId: string) =>
   createSelector([selectUploadState], (uploadState) =>
     uploadState.queue.find((item) => item.id === fileId),
   );
-
-export const selectUploadedFiles = createSelector([selectUploadState], (uploadState) =>
-  uploadState.queue.filter((item) => item.status === 'completed'),
-);
-
-export const selectFailedFiles = createSelector([selectUploadState], (uploadState) =>
-  uploadState.queue.filter((item) => item.status === 'failed'),
-);
 
 // API endpoints
 const filesApi = baseApi.injectEndpoints({

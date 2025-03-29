@@ -1,4 +1,7 @@
+'use client';
+
 import { useState, useRef, ChangeEvent } from 'react';
+import useSingleFileUpload from './hook/useSingleFileUpload';
 import AddFileIcon from './icons/AddFileIcon';
 import CompleteTickIcon from './icons/CompleteTickIcon';
 import FailedXmarkIcon from './icons/FailedXmarkIcon';
@@ -8,37 +11,47 @@ import AudioFileIcon from './icons/AudioFileIcon';
 import CompressedFileIcon from './icons/CompressedFileIcon';
 import DocumentFileIcon from './icons/DocumentFileIcon';
 
+// Format filename for better display
+const formatFileName = (name: string): string => {
+  if (!name) return '';
+
+  const extension = name.includes('.') ? name.slice(name.lastIndexOf('.')) : '';
+  const baseName = name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : name;
+
+  // If the name is too long, truncate it and add ellipsis
+  if (baseName.length > 15) {
+    return `${baseName.slice(0, 15)}...${extension}`;
+  }
+
+  return name;
+};
+
 export type SingleFileUploadProps = {
+  id?: string; // Unique identifier for this upload component
+  bucket?: string;
   type?: 'multiple' | 'single';
   acceptedFileTypes?: string;
   maxSizeMB?: number;
   uploadingDependsToForm?: boolean;
+  onUploadSuccess?: (result: any) => void;
+  onUploadError?: (error: any) => void;
   onFileSelect?: (file: File | null) => void;
-  onFileReject?: (reason: string) => void;
-  uploadStatus?: 'idle' | 'selected' | 'uploading' | 'completed' | 'failed';
-  uploadProgress?: number;
-  errorMessage?: string;
-  onUploadStart?: () => void;
-  onUploadCancel?: () => void;
-  onRemoveFile?: () => void;
 };
 
-type UploadStatus = 'idle' | 'selected' | 'uploading' | 'completed' | 'failed';
-
-// Map file extensions to icons (you'll need to create or import these icons)
+// Map file extensions to icons
 const getFileIcon = (fileType: string) => {
   if (fileType.startsWith('image/')) {
-    return ImageFileIcon; // Replace with ImageIcon when available
+    return ImageFileIcon;
   } else if (fileType.startsWith('video/')) {
-    return VideoFileIcon; // Replace with VideoIcon when available
+    return VideoFileIcon;
   } else if (fileType.startsWith('audio/')) {
-    return AudioFileIcon; // Replace with AudioIcon when available
+    return AudioFileIcon;
   } else if (
     fileType.includes('zip') ||
     fileType.includes('rar') ||
     fileType.includes('compressed')
   ) {
-    return CompressedFileIcon; // Replace with ZipIcon when available
+    return CompressedFileIcon;
   } else {
     return DocumentFileIcon; // Default icon
   }
@@ -59,32 +72,40 @@ const formatFileSize = (bytes: number): string => {
 };
 
 const SingleFileUpload = ({
+  id,
+  bucket = 'default',
   type = 'single',
   acceptedFileTypes = '',
   maxSizeMB = 10,
-  onFileSelect,
-  onFileReject,
   uploadingDependsToForm = true,
-  uploadStatus: externalUploadStatus,
-  uploadProgress: externalUploadProgress,
-  errorMessage: externalErrorMessage,
-  onUploadStart,
-  onUploadCancel,
-  onRemoveFile,
+  onUploadSuccess,
+  onUploadError,
+  onFileSelect: externalFileSelectHandler,
 }: SingleFileUploadProps) => {
-  // File states
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [fileInfo, setFileInfo] = useState({ name: '', size: '', type: '' });
-  const [internalUploadStatus, setInternalUploadStatus] = useState<UploadStatus>('idle');
-  const [internalUploadProgress, setInternalUploadProgress] = useState(0);
-  const [internalErrorMessage, setInternalErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use external state if provided, otherwise use internal state
-  const uploadStatus = externalUploadStatus || internalUploadStatus;
-  const uploadProgress =
-    externalUploadProgress !== undefined ? externalUploadProgress : internalUploadProgress;
-  const errorMessage = externalErrorMessage || internalErrorMessage;
+  // Use our custom hook to handle file uploading
+  const {
+    selectedFile,
+    fileInfo,
+    uploadStatus,
+    uploadProgress,
+    errorMessage,
+    handleFileSelect,
+    handleFileReject,
+    startUpload,
+    cancelUpload,
+    resetUpload,
+    instanceId,
+  } = useSingleFileUpload({
+    id, // Pass component ID for isolation
+    bucket,
+    acceptedFileTypes,
+    maxSizeMB,
+    onUploadSuccess,
+    onUploadError,
+    onFileSelect: externalFileSelectHandler,
+  });
 
   // Allowed file types displayed in UI
   const allowedTypes = acceptedFileTypes
@@ -103,61 +124,21 @@ const SingleFileUpload = ({
     displayConstraints.push(`< ${formatFileSize(maxSizeMB * 1024 * 1024)}`);
   }
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    // Validate file size
-    if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
-      setInternalErrorMessage(`File size exceeds the limit`);
-      setInternalUploadStatus('failed');
-      if (onFileReject) {
-        onFileReject(`File size exceeds the limit`);
-      }
-      return;
-    }
-
-    // Validate file type if acceptedFileTypes is specified
-    if (acceptedFileTypes && acceptedFileTypes.trim() !== '') {
-      const fileTypeAccepted = acceptedFileTypes.split(',').some((type) => {
-        const trimmedType = type.trim();
-        if (trimmedType.includes('/*')) {
-          const generalType = trimmedType.split('/')[0];
-          return file.type.startsWith(`${generalType}/`);
-        }
-        return file.type === trimmedType;
-      });
-
-      if (!fileTypeAccepted) {
-        setInternalErrorMessage(`File type is unacceptable.`);
-        setInternalUploadStatus('failed');
-        if (onFileReject) {
-          onFileReject(`File type is unacceptable.`);
-        }
-        return;
-      }
-    }
-
-    // Set file information
-    setSelectedFile(file);
-    setFileInfo({
-      name: file.name,
-      size: formatFileSize(file.size),
-      type: file.type,
-    });
-    setInternalUploadStatus('selected');
-
-    if (onFileSelect) {
-      onFileSelect(file);
-    }
-  };
-
   const openFileSelector = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+
+      // Auto-start upload if not dependent on form
+      if (!uploadingDependsToForm) {
+        setTimeout(startUpload, 100);
+      }
     }
   };
 
@@ -173,77 +154,11 @@ const SingleFileUpload = ({
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
 
-    // Simulate file input change
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
+    handleFileSelect(file);
 
-    if (fileInputRef.current) {
-      fileInputRef.current.files = dataTransfer.files;
-      const changeEvent = new Event('change', { bubbles: true });
-      fileInputRef.current.dispatchEvent(changeEvent);
-      handleFileChange({ target: { files: dataTransfer.files } } as ChangeEvent<HTMLInputElement>);
-    }
-  };
-
-  // Handle uploading
-  const handleStartUpload = () => {
-    if (!selectedFile) return;
-
-    // If parent provided onUploadStart, call it
-    if (onUploadStart) {
-      onUploadStart();
-    } else {
-      // Otherwise use internal state for demo/testing
-      setInternalUploadStatus('uploading');
-      setInternalUploadProgress(0);
-
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setInternalUploadProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setInternalUploadStatus('completed');
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 500);
-    }
-  };
-
-  // Handle upload cancellation
-  const handleCancelUpload = () => {
-    if (onUploadCancel) {
-      onUploadCancel();
-    } else {
-      // For internal state handling
-      setInternalUploadStatus('failed');
-      setInternalErrorMessage('Upload cancelled');
-    }
-  };
-
-  // Handle file removal
-  const handleRemoveFile = () => {
-    // Always handle removal internally first
-    setSelectedFile(null);
-    setFileInfo({ name: '', size: '', type: '' });
-    setInternalUploadStatus('idle');
-    setInternalUploadProgress(0);
-    setInternalErrorMessage('');
-
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-
-    // Notify parent if callback exists
-    if (onRemoveFile) {
-      onRemoveFile();
-    }
-
-    // If onFileSelect exists, tell parent the file is now null
-    if (onFileSelect) {
-      onFileSelect(null);
+    // Auto-start upload if not dependent on form
+    if (!uploadingDependsToForm) {
+      setTimeout(startUpload, 100);
     }
   };
 
@@ -257,6 +172,7 @@ const SingleFileUpload = ({
         onDrop={handleDrop}
         role="button"
         tabIndex={0}
+        data-upload-id={id || instanceId}
       >
         <input
           type="file"
@@ -290,21 +206,23 @@ const SingleFileUpload = ({
 
   // Second step - File selected and uploading
   if (uploadStatus === 'selected' || uploadStatus === 'uploading') {
-    const FileIcon = getFileIcon(fileInfo.type);
+    const FileIcon = getFileIcon(fileInfo.type || 'application/octet-stream');
 
     return (
       <div
         dir="ltr"
         className="relative flex h-[13.75rem] w-[25rem] flex-col items-center justify-center gap-6 overflow-hidden rounded-xl bg-slate-100"
+        data-upload-id={id || instanceId}
       >
-        {!uploadingDependsToForm && uploadStatus === 'uploading' && (
+        {uploadStatus === 'uploading' && (
           <button
-            onClick={handleCancelUpload}
+            onClick={cancelUpload}
             className="absolute right-2 top-2 z-10 flex rounded-md bg-slate-200 px-2 py-1 text-slate-500 transition-colors hover:bg-slate-300"
           >
             cancel
           </button>
         )}
+
         {/* Progressive background */}
         {uploadStatus === 'uploading' && (
           <div
@@ -323,7 +241,7 @@ const SingleFileUpload = ({
 
         <div className="z-10 flex w-full flex-col items-center justify-start gap-2">
           <p className="flex w-full justify-center truncate px-8 text-xl leading-[1.125rem] text-neutral-600">
-            {fileInfo.name}
+            {formatFileName(fileInfo.name)}
           </p>
           {uploadStatus === 'uploading' ? (
             <div className="flex gap-2">
@@ -337,9 +255,9 @@ const SingleFileUpload = ({
             <>
               <p className="text-xl leading-[1.125rem] text-blue-500">{fileInfo.size}</p>
               <div className="flex gap-2">
-                {!uploadingDependsToForm && (
+                {uploadingDependsToForm && (
                   <button
-                    onClick={handleStartUpload}
+                    onClick={startUpload}
                     className="flex rounded-md bg-slate-200 px-2 py-1 text-slate-500 transition-colors hover:bg-slate-300"
                   >
                     start upload
@@ -347,7 +265,7 @@ const SingleFileUpload = ({
                 )}
 
                 <button
-                  onClick={handleRemoveFile}
+                  onClick={resetUpload}
                   className="flex rounded-md bg-red-200 px-2 py-1 text-slate-500 transition-colors hover:bg-red-300"
                 >
                   remove file
@@ -365,13 +283,14 @@ const SingleFileUpload = ({
     <div
       dir="ltr"
       className="relative flex h-[13.75rem] w-[25rem] flex-col items-center justify-center gap-6 overflow-hidden rounded-xl bg-slate-100"
+      data-upload-id={id || instanceId}
     >
       <div className="z-10 flex w-full flex-col items-center justify-end">
-        {getFileIcon(fileInfo.type)({ width: 45, height: 45 })}
+        {getFileIcon(fileInfo.type || 'application/octet-stream')({ width: 45, height: 45 })}
       </div>
       <div className="z-10 flex w-full flex-col items-center justify-start gap-2">
         <p className="flex w-full justify-center truncate px-8 text-xl leading-[1.125rem] text-neutral-600">
-          {fileInfo.name}
+          {formatFileName(fileInfo.name)}
         </p>
 
         {uploadStatus === 'completed' ? (
@@ -389,7 +308,7 @@ const SingleFileUpload = ({
         )}
 
         <button
-          onClick={handleRemoveFile}
+          onClick={resetUpload}
           className="mt-2 flex rounded-md bg-slate-200 px-3 py-1 text-slate-500 transition-colors hover:bg-slate-300"
         >
           {uploadStatus === 'completed' ? 'Done' : 'Try Again'}

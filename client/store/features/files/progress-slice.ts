@@ -12,7 +12,8 @@ export type FileUploadStatus =
 export type QueueStatus = 'idle' | 'selected' | 'uploading' | 'completed' | 'failed';
 
 export interface FileUploadInfo {
-  id: string;
+  id: string; // Unique ID for the file
+  ownerId: string; // Component ID that owns this file
   fileData: {
     name: string;
     size: number;
@@ -44,13 +45,19 @@ const uploadSlice = createSlice({
   name: 'upload',
   initialState,
   reducers: {
-    // Add files to the queue
+    // Add files to the queue with a specific component owner
     addFiles: (
       state,
-      action: PayloadAction<{ name: string; size: number; type: string; id: string }[]>,
+      action: PayloadAction<{
+        ownerId: string;
+        files: { name: string; size: number; type: string; id: string }[];
+      }>,
     ) => {
-      const newFiles = action.payload.map((fileData) => ({
+      const { ownerId, files } = action.payload;
+
+      const newFiles = files.map((fileData) => ({
         id: fileData.id,
+        ownerId: ownerId, // Associate files with their owner component
         fileData: {
           name: fileData.name,
           size: fileData.size,
@@ -64,84 +71,57 @@ const uploadSlice = createSlice({
       }));
 
       state.queue = [...state.queue, ...newFiles];
-
-      if (
-        state.queueStatus === 'idle' ||
-        state.queueStatus === 'completed' ||
-        state.queueStatus === 'failed'
-      ) {
-        state.queueStatus = 'selected';
-      }
-
-      state.allFilesHandled = false;
     },
 
     // Remove a file from the queue by ID
     removeFile: (state, action: PayloadAction<string>) => {
       state.queue = state.queue.filter((item) => item.id !== action.payload);
-
-      // Update queue status if empty
-      if (state.queue.length === 0) {
-        state.queueStatus = 'idle';
-      } else {
-        // Check if we need to update the queue status
-        const hasIncomplete = state.queue.some(
-          (item) => item.status !== 'completed' && item.status !== 'failed',
-        );
-
-        if (hasIncomplete) {
-          state.queueStatus = 'selected';
-          state.allFilesHandled = false;
-        } else {
-          // All files are either completed or failed
-          const anyFailed = state.queue.some((item) => item.status === 'failed');
-          state.queueStatus = anyFailed ? 'failed' : 'completed';
-          state.allFilesHandled = true;
-        }
-      }
     },
 
-    // Reset upload UI for selecting more files when all files are completed or failed
-    resetUploadUI: (state) => {
-      // Only change status to allow selecting more files
-      // but keep existing files in the queue
-      if (state.queueStatus === 'completed' || state.queueStatus === 'failed') {
-        state.queueStatus = 'selected';
-        state.allFilesHandled = false;
-      }
+    // Remove all files for a specific component
+    removeFilesForComponent: (state, action: PayloadAction<string>) => {
+      const ownerId = action.payload;
+      state.queue = state.queue.filter((item) => item.ownerId !== ownerId);
     },
 
-    // Clear all files from the queue
-    clearQueue: (state) => {
-      state.queue = [];
-      state.queueStatus = 'idle';
-      state.allFilesHandled = false;
-      state.currentUploadIndex = null;
+    // Reset upload UI for a specific component
+    resetUploadUI: (state, action: PayloadAction<string>) => {
+      // This doesn't affect the files themselves, just enables selecting more
+      // We'll handle this at the component level
     },
 
-    // Start the upload process
-    startUpload: (state) => {
-      if (state.queue.length === 0) return;
+    // Clear all files from the queue for a specific component
+    clearComponentQueue: (state, action: PayloadAction<string>) => {
+      const ownerId = action.payload;
+      state.queue = state.queue.filter((item) => item.ownerId !== ownerId);
+    },
 
-      // Mark all selected files as waiting
+    // Start the upload process for a specific component
+    startUpload: (state, action: PayloadAction<string>) => {
+      const ownerId = action.payload;
+      const componentFiles = state.queue.filter((item) => item.ownerId === ownerId);
+
+      if (componentFiles.length === 0) return;
+
+      // Mark all selected files as waiting for this component
       state.queue = state.queue.map((item) =>
-        item.status === 'selected' ? { ...item, status: 'waiting' } : item,
+        item.ownerId === ownerId && item.status === 'selected'
+          ? { ...item, status: 'waiting' }
+          : item,
       );
 
-      state.queueStatus = 'uploading';
+      // Find the index of the first waiting file for this component
+      const fileIndex = state.queue.findIndex(
+        (item) => item.ownerId === ownerId && item.status === 'waiting',
+      );
 
-      // Find the index of the first waiting file
-      const nextIndex = state.queue.findIndex((item) => item.status === 'waiting');
-      if (nextIndex !== -1) {
-        state.currentUploadIndex = nextIndex;
-        state.queue[nextIndex].status = 'uploading';
-        state.queue[nextIndex].isUploading = true;
+      if (fileIndex !== -1) {
+        state.queue[fileIndex].status = 'uploading';
+        state.queue[fileIndex].isUploading = true;
       }
-
-      state.allFilesHandled = false;
     },
 
-    // Update progress for the current file
+    // Update progress for a file
     updateFileProgress: (
       state,
       action: PayloadAction<{ id: string; progress: number; bytesUploaded: number }>,
@@ -149,9 +129,15 @@ const uploadSlice = createSlice({
       const { id, progress, bytesUploaded } = action.payload;
       const fileIndex = state.queue.findIndex((item) => item.id === id);
 
-      if (fileIndex !== -1 && state.queue[fileIndex].isUploading) {
+      if (fileIndex !== -1) {
+        // Always maintain 'uploading' status during progress updates
         state.queue[fileIndex].progress = progress;
         state.queue[fileIndex].bytesUploaded = bytesUploaded;
+
+        // Ensure status remains 'uploading' during progress updates
+        if (state.queue[fileIndex].isUploading && state.queue[fileIndex].status !== 'uploading') {
+          state.queue[fileIndex].status = 'uploading';
+        }
       }
     },
 
@@ -160,6 +146,7 @@ const uploadSlice = createSlice({
       const fileIndex = state.queue.findIndex((item) => item.id === action.payload);
       if (fileIndex !== -1) {
         state.queue[fileIndex].isUploading = true;
+        state.queue[fileIndex].status = 'uploading';
       }
     },
 
@@ -177,38 +164,24 @@ const uploadSlice = createSlice({
       const fileIndex = state.queue.findIndex((item) => item.id === id);
 
       if (fileIndex !== -1) {
-        // Only update if the file is not already completed and is currently uploading
-        // This prevents race conditions with multiple responses for the same file
-        if (state.queue[fileIndex].status !== 'completed' && state.queue[fileIndex].isUploading) {
+        // Only update if the file is not already completed
+        if (state.queue[fileIndex].status !== 'completed') {
+          const ownerId = state.queue[fileIndex].ownerId;
+
+          // Important: ensure these fields are set correctly
           state.queue[fileIndex].status = 'completed';
-          state.queue[fileIndex].progress = 100;
+          state.queue[fileIndex].progress = 100; // Always set to 100% when completed
           state.queue[fileIndex].response = response;
           state.queue[fileIndex].isUploading = false;
 
-          // Only move to the next file if this was the current uploading file
-          if (state.currentUploadIndex === fileIndex) {
-            // Find next waiting file
-            const nextIndex = state.queue.findIndex((item) => item.status === 'waiting');
-            if (nextIndex !== -1) {
-              state.currentUploadIndex = nextIndex;
-              state.queue[nextIndex].status = 'uploading';
-              state.queue[nextIndex].isUploading = true;
-            } else {
-              state.currentUploadIndex = null;
+          // Find next waiting file for the same component
+          const nextIndex = state.queue.findIndex(
+            (item) => item.ownerId === ownerId && item.status === 'waiting',
+          );
 
-              // Check if all files are completed/failed
-              const allHandled = state.queue.every(
-                (item) => item.status === 'completed' || item.status === 'failed',
-              );
-
-              if (allHandled) {
-                state.allFilesHandled = true;
-
-                // Check if any files failed
-                const anyFailed = state.queue.some((item) => item.status === 'failed');
-                state.queueStatus = anyFailed ? 'failed' : 'completed';
-              }
-            }
+          if (nextIndex !== -1) {
+            state.queue[nextIndex].status = 'uploading';
+            state.queue[nextIndex].isUploading = true;
           }
         }
       }
@@ -221,36 +194,20 @@ const uploadSlice = createSlice({
 
       if (fileIndex !== -1) {
         // Don't mark a file as failed if it's already successfully completed
-        // This prevents race conditions with multiple responses
-        if (state.queue[fileIndex].status !== 'completed' && state.queue[fileIndex].isUploading) {
+        if (state.queue[fileIndex].status !== 'completed') {
+          const ownerId = state.queue[fileIndex].ownerId;
           state.queue[fileIndex].status = 'failed';
           state.queue[fileIndex].errorMessage = errorMessage;
           state.queue[fileIndex].isUploading = false;
 
-          // Only move to the next file if this was the current uploading file
-          if (state.currentUploadIndex === fileIndex) {
-            // Find next waiting file
-            const nextIndex = state.queue.findIndex((item) => item.status === 'waiting');
-            if (nextIndex !== -1) {
-              state.currentUploadIndex = nextIndex;
-              state.queue[nextIndex].status = 'uploading';
-              state.queue[nextIndex].isUploading = true;
-            } else {
-              state.currentUploadIndex = null;
+          // Find next waiting file for the same component
+          const nextIndex = state.queue.findIndex(
+            (item) => item.ownerId === ownerId && item.status === 'waiting',
+          );
 
-              // Check if all files are completed/failed
-              const allHandled = state.queue.every(
-                (item) => item.status === 'completed' || item.status === 'failed',
-              );
-
-              if (allHandled) {
-                state.allFilesHandled = true;
-
-                // Check if any files failed
-                const anyFailed = state.queue.some((item) => item.status === 'failed');
-                state.queueStatus = anyFailed ? 'failed' : 'completed';
-              }
-            }
+          if (nextIndex !== -1) {
+            state.queue[nextIndex].status = 'uploading';
+            state.queue[nextIndex].isUploading = true;
           }
         }
       }
@@ -264,49 +221,35 @@ const uploadSlice = createSlice({
       if (fileIndex !== -1) {
         // Don't cancel a file that's already successfully completed
         if (state.queue[fileIndex].status !== 'completed') {
-          // If this is the currently uploading file
-          if (state.currentUploadIndex === fileIndex) {
-            state.queue[fileIndex].status = 'failed';
-            state.queue[fileIndex].errorMessage = 'Upload cancelled';
-            state.queue[fileIndex].isUploading = false;
+          const ownerId = state.queue[fileIndex].ownerId;
 
-            // Find next waiting file
-            const nextIndex = state.queue.findIndex((item) => item.status === 'waiting');
-            if (nextIndex !== -1) {
-              state.currentUploadIndex = nextIndex;
-              state.queue[nextIndex].status = 'uploading';
-              state.queue[nextIndex].isUploading = true;
-            } else {
-              state.currentUploadIndex = null;
+          // Mark this file as failed
+          state.queue[fileIndex].status = 'failed';
+          state.queue[fileIndex].errorMessage = 'Upload cancelled';
+          state.queue[fileIndex].isUploading = false;
 
-              // Check if all files are completed/failed
-              const allHandled = state.queue.every(
-                (item) => item.status === 'completed' || item.status === 'failed',
-              );
+          // Find next waiting file for the same component
+          const nextIndex = state.queue.findIndex(
+            (item) => item.ownerId === ownerId && item.status === 'waiting',
+          );
 
-              if (allHandled) {
-                state.allFilesHandled = true;
-
-                // Check if any files failed
-                const anyFailed = state.queue.some((item) => item.status === 'failed');
-                state.queueStatus = anyFailed ? 'failed' : 'completed';
-              }
-            }
-          }
-          // If it's a waiting file, just mark it as failed
-          else if (state.queue[fileIndex].status === 'waiting') {
-            state.queue[fileIndex].status = 'failed';
-            state.queue[fileIndex].errorMessage = 'Upload cancelled';
-            state.queue[fileIndex].isUploading = false;
+          if (nextIndex !== -1) {
+            state.queue[nextIndex].status = 'uploading';
+            state.queue[nextIndex].isUploading = true;
           }
         }
       }
     },
 
-    // Cancel all uploads
-    cancelAllUploads: (state) => {
+    // Cancel all uploads for a specific component
+    cancelComponentUploads: (state, action: PayloadAction<string>) => {
+      const ownerId = action.payload;
+
       state.queue = state.queue.map((item) => {
-        if (item.status === 'uploading' || item.status === 'waiting') {
+        if (
+          item.ownerId === ownerId &&
+          (item.status === 'uploading' || item.status === 'waiting')
+        ) {
           return {
             ...item,
             status: 'failed',
@@ -316,10 +259,6 @@ const uploadSlice = createSlice({
         }
         return item;
       });
-
-      state.queueStatus = 'failed';
-      state.currentUploadIndex = null;
-      state.allFilesHandled = true;
     },
 
     // Retry uploading a failed file
@@ -332,53 +271,62 @@ const uploadSlice = createSlice({
         state.queue[fileIndex].status === 'failed' &&
         !state.queue[fileIndex].isUploading
       ) {
+        const ownerId = state.queue[fileIndex].ownerId;
         state.queue[fileIndex].status = 'waiting';
         state.queue[fileIndex].progress = 0;
         state.queue[fileIndex].bytesUploaded = 0;
         state.queue[fileIndex].errorMessage = '';
 
+        // Check if any file from this component is currently uploading
+        const isAnyUploading = state.queue.some(
+          (item) => item.ownerId === ownerId && item.status === 'uploading',
+        );
+
         // If no file is currently uploading, start this one
-        if (state.currentUploadIndex === null) {
-          state.currentUploadIndex = fileIndex;
+        if (!isAnyUploading) {
           state.queue[fileIndex].status = 'uploading';
           state.queue[fileIndex].isUploading = true;
-          state.queueStatus = 'uploading';
         }
-
-        state.allFilesHandled = false;
       }
     },
 
-    // Retry all failed uploads
-    retryAllFailedUploads: (state) => {
-      let foundWaiting = false;
+    // Retry all failed uploads for a specific component
+    retryComponentFailedUploads: (state, action: PayloadAction<string>) => {
+      const ownerId = action.payload;
+      let hasStartedOne = false;
+
+      // Check if any file from this component is already uploading
+      const isAnyUploading = state.queue.some(
+        (item) => item.ownerId === ownerId && item.status === 'uploading',
+      );
 
       state.queue = state.queue.map((item) => {
-        if (item.status === 'failed' && !item.isUploading) {
-          return {
-            ...item,
-            status: 'waiting',
-            progress: 0,
-            bytesUploaded: 0,
-            errorMessage: '',
-          };
+        if (item.ownerId === ownerId && item.status === 'failed' && !item.isUploading) {
+          // If no file is uploading and we haven't started one yet, make this one uploading
+          if (!isAnyUploading && !hasStartedOne) {
+            hasStartedOne = true;
+            return {
+              ...item,
+              status: 'uploading',
+              progress: 0,
+              bytesUploaded: 0,
+              errorMessage: '',
+              isUploading: true,
+            };
+          } else {
+            // Otherwise, mark it as waiting
+            return {
+              ...item,
+              status: 'waiting',
+              progress: 0,
+              bytesUploaded: 0,
+              errorMessage: '',
+              isUploading: false,
+            };
+          }
         }
         return item;
       });
-
-      // Find first waiting file and start it
-      const nextIndex = state.queue.findIndex((item) => item.status === 'waiting');
-      if (nextIndex !== -1) {
-        state.currentUploadIndex = nextIndex;
-        state.queue[nextIndex].status = 'uploading';
-        state.queue[nextIndex].isUploading = true;
-        state.queueStatus = 'uploading';
-        foundWaiting = true;
-      }
-
-      if (foundWaiting) {
-        state.allFilesHandled = false;
-      }
     },
   },
 });
@@ -386,8 +334,9 @@ const uploadSlice = createSlice({
 export const {
   addFiles,
   removeFile,
+  removeFilesForComponent,
   resetUploadUI,
-  clearQueue,
+  clearComponentQueue,
   startUpload,
   updateFileProgress,
   setFileUploading,
@@ -395,9 +344,9 @@ export const {
   fileUploadSuccess,
   fileUploadFailure,
   cancelFileUpload,
-  cancelAllUploads,
+  cancelComponentUploads,
   retryFileUpload,
-  retryAllFailedUploads,
+  retryComponentFailedUploads,
 } = uploadSlice.actions;
 
 export default uploadSlice.reducer;

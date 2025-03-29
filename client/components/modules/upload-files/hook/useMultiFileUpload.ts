@@ -1,33 +1,35 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { v4 as uuidv4 } from 'uuid';
 import {
   addFiles,
   removeFile,
-  clearQueue,
+  clearComponentQueue,
   startUpload,
   cancelFileUpload,
-  cancelAllUploads,
+  cancelComponentUploads,
   retryFileUpload,
-  retryAllFailedUploads,
+  retryComponentFailedUploads,
   resetUploadUI,
   FileUploadInfo,
   QueueStatus,
   FileUploadStatus,
+  removeFilesForComponent,
 } from '@/store/features/files/progress-slice';
 import {
   useUploadSingleFileMutation,
-  selectUploadQueue,
-  selectQueueStatus,
-  selectCurrentUploadingFile,
-  selectAllFilesHandled,
-  selectUploadedFiles,
-  selectFailedFiles,
+  selectFilesByOwnerId,
+  selectQueueStatusByOwnerId,
+  selectCurrentUploadingFileByOwnerId,
+  selectAllFilesHandledByOwnerId,
+  selectUploadedFilesByOwnerId,
+  selectFailedFilesByOwnerId,
   cancelUploadRequest,
 } from '@/store/features/files/files.api';
-import { clearAllUploadStates } from '@/store/features/files/upload-utils';
+import { clearAllUploadStates, clearUploadState } from '@/store/features/files/upload-utils';
 
 interface UseMultiFileUploadOptions {
+  id?: string; // Unique ID for component instance
   bucket?: string;
   onUploadComplete?: (uploadedFiles: FileUploadInfo[]) => void;
   onAllUploadsComplete?: (succeeded: FileUploadInfo[], failed: FileUploadInfo[]) => void;
@@ -39,15 +41,26 @@ interface UseMultiFileUploadOptions {
 const fileObjectsMap = new Map<string, File>();
 
 export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
-  const { bucket = 'default', onUploadComplete, onAllUploadsComplete, onError } = options;
+  const {
+    id: providedId,
+    bucket = 'default',
+    onUploadComplete,
+    onAllUploadsComplete,
+    onError,
+  } = options;
+
+  // Create a stable instance ID for this component
+  const componentIdRef = useRef<string>(providedId || `multi-upload-${uuidv4()}`);
 
   const dispatch = useDispatch();
-  const queue = useSelector(selectUploadQueue);
-  const queueStatus = useSelector(selectQueueStatus);
-  const currentUploadingFile = useSelector(selectCurrentUploadingFile);
-  const allFilesHandled = useSelector(selectAllFilesHandled);
-  const uploadedFiles = useSelector(selectUploadedFiles);
-  const failedFiles = useSelector(selectFailedFiles);
+  const queue = useSelector(selectFilesByOwnerId(componentIdRef.current));
+  const queueStatus = useSelector(selectQueueStatusByOwnerId(componentIdRef.current));
+  const currentUploadingFile = useSelector(
+    selectCurrentUploadingFileByOwnerId(componentIdRef.current),
+  );
+  const allFilesHandled = useSelector(selectAllFilesHandledByOwnerId(componentIdRef.current));
+  const uploadedFiles = useSelector(selectUploadedFilesByOwnerId(componentIdRef.current));
+  const failedFiles = useSelector(selectFailedFilesByOwnerId(componentIdRef.current));
 
   // Use RTK Query mutation hook
   const [uploadSingleFile, { isLoading }] = useUploadSingleFileMutation();
@@ -55,13 +68,20 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
   // Reference to track if we've already processed the "all files handled" state
   const allFilesHandledProcessed = useRef(false);
 
+  // Track if callbacks have been called to prevent infinite loops
+  const [uploadCompleteCalled, setUploadCompleteCalled] = useState(false);
+  const [allUploadsCompleteCalled, setAllUploadsCompleteCalled] = useState(false);
+
+  // Track the current uploading file ID to prevent infinite loops
+  const currentUploadingFileId = useRef<string | null>(null);
+
   // Add files to the upload queue
   const addFilesToQueue = useCallback(
     (files: File[]) => {
       if (files.length > 0) {
         // Create serializable file data objects
         const fileDataArray = files.map((file) => {
-          const id = uuidv4();
+          const id = `${componentIdRef.current}-${uuidv4()}`;
           // Store the actual File object in our Map
           fileObjectsMap.set(id, file);
 
@@ -74,7 +94,17 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
           };
         });
 
-        dispatch(addFiles(fileDataArray));
+        dispatch(
+          addFiles({
+            ownerId: componentIdRef.current,
+            files: fileDataArray,
+          }),
+        );
+
+        // Reset callback flags when adding new files
+        setUploadCompleteCalled(false);
+        setAllUploadsCompleteCalled(false);
+        allFilesHandledProcessed.current = false;
       }
     },
     [dispatch],
@@ -89,59 +119,100 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
       // Remove from our Map
       fileObjectsMap.delete(fileId);
       dispatch(removeFile(fileId));
+
+      // Reset callback flags
+      setUploadCompleteCalled(false);
+      setAllUploadsCompleteCalled(false);
+      allFilesHandledProcessed.current = false;
     },
     [dispatch],
   );
 
   // Clear all files from the queue
   const clearFileQueue = useCallback(() => {
-    // Clear the Map
-    fileObjectsMap.clear();
-    clearAllUploadStates();
-    dispatch(clearQueue());
-  }, [dispatch]);
+    // Clear the Map for this component's files
+    queue.forEach((file) => {
+      fileObjectsMap.delete(file.id);
+      clearUploadState(file.id);
+    });
+
+    dispatch(clearComponentQueue(componentIdRef.current));
+
+    // Reset callback flags
+    setUploadCompleteCalled(false);
+    setAllUploadsCompleteCalled(false);
+    allFilesHandledProcessed.current = false;
+  }, [dispatch, queue]);
 
   // Start uploading all files in the queue
   const startFileUpload = useCallback(() => {
-    dispatch(startUpload());
+    dispatch(startUpload(componentIdRef.current));
+
+    // Reset callback flags
+    setUploadCompleteCalled(false);
+    setAllUploadsCompleteCalled(false);
+    allFilesHandledProcessed.current = false;
   }, [dispatch]);
 
   // Cancel a specific file upload
   const cancelSingleUpload = useCallback(
     (fileId: string) => {
       dispatch(cancelFileUpload(fileId));
+
+      // Reset callback flags
+      setUploadCompleteCalled(false);
+      setAllUploadsCompleteCalled(false);
+      allFilesHandledProcessed.current = false;
     },
     [dispatch],
   );
 
   // Cancel all uploads
   const cancelAllFileUploads = useCallback(() => {
-    // Cancel all in-progress uploads
+    // Cancel all in-progress uploads for this component
     queue.forEach((fileInfo) => {
       if (fileInfo.status === 'uploading' || fileInfo.status === 'waiting') {
         cancelUploadRequest(fileInfo.id);
       }
     });
 
-    dispatch(cancelAllUploads());
+    dispatch(cancelComponentUploads(componentIdRef.current));
+
+    // Reset callback flags
+    setUploadCompleteCalled(false);
+    setAllUploadsCompleteCalled(false);
+    allFilesHandledProcessed.current = false;
   }, [dispatch, queue]);
 
   // Retry a failed file upload
   const retryFailedUpload = useCallback(
     (fileId: string) => {
       dispatch(retryFileUpload(fileId));
+
+      // Reset callback flags
+      setUploadCompleteCalled(false);
+      setAllUploadsCompleteCalled(false);
+      allFilesHandledProcessed.current = false;
     },
     [dispatch],
   );
 
   // Retry all failed uploads
   const retryAllFailed = useCallback(() => {
-    dispatch(retryAllFailedUploads());
+    dispatch(retryComponentFailedUploads(componentIdRef.current));
+
+    // Reset callback flags
+    setUploadCompleteCalled(false);
+    setAllUploadsCompleteCalled(false);
+    allFilesHandledProcessed.current = false;
   }, [dispatch]);
 
   // Reset UI to allow selecting more files
   const resetForMoreFiles = useCallback(() => {
-    dispatch(resetUploadUI());
+    dispatch(resetUploadUI(componentIdRef.current));
+
+    // Reset callback flags
+    setAllUploadsCompleteCalled(false);
   }, [dispatch]);
 
   // Get the current state of a specific file
@@ -154,7 +225,15 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
 
   // Effect to monitor and upload current file
   useEffect(() => {
-    if (currentUploadingFile && currentUploadingFile.status === 'uploading') {
+    // Only proceed if there's a file to upload and it's different from the last one we processed
+    if (
+      currentUploadingFile &&
+      currentUploadingFile.status === 'uploading' &&
+      currentUploadingFileId.current !== currentUploadingFile.id
+    ) {
+      // Update our ref to avoid processing the same file multiple times
+      currentUploadingFileId.current = currentUploadingFile.id;
+
       // Get the actual File object from our Map
       const fileObject = fileObjectsMap.get(currentUploadingFile.id);
 
@@ -175,28 +254,53 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
       } else {
         console.error(`File object not found for ID: ${currentUploadingFile.id}`);
       }
+    } else if (!currentUploadingFile) {
+      // Clear the ref when there's no file uploading
+      currentUploadingFileId.current = null;
     }
   }, [currentUploadingFile, uploadSingleFile, bucket, onError]);
 
   // Effect to handle when all files are processed
   useEffect(() => {
-    if (allFilesHandled && !allFilesHandledProcessed.current) {
-      allFilesHandledProcessed.current = true;
-
+    // Only call the callback once per set of uploads
+    if (allFilesHandled && !allUploadsCompleteCalled && queue.length > 0) {
       if (onAllUploadsComplete) {
         onAllUploadsComplete(uploadedFiles, failedFiles);
+        setAllUploadsCompleteCalled(true);
       }
-    } else if (!allFilesHandled) {
-      allFilesHandledProcessed.current = false;
     }
-  }, [allFilesHandled, uploadedFiles, failedFiles, onAllUploadsComplete]);
+  }, [
+    allFilesHandled,
+    uploadedFiles,
+    failedFiles,
+    onAllUploadsComplete,
+    queue.length,
+    allUploadsCompleteCalled,
+  ]);
 
-  // Effect to call onUploadComplete when a file is uploaded
+  // Effect to call onUploadComplete when files are uploaded
   useEffect(() => {
-    if (uploadedFiles.length > 0 && onUploadComplete) {
+    // Only call if we have completed files and haven't called the callback yet
+    if (uploadedFiles.length > 0 && !uploadCompleteCalled && onUploadComplete) {
       onUploadComplete(uploadedFiles);
+      setUploadCompleteCalled(true);
     }
-  }, [uploadedFiles.length, onUploadComplete, uploadedFiles]);
+  }, [uploadedFiles, onUploadComplete, uploadCompleteCalled]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up file objects for this component
+      queue.forEach((file) => {
+        fileObjectsMap.delete(file.id);
+        clearUploadState(file.id);
+      });
+
+      // Remove component's files from Redux
+      dispatch(removeFilesForComponent(componentIdRef.current));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch]); // Intentionally only depend on dispatch to avoid cleanup running too often
 
   // Get the actual File object for a given ID
   const getFileObject = useCallback((fileId: string) => {
@@ -206,6 +310,7 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
   // Return all the necessary state and functions
   return {
     // State
+    componentId: componentIdRef.current,
     queue,
     queueStatus,
     currentUploadingFile,
@@ -225,17 +330,8 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     retryAllFailed,
     resetForMoreFiles,
     getFileState,
-    getFileObject, // New function to get the actual File object
+    getFileObject, // Function to get the actual File object
   };
 };
-
-export interface MultiFileUploadProps {
-  bucket?: string;
-  acceptedFileTypes?: string;
-  maxSizeMB?: number;
-  onUploadComplete?: (uploadedFiles: FileUploadInfo[]) => void;
-  onAllUploadsComplete?: (succeeded: FileUploadInfo[], failed: FileUploadInfo[]) => void;
-  onError?: (error: any) => void;
-}
 
 export default useMultiFileUpload;
