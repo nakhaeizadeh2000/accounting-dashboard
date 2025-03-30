@@ -21,10 +21,55 @@ export interface MultiFileUploadProps {
   bucket?: string;
   acceptedFileTypes?: string;
   maxSizeMB?: number;
+  language?: 'fa' | 'en'; // Language option: Persian (fa) or English (en)
   onUploadComplete?: (uploadedFiles: FileUploadInfo[]) => void;
   onAllUploadsComplete?: (succeeded: FileUploadInfo[], failed: FileUploadInfo[]) => void;
   onError?: (error: any) => void;
 }
+
+// Translations for static text
+const translations = {
+  fa: {
+    clickOrDrop: 'برای آپلود کلیک کنید یا فایل‌ها را بکشید',
+    startUpload: 'شروع آپلود',
+    uploadingFiles: 'در حال آپلود فایل‌ها...',
+    ofFilesCompleted: 'فایل‌ها تکمیل شده است',
+    cancelAllUploads: 'لغو همه آپلودها',
+    allFilesUploaded: 'همه فایل‌ها با موفقیت آپلود شدند!',
+    selectMoreFiles: 'انتخاب فایل‌های بیشتر برای آپلود',
+    someFilesFailed: 'برخی از فایل‌ها آپلود نشدند',
+    retryFailedFiles: 'تلاش مجدد برای فایل‌های ناموفق',
+    selectMoreFilesButton: 'انتخاب فایل‌های بیشتر',
+    noFilesSelected: 'فایلی انتخاب نشده است',
+    remove: 'حذف',
+    retry: 'تلاش مجدد',
+    uploading: 'در حال آپلود',
+    queued: 'در صف',
+    completed: 'تکمیل شده',
+    failed: 'ناموفق',
+    ready: 'آماده',
+  },
+  en: {
+    clickOrDrop: 'click or drop files to upload',
+    startUpload: 'Start Upload',
+    uploadingFiles: 'Uploading Files...',
+    ofFilesCompleted: 'of files completed',
+    cancelAllUploads: 'Cancel All Uploads',
+    allFilesUploaded: 'All files uploaded successfully!',
+    selectMoreFiles: 'Select More Files to Upload',
+    someFilesFailed: 'Some files failed to upload',
+    retryFailedFiles: 'Retry Failed Files',
+    selectMoreFilesButton: 'Select More Files',
+    noFilesSelected: 'No files selected',
+    remove: 'Remove',
+    retry: 'Retry',
+    uploading: 'uploading',
+    queued: 'queued',
+    completed: 'completed',
+    failed: 'failed',
+    ready: 'ready',
+  },
+};
 
 // Map file extensions to icons
 const getFileIcon = (fileType: string) => {
@@ -77,16 +122,19 @@ const formatFileName = (name: string, maxLength: number = 20): string => {
 };
 
 // Get status text for display
-const getStatusText = (status: string): string => {
+const getStatusText = (status: string, language: 'fa' | 'en'): string => {
+  const texts = translations[language];
   switch (status) {
     case 'uploading':
-      return 'uploading';
+      return texts.uploading;
     case 'waiting':
-      return 'queued';
+      return texts.queued;
     case 'completed':
-      return 'completed';
+      return texts.completed;
     case 'failed':
-      return 'failed';
+      return texts.failed;
+    case 'selected':
+      return texts.ready;
     default:
       return status;
   }
@@ -97,6 +145,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   bucket = 'default',
   acceptedFileTypes = 'image/jpeg,image/png,application/pdf',
   maxSizeMB = 10,
+  language = 'fa', // Default to Persian
   onUploadComplete,
   onAllUploadsComplete,
   onError,
@@ -104,6 +153,9 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Get translations for the selected language
+  const texts = translations[language];
 
   const {
     componentId,
@@ -266,7 +318,9 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   const renderFileSelector = () => {
     return (
       <div
-        className={`flex h-5/6 w-full flex-col items-center justify-center overflow-hidden rounded-xl ${dragActive ? 'bg-blue-50' : 'bg-gray-50'}`}
+        className={`flex h-4/5 w-full flex-col items-center justify-center overflow-hidden rounded-xl ${
+          dragActive ? 'bg-blue-50 dark:bg-blue-900' : 'bg-gray-50 dark:bg-slate-800'
+        }`}
         onClick={
           queueStatus === 'idle' || queueStatus === 'selected' ? openFileSelector : undefined
         }
@@ -289,102 +343,110 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
         {(queueStatus === 'idle' || queueStatus === 'selected') && (
           <>
             <AddFileIcon width={45} height={45} />
-            <p className="mt-4 text-xl leading-[1.125rem] text-neutral-400">
-              click or drop files to upload
+            <p className="mt-4 px-2 text-center text-base leading-tight text-neutral-400 dark:text-neutral-300 sm:text-lg md:text-xl md:leading-[1.125rem]">
+              {texts.clickOrDrop}
             </p>
-            {validationError && <p className="mt-2 text-sm text-red-500">{validationError}</p>}
+            {validationError && (
+              <p className="mt-2 px-2 text-center text-xs text-red-500 dark:text-red-400 sm:text-sm">
+                {validationError}
+              </p>
+            )}
             {queueStatus === 'selected' && queue.length > 0 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent file dialog from opening
                   startFileUpload();
                 }}
-                className="mt-6 flex rounded-md bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+                className="mt-4 flex rounded-md bg-blue-500 px-3 py-1 text-sm text-white transition-colors hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 sm:text-base md:mt-6 md:px-4 md:py-2"
               >
-                Start Upload
+                {texts.startUpload}
               </button>
             )}
           </>
         )}
 
         {queueStatus === 'uploading' && (
-          <div className="flex flex-col items-center justify-center">
-            <p className="text-xl leading-[1.125rem] text-blue-500">Uploading Files...</p>
-            <p className="mt-2 text-sm text-neutral-500">
-              {`${queue.filter((f) => f.status === 'completed').length} of ${queue.length} files completed`}
+          <div className="flex flex-col items-center justify-center px-2 text-center">
+            <p className="text-base leading-tight text-blue-500 dark:text-blue-400 sm:text-lg md:text-xl md:leading-[1.125rem]">
+              {texts.uploadingFiles}
+            </p>
+            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400 sm:text-sm">
+              {language === 'fa'
+                ? `${queue.filter((f) => f.status === 'completed').length}/${queue.length} ${texts.ofFilesCompleted}`
+                : `${queue.filter((f) => f.status === 'completed').length}/${queue.length} ${texts.ofFilesCompleted}`}
             </p>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 cancelAllFileUploads();
               }}
-              className="mt-4 flex rounded-md bg-red-200 px-2 py-1 text-red-600 transition-colors hover:bg-red-300"
+              className="mt-3 flex rounded-md bg-red-200 px-2 py-1 text-xs text-red-600 transition-colors hover:bg-red-300 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 sm:text-sm md:mt-4"
             >
-              Cancel All Uploads
+              {texts.cancelAllUploads}
             </button>
           </div>
         )}
 
         {queueStatus === 'completed' && (
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center px-2 text-center">
             <CompleteTickIcon width={45} height={45} />
-            <p className="mt-4 text-xl leading-[1.125rem] text-green-500">
-              All files uploaded successfully!
+            <p className="mt-3 text-base leading-tight text-green-500 dark:text-green-400 sm:text-lg md:mt-4 md:text-xl md:leading-[1.125rem]">
+              {texts.allFilesUploaded}
             </p>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleSelectMoreFiles();
               }}
-              className="mt-4 flex rounded-md bg-blue-200 px-3 py-1 text-blue-600 transition-colors hover:bg-blue-300"
+              className="mt-3 flex items-center justify-center rounded-md bg-blue-200 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-300 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 sm:text-sm md:mt-4"
             >
-              Select More Files to Upload
+              {texts.selectMoreFiles}
             </button>
           </div>
         )}
 
         {queueStatus === 'failed' && !hasFailedFiles && (
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center px-2 text-center">
             <CompleteTickIcon width={45} height={45} />
-            <p className="mt-4 text-xl leading-[1.125rem] text-green-500">
-              All files uploaded successfully!
+            <p className="mt-3 text-base leading-tight text-green-500 dark:text-green-400 sm:text-lg md:mt-4 md:text-xl md:leading-[1.125rem]">
+              {texts.allFilesUploaded}
             </p>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleSelectMoreFiles();
               }}
-              className="mt-4 flex rounded-md bg-blue-200 px-3 py-1 text-blue-600 transition-colors hover:bg-blue-300"
+              className="mt-3 flex items-center justify-center rounded-md bg-blue-200 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-300 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 sm:text-sm md:mt-4"
             >
-              Select More Files to Upload
+              {texts.selectMoreFiles}
             </button>
           </div>
         )}
 
         {queueStatus === 'failed' && hasFailedFiles && (
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center px-2 text-center">
             <FailedXmarkIcon width={45} height={45} />
-            <p className="mt-4 text-xl leading-[1.125rem] text-red-500">
-              Some files failed to upload
+            <p className="mt-3 text-base leading-tight text-red-500 dark:text-red-400 sm:text-lg md:mt-4 md:text-xl md:leading-[1.125rem]">
+              {texts.someFilesFailed}
             </p>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row md:mt-4">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   retryAllFailed();
                 }}
-                className="flex rounded-md bg-blue-200 px-3 py-1 text-blue-600 transition-colors hover:bg-blue-300"
+                className="flex items-center justify-center rounded-md bg-blue-200 px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-300 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 sm:text-sm"
               >
-                Retry Failed Files
+                {texts.retryFailedFiles}
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSelectMoreFiles();
                 }}
-                className="flex rounded-md bg-green-200 px-3 py-1 text-green-600 transition-colors hover:bg-green-300"
+                className="flex items-center justify-center rounded-md bg-green-200 px-2 py-1 text-xs text-green-600 transition-colors hover:bg-green-300 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800 sm:text-sm"
               >
-                Select More Files
+                {texts.selectMoreFilesButton}
               </button>
             </div>
           </div>
@@ -396,110 +458,116 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   // Render files list with statuses and progress
   const renderFilesList = () => {
     return (
-      <div
-        className={`${styles.scrollableDiv} flex h-full w-1/2 flex-col gap-2 overflow-y-scroll rounded-xl bg-gray-300 p-2 direction-ltr`}
-      >
+      <div className="order-1 flex h-[13rem] w-full flex-col gap-2 rounded-xl bg-slate-200 p-2 direction-ltr dark:bg-slate-800 sm:order-none sm:h-full sm:w-1/2">
         {queue.length === 0 ? (
-          <div className="flex h-full w-full items-center justify-center text-gray-500">
-            No files selected
+          <div className="flex h-full w-full items-center justify-center text-gray-500 dark:text-gray-400">
+            {texts.noFilesSelected}
           </div>
         ) : (
-          queue.map((fileInfo) => (
-            <div
-              key={fileInfo.id}
-              className="relative flex h-16 w-full flex-row gap-2 overflow-hidden rounded-xl bg-gray-50"
-            >
-              <div className="flex w-[10%] items-center justify-center">
-                {getFileIcon(fileInfo.fileData.type)}
-              </div>
-              <div className="flex w-[50%] flex-col justify-center px-2">
-                <p className="h-fit w-full truncate text-gray-700">
-                  {formatFileName(fileInfo.fileData.name, 30)}
-                </p>
-                <div className="flex h-fit w-full flex-row items-center gap-2">
-                  {fileInfo.status === 'uploading' && (
-                    <p className="flex text-blue-500">{fileInfo.progress}%</p>
-                  )}
-                  <div className="flex h-3/5 w-[2px] rounded-xl bg-gray-300"></div>
-                  <p
-                    className={`flex ${
-                      fileInfo.status === 'completed'
-                        ? 'text-green-500'
-                        : fileInfo.status === 'failed'
-                          ? 'text-red-500'
-                          : fileInfo.status === 'uploading'
-                            ? 'text-blue-500'
-                            : 'text-gray-500'
-                    }`}
-                  >
-                    {getStatusText(fileInfo.status)}
+          <div
+            className={`${styles.scrollableDiv} flex max-h-full w-full flex-col gap-2 overflow-y-auto`}
+          >
+            {queue.map((fileInfo) => (
+              <div
+                key={fileInfo.id}
+                className="relative flex h-16 min-h-16 w-full flex-row gap-2 overflow-hidden rounded-xl bg-gray-50 dark:bg-slate-700"
+              >
+                <div className="flex w-[10%] items-center justify-center pl-1">
+                  {getFileIcon(fileInfo.fileData.type)}
+                </div>
+                <div className="flex w-[50%] flex-col justify-center pr-2">
+                  <p className="h-fit w-full truncate text-xs text-gray-700 dark:text-gray-300 sm:text-sm md:text-base">
+                    {formatFileName(fileInfo.fileData.name, 30)}
                   </p>
-                  <div className="flex h-3/5 w-[2px] rounded-xl bg-gray-300"></div>
-                  <p className="flex text-gray-500">{formatFileSize(fileInfo.fileData.size)}</p>
+                  <div className="flex h-fit w-full flex-row items-center gap-1 md:gap-2">
+                    {fileInfo.status === 'uploading' && (
+                      <p className="flex text-xs text-blue-500 dark:text-blue-400 sm:text-sm">
+                        {fileInfo.progress}%
+                      </p>
+                    )}
+                    <div className="flex h-3/5 w-[2px] rounded-xl bg-gray-300 dark:bg-gray-600"></div>
+                    <p
+                      className={`flex items-center justify-center text-nowrap text-xs sm:text-sm ${
+                        fileInfo.status === 'completed'
+                          ? 'text-green-500 dark:text-green-400'
+                          : fileInfo.status === 'failed'
+                            ? 'text-red-500 dark:text-red-400'
+                            : fileInfo.status === 'uploading'
+                              ? 'text-blue-500 dark:text-blue-400'
+                              : 'text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      {getStatusText(fileInfo.status, language)}
+                    </p>
+                    <div className="flex h-3/5 w-[2px] rounded-xl bg-gray-300 dark:bg-gray-600"></div>
+                    <p className="flex text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                      {formatFileSize(fileInfo.fileData.size)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex w-[33%] flex-row items-center gap-1 px-1 md:gap-2 md:px-2">
+                  {fileInfo.status === 'uploading' && (
+                    <>
+                      <div className="relative flex h-[.325rem] w-11/12 rounded-xl bg-gray-200 dark:bg-gray-600">
+                        <div
+                          className="absolute left-0 top-0 h-full rounded-xl bg-blue-500 dark:bg-blue-600"
+                          style={{ width: `${fileInfo.progress}%` }}
+                        ></div>
+                      </div>
+                      <button onClick={() => handleCancel(fileInfo.id)} className="flex w-1/12">
+                        <XIcon />
+                      </button>
+                    </>
+                  )}
+
+                  {fileInfo.status === 'waiting' && (
+                    <div className="flex w-full justify-end gap-1 md:gap-2">
+                      <button
+                        onClick={() => removeFileFromQueue(fileInfo.id)}
+                        className="flex items-center justify-center rounded-md bg-red-200 px-1 py-1 text-xs text-red-600 transition-colors hover:bg-red-300 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 md:px-2"
+                      >
+                        {texts.remove}
+                      </button>
+                    </div>
+                  )}
+
+                  {fileInfo.status === 'selected' && (
+                    <div className="flex w-full justify-end gap-1 md:gap-2">
+                      <button
+                        onClick={() => removeFileFromQueue(fileInfo.id)}
+                        className="flex items-center justify-center rounded-md bg-red-200 px-1 py-1 text-xs text-red-600 transition-colors hover:bg-red-300 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 md:px-2"
+                      >
+                        {texts.remove}
+                      </button>
+                    </div>
+                  )}
+
+                  {fileInfo.status === 'completed' && (
+                    <div className="flex w-full items-center justify-end">
+                      <CompleteTickIcon width={24} height={24} />
+                    </div>
+                  )}
+
+                  {fileInfo.status === 'failed' && (
+                    <div className="flex w-full justify-end gap-1 md:gap-2">
+                      <button
+                        onClick={() => retryFailedUpload(fileInfo.id)}
+                        className="flex items-center justify-center rounded-md bg-blue-200 px-1 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-300 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 md:px-2"
+                      >
+                        {texts.retry}
+                      </button>
+                      <button
+                        onClick={() => removeFileFromQueue(fileInfo.id)}
+                        className="flex items-center justify-center rounded-md bg-red-200 px-1 py-1 text-xs text-red-600 transition-colors hover:bg-red-300 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-800 md:px-2"
+                      >
+                        {texts.remove}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex w-[33%] flex-row items-center gap-2 px-2">
-                {fileInfo.status === 'uploading' && (
-                  <>
-                    <div className="relative flex h-[.325rem] w-11/12 rounded-xl bg-gray-200">
-                      <div
-                        className="absolute left-0 top-0 h-full rounded-xl bg-blue-500"
-                        style={{ width: `${fileInfo.progress}%` }}
-                      ></div>
-                    </div>
-                    <button onClick={() => handleCancel(fileInfo.id)} className="flex w-1/12">
-                      <XIcon />
-                    </button>
-                  </>
-                )}
-
-                {fileInfo.status === 'waiting' && (
-                  <div className="flex w-full justify-end gap-2">
-                    <button
-                      onClick={() => removeFileFromQueue(fileInfo.id)}
-                      className="flex rounded-md bg-red-200 px-2 py-1 text-sm text-red-600 transition-colors hover:bg-red-300"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-
-                {fileInfo.status === 'selected' && (
-                  <div className="flex w-full justify-end gap-2">
-                    <button
-                      onClick={() => removeFileFromQueue(fileInfo.id)}
-                      className="flex rounded-md bg-red-200 px-2 py-1 text-sm text-red-600 transition-colors hover:bg-red-300"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-
-                {fileInfo.status === 'completed' && (
-                  <div className="flex w-full items-center justify-end">
-                    <CompleteTickIcon width={24} height={24} />
-                  </div>
-                )}
-
-                {fileInfo.status === 'failed' && (
-                  <div className="flex w-full justify-end gap-2">
-                    <button
-                      onClick={() => retryFailedUpload(fileInfo.id)}
-                      className="flex rounded-md bg-blue-200 px-2 py-1 text-sm text-blue-600 transition-colors hover:bg-blue-300"
-                    >
-                      Retry
-                    </button>
-                    <button
-                      onClick={() => removeFileFromQueue(fileInfo.id)}
-                      className="flex rounded-md bg-red-200 px-2 py-1 text-sm text-red-600 transition-colors hover:bg-red-300"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     );
@@ -508,13 +576,15 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   // Render constraints
   const renderConstraints = () => {
     return (
-      <div className="flex h-1/6 w-full flex-row justify-end gap-2 overflow-hidden">
+      <div
+        className={`${styles.scrollableDiv} flex h-1/5 w-full flex-row-reverse flex-wrap items-center justify-center gap-1 overflow-y-auto overflow-x-hidden sm:gap-2`}
+      >
         {displayConstraints.map((constraint, index) => (
           <div
             key={index}
-            className="flex h-full items-center justify-center rounded-md bg-gray-50 px-2"
+            className="flex h-fit w-fit items-center justify-center rounded-md bg-gray-50 px-1 py-1 text-xs dark:bg-slate-800 sm:px-2 sm:text-sm"
           >
-            <p dir="ltr" className="text-neutral-500">
+            <p dir="ltr" className="text-neutral-500 dark:text-neutral-400">
               {constraint}
             </p>
           </div>
@@ -524,8 +594,8 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   };
 
   return (
-    <div className="flex h-[20vh] w-full flex-row-reverse justify-between gap-2 rounded-xl bg-gray-200 p-2">
-      <div className="flex h-full w-1/2 flex-col gap-2 overflow-hidden rounded-t-xl">
+    <div className="flex h-auto w-full flex-col-reverse justify-between gap-2 rounded-xl bg-slate-100 p-2 dark:bg-slate-900 sm:h-[13.75rem] sm:flex-row-reverse">
+      <div className="order-2 flex h-64 w-full flex-col gap-2 overflow-hidden rounded-t-xl sm:order-none sm:h-full sm:w-1/2">
         {renderFileSelector()}
         {renderConstraints()}
       </div>
@@ -540,6 +610,7 @@ MultiFileUpload.propTypes = {
   bucket: PropTypes.string,
   acceptedFileTypes: PropTypes.string,
   maxSizeMB: PropTypes.number,
+  language: PropTypes.oneOf(['fa', 'en']),
   onUploadComplete: PropTypes.func,
   onAllUploadsComplete: PropTypes.func,
   onError: PropTypes.func,
