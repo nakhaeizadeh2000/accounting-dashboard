@@ -1,22 +1,15 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module, forwardRef, Global } from '@nestjs/common';
 import { CaslModule } from 'src/casl/casl.module';
 import { JwtService } from '@nestjs/jwt';
-import { MinioFilesController } from './controllers/minio-files.controller';
 import { MinioFilesService } from './services/minio-files.service';
 import { MinioConfigService } from 'config/minio/minio.config';
+import { ConfigModule } from '@nestjs/config';
+import { MinioFilesController } from './controllers/minio-files.controller';
 
 @Module({
-  imports: [
-    // TypeOrmModule.forFeature([Permission]),
-    forwardRef(() => CaslModule),
-  ],
+  imports: [forwardRef(() => CaslModule), ConfigModule],
   controllers: [MinioFilesController],
-  providers: [
-    // PermissionService,
-    JwtService,
-    MinioConfigService,
-    MinioFilesService
-  ],
-  // exports: [PermissionService],
+  providers: [JwtService, MinioConfigService, MinioFilesService],
+  exports: [MinioFilesService, MinioConfigService],
 })
-export class MinioFilesModule { }
+export class MinioFilesModule {}

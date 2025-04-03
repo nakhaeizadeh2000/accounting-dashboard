@@ -4,13 +4,13 @@ import { useState, useRef, ChangeEvent } from 'react';
 import styles from 'components/modules/upload-files/styles/upload-file.module.scss';
 import useSingleFileUpload from './hook/useSingleFileUpload';
 import AddFileIcon from './icons/AddFileIcon';
-import CompleteTickIcon from './icons/CompleteTickIcon';
-import FailedXmarkIcon from './icons/FailedXmarkIcon';
-import ImageFileIcon from './icons/ImageFileIcon';
-import VideoFileIcon from './icons/VideoFileIcon';
-import AudioFileIcon from './icons/AudioFileIcon';
-import CompressedFileIcon from './icons/CompressedFileIcon';
-import DocumentFileIcon from './icons/DocumentFileIcon';
+import CompleteTickIcon from '../../icon/CompleteTickIcon';
+import FailedXmarkIcon from '../../icon/FailedXmarkIcon';
+import ImageFileIcon from '../../icon/ImageFileIcon';
+import VideoFileIcon from '../../icon/VideoFileIcon';
+import AudioFileIcon from '../../icon/AudioFileIcon';
+import CompressedFileIcon from '../../icon/CompressedFileIcon';
+import DocumentFileIcon from '../../icon/DocumentFileIcon';
 
 // Translations for static text
 const translations = {
