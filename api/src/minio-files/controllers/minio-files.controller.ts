@@ -8,8 +8,9 @@ import {
   InternalServerErrorException,
   HttpException,
   Body,
+  Res,
 } from '@nestjs/common';
-import { FastifyRequest } from 'fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 import {
   MinioFilesService,
   FileMetadata,
@@ -50,17 +51,22 @@ export class MinioFilesController {
     @Query('generateThumbnail') generateThumbnail?: string,
     @Query('maxSizeMB') maxSizeMB?: string,
     @Query('allowedMimeTypes') allowedMimeTypesStr?: string,
+    @Query('skipThumbnailForLargeFiles') skipThumbnailForLargeFiles?: string,
+    @Query('largeSizeMB') largeSizeMB?: string,
   ): Promise<UploadFileResponseDto> {
     try {
       const allowedMimeTypes = allowedMimeTypesStr
         ? allowedMimeTypesStr.split(',')
         : [];
 
+      // Parse and validate options
       const options: FileUploadOptions = {
         generateThumbnail: generateThumbnail !== 'false',
         maxSizeMB: maxSizeMB ? parseFloat(maxSizeMB) : undefined,
         allowedMimeTypes:
           allowedMimeTypes.length > 0 ? allowedMimeTypes : undefined,
+        skipThumbnailForLargeFiles: skipThumbnailForLargeFiles !== 'false',
+        largeSizeMB: largeSizeMB ? parseFloat(largeSizeMB) : undefined,
       };
 
       const files = await req.files();
@@ -78,7 +84,7 @@ export class MinioFilesController {
         const { file: fileStream, filename, mimetype } = file.value;
 
         try {
-          // Process and upload file
+          // Process and upload file using the optimized service
           const result = await this.minioService.uploadFile(
             bucket,
             filename,
@@ -132,15 +138,41 @@ export class MinioFilesController {
     @Param('bucket') bucket: string,
     @Param('filename') filename: string,
     @Query('expiry') expiry?: string,
-  ): Promise<DownloadUrlResponseDto> {
+    @Query('direct') direct?: string,
+    @Res() response?: FastifyReply,
+  ): Promise<DownloadUrlResponseDto | void> {
     try {
-      const expirySeconds = expiry ? parseInt(expiry) : 24 * 60 * 60;
-      const url = await this.minioService.generatePresignedUrl(
-        bucket,
-        filename,
-        expirySeconds,
-      );
-      return { url };
+      // If direct=true is specified, stream the file directly
+      if (direct === 'true' && response) {
+        // Get file metadata to determine content type
+        const metadata = await this.minioService.getFileMetadata(
+          bucket,
+          filename,
+        );
+
+        // Set appropriate headers
+        response.header(
+          'Content-Disposition',
+          `attachment; filename="${metadata.originalName}"`,
+        );
+        response.header('Content-Type', metadata.mimetype);
+
+        // Start streaming the file directly to the response
+        const fileStream = await this.minioService.getFileStream(
+          bucket,
+          filename,
+        );
+        return response.send(fileStream);
+      } else {
+        // Regular presigned URL generation
+        const expirySeconds = expiry ? parseInt(expiry) : 24 * 60 * 60;
+        const url = await this.minioService.generatePresignedUrl(
+          bucket,
+          filename,
+          expirySeconds,
+        );
+        return { url };
+      }
     } catch (error) {
       if (error.code === 'NotFound') {
         throw new NotFoundException(
@@ -269,7 +301,7 @@ export class MinioFilesController {
         message: `File "${filename}" deleted successfully from bucket "${bucket}"`,
       };
     } catch (error) {
-      if (error.code === 'NotFound') {
+      if (error.code === 'NotFound' || error instanceof NotFoundException) {
         throw new NotFoundException(
           `File "${filename}" not found in bucket "${bucket}"`,
         );

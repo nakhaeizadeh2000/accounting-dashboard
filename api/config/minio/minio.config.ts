@@ -1,9 +1,9 @@
 import { ConfigService } from '@nestjs/config';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Client } from 'minio';
 
 @Injectable()
-export class MinioConfigService {
+export class MinioConfigService implements OnModuleInit {
   private minioClient: Client;
   private readonly logger = new Logger(MinioConfigService.name);
 
@@ -13,6 +13,7 @@ export class MinioConfigService {
     const useSSL = this.configService.get<string>('MINIO_USE_SSL') === 'true';
     const accessKey = this.configService.get<string>('MINIO_ROOT_USER');
     const secretKey = this.configService.get<string>('MINIO_ROOT_PASSWORD');
+    const region = this.configService.get<string>('MINIO_REGION', 'us-east-1');
 
     if (!endpoint || !accessKey || !secretKey) {
       this.logger.error(
@@ -25,13 +26,33 @@ export class MinioConfigService {
       `Initializing MinIO client for endpoint: ${endpoint}:${port}, SSL: ${useSSL}`,
     );
 
+    // Create the MinIO client with only the officially supported options
     this.minioClient = new Client({
       endPoint: endpoint,
       port: port,
       useSSL: useSSL,
       accessKey: accessKey,
       secretKey: secretKey,
+      region: region,
+      //partSize is one of the supported options
+      partSize: 64 * 1024 * 1024, // 64MB parts for multipart uploads
     });
+  }
+
+  /**
+   * Hook that runs when the module is initialized
+   */
+  async onModuleInit() {
+    try {
+      // Test connection to MinIO
+      await this.checkConnection();
+    } catch (error) {
+      this.logger.error(
+        'Failed to connect to MinIO server during initialization',
+        error,
+      );
+      // Don't throw here - we'll let the application start even if MinIO is temporarily unavailable
+    }
   }
 
   /**

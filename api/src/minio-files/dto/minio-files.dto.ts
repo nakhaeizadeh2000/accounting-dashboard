@@ -6,6 +6,9 @@ import {
   IsOptional,
   IsArray,
   IsDateString,
+  Min,
+  Max,
+  ValidateIf,
 } from 'class-validator';
 
 export class FileMetadataDto {
@@ -148,14 +151,42 @@ export class FileUploadOptionsDto {
 
   @ApiPropertyOptional({
     description: 'Maximum file size in MB (0 means no limit)',
+    minimum: 0,
+    maximum: 5000,
   })
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  @Max(5000)
   maxSizeMB?: number;
 
-  @ApiPropertyOptional({ description: 'Array of allowed MIME types' })
+  @ApiPropertyOptional({
+    description: 'Array of allowed MIME types',
+    example: ['image/jpeg', 'image/png', 'application/pdf'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   allowedMimeTypes?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Skip thumbnail generation for large files to save resources',
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  skipThumbnailForLargeFiles?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Size threshold in MB for skipping thumbnail generation',
+    default: 100,
+    minimum: 1,
+    maximum: 1000,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(1000)
+  @ValidateIf((o) => o.skipThumbnailForLargeFiles === true)
+  largeSizeMB?: number;
 }

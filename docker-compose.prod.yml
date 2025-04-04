@@ -36,6 +36,7 @@ services:
   nginx:
     container_name: nginx
     image: nginx:alpine
+    restart: always
     env_file:
       - .env.production
     ports:
@@ -56,6 +57,7 @@ services:
   api:
     image: accounting-dashboard-api-prod:latest
     container_name: api
+    restart: always
     build:
       context: .
       dockerfile: dev-env/api.prod.dockerfile
@@ -99,6 +101,7 @@ services:
   client:
     image: accounting-dashboard-client-prod:latest
     container_name: client
+    restart: always
     build:
       context: .
       dockerfile: dev-env/client.prod.dockerfile
@@ -118,6 +121,7 @@ services:
   postgres:
     container_name: ${POSTGRES_HOST}
     image: postgres:16-alpine
+    restart: unless-stopped
     env_file:
       - .env.production # Use a different env file for production if needed
     environment:
@@ -126,7 +130,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
-    restart: unless-stopped
     tty: true
     volumes:
       - ./api/database/postgres-db/data:/var/lib/postgresql/data
@@ -138,9 +141,9 @@ services:
   redis:
     container_name: ${REDIS_HOST}
     image: redis:7.4.0-alpine
+    restart: always
     env_file:
       - .env.production # Use a different env file for production if needed
-    restart: always
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:

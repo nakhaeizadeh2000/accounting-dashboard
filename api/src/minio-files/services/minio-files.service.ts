@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { MinioConfigService } from 'config/minio/minio.config';
 import { Client } from 'minio';
@@ -11,17 +12,17 @@ import * as sharp from 'sharp';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs';
-import { statSync } from 'fs';
+import { promises as fsPromises } from 'fs';
 import * as os from 'os';
+import { PassThrough, Readable, Writable, pipeline } from 'stream';
 import { promisify } from 'util';
-import { Readable } from 'stream';
 import * as ffmpeg from 'fluent-ffmpeg';
 
-const pipeline = promisify(require('stream').pipeline);
+const pipelineAsync = promisify(pipeline);
 const mkdtemp = promisify(fs.mkdtemp);
-const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 const rmdir = promisify(fs.rmdir);
+const stat = promisify(fs.stat);
 
 export interface FileMetadata {
   originalName: string;
@@ -44,11 +45,15 @@ export interface FileUploadOptions {
   generateThumbnail?: boolean;
   maxSizeMB?: number;
   allowedMimeTypes?: string[];
+  skipThumbnailForLargeFiles?: boolean;
+  largeSizeMB?: number; // Size threshold for skipping thumbnail generation
 }
 
 const DEFAULT_THUMBNAIL_SIZE = 300;
 const THUMBNAIL_PREFIX = 'thumb_';
 const TEMP_DIR_PREFIX = 'minio-upload-';
+// Default thumbnail generation cutoff (100MB)
+const DEFAULT_LARGE_SIZE_MB = 100;
 
 @Injectable()
 export class MinioFilesService {
@@ -60,7 +65,7 @@ export class MinioFilesService {
   }
 
   /**
-   * Upload a file to MinIO
+   * Upload a file to MinIO using optimized streaming approach
    *
    * @param bucket - The bucket to upload to
    * @param filename - The original filename
@@ -76,62 +81,71 @@ export class MinioFilesService {
     mimetype: string,
     options: FileUploadOptions = {},
   ): Promise<FileMetadata> {
+    // Default options with sensible values
+    const {
+      generateThumbnail = true,
+      maxSizeMB = 0, // 0 means no limit
+      allowedMimeTypes = [],
+      skipThumbnailForLargeFiles = true,
+      largeSizeMB = DEFAULT_LARGE_SIZE_MB,
+    } = options;
+
+    // Create the bucket if it doesn't exist
+    await this.ensureBucketExists(bucket);
+
+    // Generate a unique filename to prevent collisions
+    const uniqueName = this.generateUniqueFilename(filename);
+
+    // Check MIME type if restrictions are specified
+    if (allowedMimeTypes.length > 0 && !allowedMimeTypes.includes(mimetype)) {
+      throw new BadRequestException(`File type ${mimetype} is not allowed`);
+    }
+
+    let tempDir: string | null = null;
+    let tempFilePath: string | null = null;
+    let fileSize = 0;
+    let thumbnailName: string | null = null;
+
     try {
-      // Default options
-      const {
-        generateThumbnail = true,
-        maxSizeMB = 0, // 0 means no limit
-        allowedMimeTypes = [],
-      } = options;
-
-      // Create the bucket if it doesn't exist
-      await this.ensureBucketExists(bucket);
-
-      // Create a temp directory for file processing
-      const tempDir = await mkdtemp(path.join(os.tmpdir(), TEMP_DIR_PREFIX));
-      const tempFilePath = path.join(tempDir, filename);
-
-      // Save the file to temp directory for processing
-      let fileSize = 0;
-      const fileBuffer = await this.streamToBuffer(fileStream, (size) => {
-        fileSize = size;
-
-        // Check file size if limit is specified
-        if (maxSizeMB > 0 && size > maxSizeMB * 1024 * 1024) {
-          throw new BadRequestException(
-            `File exceeds maximum size of ${maxSizeMB}MB`,
-          );
-        }
+      // File size tracking stream with optional size limit
+      const trackingSizeStream = new PassThrough({
+        highWaterMark: 64 * 1024, // 64KB buffer to minimize memory usage
       });
 
-      // Check MIME type if restrictions are specified
-      if (allowedMimeTypes.length > 0 && !allowedMimeTypes.includes(mimetype)) {
-        throw new BadRequestException(`File type ${mimetype} is not allowed`);
-      }
-
-      await fs.writeFileSync(tempFilePath, new Uint8Array(fileBuffer));
-
-      // Generate a unique filename to prevent collisions
-      const uniqueName = this.generateUniqueFilename(filename);
-
-      // Set metadata to be stored with the file
+      // Create a metadata object for the file
       const metadata = {
         'Content-Type': mimetype,
         'Original-Name': filename,
         'Upload-Date': new Date().toISOString(),
-        'File-Size': fileSize.toString(),
       };
 
-      // Upload the file to MinIO
-      await this.minioClient.putObject(
+      // Track file size for validation and reporting
+      trackingSizeStream.on('data', (chunk) => {
+        fileSize += chunk.length;
+
+        // Check file size if limit is specified
+        if (maxSizeMB > 0 && fileSize > maxSizeMB * 1024 * 1024) {
+          trackingSizeStream.destroy(
+            new BadRequestException(
+              `File exceeds maximum size of ${maxSizeMB}MB`,
+            ),
+          );
+        }
+      });
+
+      // Create a direct upload to MinIO
+      const uploadPromise = this.minioClient.putObject(
         bucket,
         uniqueName,
-        fs.createReadStream(tempFilePath),
-        fileSize,
+        trackingSizeStream,
+        null, // Size is unknown until we finish processing the stream
         metadata,
       );
 
-      // Prepare the result object
+      // Start the streaming process
+      await pipelineAsync(fileStream, trackingSizeStream);
+      await uploadPromise;
+
       const result: FileMetadata = {
         originalName: filename,
         uniqueName,
@@ -141,15 +155,38 @@ export class MinioFilesService {
         uploadedAt: new Date(),
       };
 
-      // Generate thumbnail if needed and supported
-      if (generateThumbnail) {
-        try {
-          const thumbnailName = await this.generateThumbnail(
+      // Determine if we should generate a thumbnail based on file size
+      const shouldGenerateThumbnail =
+        generateThumbnail &&
+        !(skipThumbnailForLargeFiles && fileSize > largeSizeMB * 1024 * 1024);
+
+      // Generate thumbnail if needed and the file type is supported
+      if (shouldGenerateThumbnail) {
+        // For thumbnail generation, we need a copy of the file
+        // Only create temp files if we actually need them
+        if (this.isThumbnailSupported(mimetype)) {
+          // Create a temp directory for thumbnail processing
+          tempDir = await mkdtemp(path.join(os.tmpdir(), TEMP_DIR_PREFIX));
+          tempFilePath = path.join(tempDir, filename);
+
+          // Create a new download stream from MinIO
+          const objectStream = await this.minioClient.getObject(
+            bucket,
+            uniqueName,
+          );
+          const fileWriteStream = fs.createWriteStream(tempFilePath);
+
+          // Stream the file to disk for thumbnail processing
+          await pipelineAsync(objectStream, fileWriteStream);
+
+          // Now generate the thumbnail from the temp file
+          thumbnailName = await this.generateThumbnail(
             bucket,
             uniqueName,
             tempFilePath,
             mimetype,
           );
+
           if (thumbnailName) {
             result.thumbnailName = thumbnailName;
             result.thumbnailUrl = await this.generatePresignedUrl(
@@ -157,30 +194,43 @@ export class MinioFilesService {
               thumbnailName,
             );
           }
-        } catch (thumbnailError) {
-          this.logger.warn(
-            `Failed to generate thumbnail for ${filename}: ${thumbnailError.message}`,
-          );
         }
       }
 
       // Generate URL for the uploaded file
       result.url = await this.generatePresignedUrl(bucket, uniqueName);
 
-      // Clean up temporary files
-      try {
-        await unlink(tempFilePath);
-        await rmdir(tempDir);
-      } catch (cleanupError) {
-        this.logger.warn(
-          `Failed to clean up temp files: ${cleanupError.message}`,
-        );
-      }
-
       return result;
     } catch (error) {
       this.logger.error(`Error uploading file: ${error.message}`, error.stack);
+
+      // If the upload failed, try to clean up the partial object in MinIO
+      try {
+        await this.minioClient.removeObject(bucket, uniqueName);
+      } catch (cleanupError) {
+        this.logger.warn(
+          `Failed to clean up partial upload: ${cleanupError.message}`,
+        );
+      }
+
       throw error;
+    } finally {
+      // Clean up temporary files
+      if (tempFilePath && fs.existsSync(tempFilePath)) {
+        try {
+          await unlink(tempFilePath);
+        } catch (err) {
+          this.logger.warn(`Failed to clean up temp file: ${err.message}`);
+        }
+      }
+
+      if (tempDir && fs.existsSync(tempDir)) {
+        try {
+          await rmdir(tempDir);
+        } catch (err) {
+          this.logger.warn(`Failed to clean up temp directory: ${err.message}`);
+        }
+      }
     }
   }
 
@@ -200,18 +250,35 @@ export class MinioFilesService {
     // Create the bucket once for all files
     await this.ensureBucketExists(bucket);
 
-    // Process each file
-    const uploadPromises = files.map((fileData) =>
-      this.uploadFile(
-        bucket,
-        fileData.filename,
-        fileData.file,
-        fileData.mimetype,
-        options,
-      ),
-    );
+    const results: FileMetadata[] = [];
+    const errors: Error[] = [];
 
-    return Promise.all(uploadPromises);
+    // Process files sequentially to prevent excessive memory usage
+    for (const fileData of files) {
+      try {
+        const result = await this.uploadFile(
+          bucket,
+          fileData.filename,
+          fileData.file,
+          fileData.mimetype,
+          options,
+        );
+        results.push(result);
+      } catch (error) {
+        this.logger.error(
+          `Failed to upload file ${fileData.filename}: ${error.message}`,
+          error.stack,
+        );
+        errors.push(error);
+      }
+    }
+
+    if (errors.length > 0 && results.length === 0) {
+      // If all uploads failed, throw the first error
+      throw errors[0];
+    }
+
+    return results;
   }
 
   /**
@@ -228,15 +295,14 @@ export class MinioFilesService {
     expirySeconds = 24 * 60 * 60,
   ): Promise<string> {
     try {
-      return await this.minioClient.presignedUrl(
-        'GET',
+      return await this.minioClient.presignedGetObject(
         bucket,
         objectName,
         expirySeconds,
       );
     } catch (error) {
       this.logger.error(
-        `Error generating presigned URL: ${error.message}`,
+        `Error generating presigned URL for ${objectName}: ${error.message}`,
         error.stack,
       );
       throw error;
@@ -256,17 +322,26 @@ export class MinioFilesService {
     filenames: string[],
     expirySeconds = 24 * 60 * 60,
   ): Promise<Map<string, string>> {
-    const urlPromises = filenames.map(async (filename) => {
-      const url = await this.generatePresignedUrl(
-        bucket,
-        filename,
-        expirySeconds,
-      );
-      return [filename, url] as [string, string];
-    });
+    const urlMap = new Map<string, string>();
 
-    const urlEntries = await Promise.all(urlPromises);
-    return new Map<string, string>(urlEntries);
+    // Generate URLs sequentially to avoid overwhelming the MinIO server
+    for (const filename of filenames) {
+      try {
+        const url = await this.generatePresignedUrl(
+          bucket,
+          filename,
+          expirySeconds,
+        );
+        urlMap.set(filename, url);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to generate URL for ${filename}: ${error.message}`,
+        );
+        // Continue with other files even if one fails
+      }
+    }
+
+    return urlMap;
   }
 
   /**
@@ -336,22 +411,25 @@ export class MinioFilesService {
     recursive = true,
   ): Promise<FileMetadata[]> {
     try {
-      // Ensure the bucket exists
+      // Check if bucket exists
       const bucketExists = await this.bucketExists(bucket);
       if (!bucketExists) {
         throw new NotFoundException(`Bucket "${bucket}" not found`);
       }
 
-      const objects = [];
+      const objects: FileMetadata[] = [];
       const objectsStream = this.minioClient.listObjects(
         bucket,
         prefix,
         recursive,
       );
 
-      for await (const obj of objectsStream) {
+      // Handle each object individually to avoid memory issues with large buckets
+      objectsStream.on('data', async (obj) => {
+        // Skip thumbnails in the main listing
         if (!obj.name.startsWith(THUMBNAIL_PREFIX)) {
           try {
+            // Get metadata for each file
             const metadata = await this.getFileMetadata(bucket, obj.name);
             objects.push(metadata);
           } catch (error) {
@@ -360,9 +438,13 @@ export class MinioFilesService {
             );
           }
         }
-      }
+      });
 
-      return objects;
+      // Wait for the stream to finish
+      return new Promise((resolve, reject) => {
+        objectsStream.on('end', () => resolve(objects));
+        objectsStream.on('error', (err) => reject(err));
+      });
     } catch (error) {
       this.logger.error(`Error listing files: ${error.message}`, error.stack);
       throw error;
@@ -378,18 +460,40 @@ export class MinioFilesService {
    */
   async deleteFile(bucket: string, objectName: string): Promise<boolean> {
     try {
+      // Check if the file exists first
+      await this.minioClient.statObject(bucket, objectName);
+
+      // Delete the main file
       await this.minioClient.removeObject(bucket, objectName);
 
       // Also try to delete the thumbnail if it exists
       try {
         const thumbnailName = `${THUMBNAIL_PREFIX}${objectName}`;
+
+        // Check if thumbnail exists before trying to delete
+        await this.minioClient.statObject(bucket, thumbnailName);
         await this.minioClient.removeObject(bucket, thumbnailName);
+
+        this.logger.log(
+          `Deleted thumbnail ${thumbnailName} from bucket ${bucket}`,
+        );
       } catch (thumbnailError) {
         // It's okay if the thumbnail doesn't exist
+        if (thumbnailError.code !== 'NotFound') {
+          this.logger.warn(
+            `Error checking/deleting thumbnail: ${thumbnailError.message}`,
+          );
+        }
       }
 
       return true;
     } catch (error) {
+      if (error.code === 'NotFound') {
+        throw new NotFoundException(
+          `File "${objectName}" not found in bucket "${bucket}"`,
+        );
+      }
+
       this.logger.error(`Error deleting file: ${error.message}`, error.stack);
       throw error;
     }
@@ -495,21 +599,8 @@ export class MinioFilesService {
       }
 
       if (force) {
-        // List and remove all objects in the bucket first
-        const objectsStream = this.minioClient.listObjects(
-          bucketName,
-          '',
-          true,
-        );
-        const objects = [];
-
-        for await (const obj of objectsStream) {
-          objects.push(obj.name);
-        }
-
-        if (objects.length > 0) {
-          await this.minioClient.removeObjects(bucketName, objects);
-        }
+        // Remove objects in batches to avoid memory issues with large buckets
+        await this.removeAllObjectsFromBucket(bucketName);
       }
 
       await this.minioClient.removeBucket(bucketName);
@@ -521,7 +612,47 @@ export class MinioFilesService {
   }
 
   /**
-   * Generate a thumbnail for an uploaded file
+   * Remove all objects from a bucket in batches
+   *
+   * @param bucketName - The name of the bucket to empty
+   */
+  private async removeAllObjectsFromBucket(bucketName: string): Promise<void> {
+    const objectsStream = this.minioClient.listObjects(bucketName, '', true);
+    const objectBatch: string[] = [];
+    const BATCH_SIZE = 1000; // Delete objects in batches of 1000
+
+    for await (const obj of objectsStream) {
+      objectBatch.push(obj.name);
+
+      // When batch reaches size, remove them
+      if (objectBatch.length >= BATCH_SIZE) {
+        await this.minioClient.removeObjects(bucketName, [...objectBatch]);
+        objectBatch.length = 0; // Clear the batch
+        this.logger.log(`Removed batch of objects from bucket ${bucketName}`);
+      }
+    }
+
+    // Remove any remaining objects
+    if (objectBatch.length > 0) {
+      await this.minioClient.removeObjects(bucketName, [...objectBatch]);
+      this.logger.log(
+        `Removed final batch of objects from bucket ${bucketName}`,
+      );
+    }
+  }
+
+  /**
+   * Check if thumbnail generation is supported for this file type
+   *
+   * @param mimetype - The MIME type to check
+   * @returns True if thumbnail generation is supported
+   */
+  private isThumbnailSupported(mimetype: string): boolean {
+    return mimetype.startsWith('image/') || mimetype.startsWith('video/');
+  }
+
+  /**
+   * Generate a thumbnail for an uploaded file using optimized streaming
    *
    * @param bucket - The bucket where the file is stored
    * @param objectName - The object name in the bucket
@@ -536,38 +667,44 @@ export class MinioFilesService {
     mimetype: string,
   ): Promise<string | null> {
     const thumbnailName = `${THUMBNAIL_PREFIX}${objectName}`;
-    const tempThumbnailPath = `${filePath}_thumb`;
 
     try {
-      // Generate thumbnail based on file type
+      // For images, use Sharp for thumbnails
       if (mimetype.startsWith('image/')) {
-        // For images, use sharp for processing
-        await sharp(filePath)
+        // Create a read stream to avoid loading the whole image in memory
+        const readStream = fs.createReadStream(filePath);
+
+        // Create a transform stream for the thumbnail
+        const transformer = sharp()
           .resize(DEFAULT_THUMBNAIL_SIZE, DEFAULT_THUMBNAIL_SIZE, {
             fit: 'inside',
             withoutEnlargement: true,
           })
-          .toFile(tempThumbnailPath);
+          .on('error', (err) => {
+            this.logger.warn(`Error in Sharp transform: ${err.message}`);
+          });
 
-        // Get the thumbnail file size
-        const thumbStats = fs.statSync(tempThumbnailPath);
+        // Pass the image through Sharp's transformer
+        const thumbnailStream = readStream.pipe(transformer);
 
-        // Upload the thumbnail to MinIO
+        // Stream the thumbnail directly to MinIO
         await this.minioClient.putObject(
           bucket,
           thumbnailName,
-          fs.createReadStream(tempThumbnailPath),
-          thumbStats.size,
+          thumbnailStream,
+          null, // Size is unknown in advance when streaming
           { 'Content-Type': mimetype },
         );
 
-        // Clean up the temporary thumbnail file
-        await unlink(tempThumbnailPath);
-
         return thumbnailName;
-      } else if (mimetype.startsWith('video/')) {
-        // For videos, use ffmpeg to extract a frame
+      }
+      // For videos, use FFmpeg to extract a frame
+      else if (mimetype.startsWith('video/')) {
+        const tempThumbnailPath = `${filePath}_thumb.jpg`;
+
+        // Create a promise to handle FFmpeg callbacks
         return new Promise((resolve, reject) => {
+          // Use FFmpeg to extract a frame from the video
           ffmpeg(filePath)
             .on('error', (err) => {
               this.logger.warn(
@@ -583,34 +720,37 @@ export class MinioFilesService {
             })
             .on('end', async () => {
               try {
-                // Get the thumbnail file size
-                const thumbStats = fs.statSync(tempThumbnailPath);
+                // Upload the thumbnail to MinIO using a stream
+                const thumbStream = fs.createReadStream(tempThumbnailPath);
 
-                // Upload the thumbnail to MinIO
                 await this.minioClient.putObject(
                   bucket,
                   thumbnailName,
-                  fs.createReadStream(tempThumbnailPath),
-                  thumbStats.size,
+                  thumbStream,
+                  null,
                   { 'Content-Type': 'image/jpeg' },
                 );
 
-                // Clean up the temporary thumbnail file
-                await unlink(tempThumbnailPath);
+                // Clean up the temp thumbnail file
+                await fsPromises.unlink(tempThumbnailPath);
 
                 resolve(thumbnailName);
               } catch (error) {
                 this.logger.warn(
                   `Error uploading video thumbnail: ${error.message}`,
                 );
+
+                // Try to clean up even on error
+                try {
+                  await fsPromises.unlink(tempThumbnailPath);
+                } catch (e) {
+                  // Ignore cleanup errors
+                }
+
                 resolve(null);
               }
             });
         });
-      } else if (mimetype.startsWith('application/pdf')) {
-        // For PDFs, thumbnail generation would require a PDF renderer
-        // This is more complex and would require additional libraries
-        return null;
       }
 
       // Other file types don't get thumbnails
@@ -641,59 +781,36 @@ export class MinioFilesService {
   }
 
   /**
-   * Convert a stream to a buffer
+   * Stream a file from MinIO to a client
    *
-   * @param stream - The stream to convert
-   * @param onProgress - Optional callback for tracking progress
-   * @returns Promise resolving to a buffer
+   * @param bucket - The bucket where the file is stored
+   * @param objectName - The object name in the bucket
+   * @param outputStream - The output stream to write to
+   * @returns Promise that resolves when streaming is complete
    */
-  private async streamToBuffer(
-    stream: BusboyFileStream,
-    onProgress?: (bytesRead: number) => void,
-  ): Promise<Buffer> {
-    return new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      let totalSize = 0;
+  async streamFileToOutput(
+    bucket: string,
+    objectName: string,
+    outputStream: Writable,
+  ): Promise<void> {
+    try {
+      // Get the object stream from MinIO
+      const objectStream = await this.minioClient.getObject(bucket, objectName);
 
-      stream.on('data', (chunk) => {
-        // Ensure chunk is a Buffer before adding to chunks
-        const bufferChunk =
-          chunk instanceof Buffer ? chunk : Buffer.from(chunk);
+      // Pipe the stream to the output, with error handling
+      return pipelineAsync(objectStream, outputStream);
+    } catch (error) {
+      if (error.code === 'NotFound') {
+        throw new NotFoundException(
+          `File "${objectName}" not found in bucket "${bucket}"`,
+        );
+      }
 
-        chunks.push(bufferChunk);
-        totalSize += bufferChunk.length;
-
-        if (onProgress) {
-          onProgress(totalSize);
-        }
-      });
-
-      stream.on('end', () => {
-        // Convert chunks to Uint8Array explicitly
-        const buffers = chunks
-          .map((chunk) => (Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)))
-          .map((buffer) => new Uint8Array(buffer));
-
-        resolve(Buffer.concat(buffers));
-      });
-
-      stream.on('error', (err) => {
-        reject(err);
-      });
-    });
-  }
-
-  /**
-   * Convert a buffer to a readable stream
-   *
-   * @param buffer - The buffer to convert
-   * @returns A readable stream
-   */
-  private bufferToStream(buffer: Buffer): Readable {
-    const stream = new Readable();
-    stream.push(buffer);
-    stream.push(null);
-    return stream;
+      this.logger.error(`Error streaming file: ${error.message}`, error.stack);
+      throw new InternalServerErrorException(
+        `Failed to stream file: ${error.message}`,
+      );
+    }
   }
 
   /**
@@ -710,6 +827,35 @@ export class MinioFilesService {
       }));
     } catch (error) {
       this.logger.error(`Error listing buckets: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a readable stream for a file
+   *
+   * @param bucket - The bucket containing the file
+   * @param objectName - The name of the file
+   * @returns A readable stream for the file
+   */
+  async getFileStream(bucket: string, objectName: string): Promise<Readable> {
+    try {
+      // Check if the file exists first
+      await this.minioClient.statObject(bucket, objectName);
+
+      // Get the object stream
+      return await this.minioClient.getObject(bucket, objectName);
+    } catch (error) {
+      if (error.code === 'NotFound') {
+        throw new NotFoundException(
+          `File "${objectName}" not found in bucket "${bucket}"`,
+        );
+      }
+
+      this.logger.error(
+        `Error getting file stream: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

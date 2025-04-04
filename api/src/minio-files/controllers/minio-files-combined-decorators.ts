@@ -42,16 +42,31 @@ export function filesUploadEndpointDecorators() {
       name: 'generateThumbnail',
       required: false,
       description: 'Whether to generate thumbnails for supported files',
+      type: Boolean,
     }),
     ApiQuery({
       name: 'maxSizeMB',
       required: false,
       description: 'Maximum file size in MB',
+      type: Number,
     }),
     ApiQuery({
       name: 'allowedMimeTypes',
       required: false,
       description: 'Comma-separated list of allowed MIME types',
+      type: String,
+    }),
+    ApiQuery({
+      name: 'skipThumbnailForLargeFiles',
+      required: false,
+      description: 'Skip thumbnail generation for large files',
+      type: Boolean,
+    }),
+    ApiQuery({
+      name: 'largeSizeMB',
+      required: false,
+      description: 'Size threshold in MB for skipping thumbnail generation',
+      type: Number,
     }),
     ApiResponse({
       status: 200,
@@ -69,17 +84,24 @@ export function filesUploadEndpointDecorators() {
 export function filesDownloadEndpointDecorators() {
   return applyDecorators(
     Get('download/:bucket/:filename'),
-    ApiOperation({ summary: 'Get a presigned URL for downloading a file' }),
+    ApiOperation({ summary: 'Download a file or get a presigned URL' }),
     ApiParam({ name: 'bucket', description: 'The bucket containing the file' }),
     ApiParam({ name: 'filename', description: 'The filename to download' }),
     ApiQuery({
       name: 'expiry',
       required: false,
       description: 'URL expiry time in seconds (default: 24 hours)',
+      type: Number,
+    }),
+    ApiQuery({
+      name: 'direct',
+      required: false,
+      description: 'Stream the file directly instead of returning a URL',
+      type: Boolean,
     }),
     ApiResponse({
       status: 200,
-      description: 'Presigned URL generated successfully',
+      description: 'File streamed or presigned URL generated successfully',
     }),
     ApiResponse({ status: 404, description: 'File not found' }),
     CheckPolicies(
@@ -98,16 +120,19 @@ export function filesBatchDownloadEndpointDecorators() {
       name: 'bucket',
       required: true,
       description: 'The bucket containing the files',
+      type: String,
     }),
     ApiQuery({
       name: 'filenames',
       required: true,
       description: 'Comma-separated list of filenames',
+      type: String,
     }),
     ApiQuery({
       name: 'expiry',
       required: false,
       description: 'URL expiry time in seconds (default: 24 hours)',
+      type: Number,
     }),
     ApiResponse({
       status: 200,
@@ -153,11 +178,13 @@ export function filesListEndpointDecorators() {
       name: 'prefix',
       required: false,
       description: 'Filter files by prefix',
+      type: String,
     }),
     ApiQuery({
       name: 'recursive',
       required: false,
       description: 'Whether to list files recursively',
+      type: Boolean,
     }),
     ApiResponse({
       status: 200,
@@ -216,11 +243,13 @@ export function filesBucketCreateEndpointDecorators() {
       name: 'region',
       required: false,
       description: 'The region to create the bucket in',
+      type: String,
     }),
     ApiQuery({
       name: 'publicPolicy',
       required: false,
       description: 'Whether to set a public policy for the bucket',
+      type: Boolean,
     }),
     ApiResponse({
       status: 201,
@@ -244,6 +273,7 @@ export function filesBucketDeleteEndpointDecorators() {
       name: 'force',
       required: false,
       description: 'Whether to force deletion by removing all objects first',
+      type: Boolean,
     }),
     ApiResponse({
       status: 200,
