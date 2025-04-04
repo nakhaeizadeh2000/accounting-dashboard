@@ -17,11 +17,14 @@ import styles from 'components/modules/upload-files/styles/upload-file.module.sc
 import { cancelUploadRequest } from '@/store/features/files/files.api';
 
 export interface MultiFileUploadProps {
-  id?: string; // Unique instance ID for component
+  id?: string; // Unique ID for component instance
   bucket?: string;
   acceptedFileTypes?: string;
   maxSizeMB?: number;
   language?: 'fa' | 'en'; // Language option: Persian (fa) or English (en)
+  generateThumbnail?: boolean;
+  skipThumbnailForLargeFiles?: boolean;
+  largeSizeMB?: number; // Added property to match the hook interface
   onUploadComplete?: (uploadedFiles: FileUploadInfo[]) => void;
   onAllUploadsComplete?: (succeeded: FileUploadInfo[], failed: FileUploadInfo[]) => void;
   onError?: (error: any) => void;
@@ -146,6 +149,9 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   acceptedFileTypes = 'image/jpeg,image/png,application/pdf',
   maxSizeMB = 10,
   language = 'fa', // Default to Persian
+  generateThumbnail = true, // Default to true
+  skipThumbnailForLargeFiles = true, // Default to true
+  largeSizeMB = 20, // Default value
   onUploadComplete,
   onAllUploadsComplete,
   onError,
@@ -156,6 +162,9 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
 
   // Get translations for the selected language
   const texts = translations[language];
+
+  // Parse acceptedFileTypes string into an array if provided
+  const allowedMimeTypes = acceptedFileTypes ? acceptedFileTypes.split(',') : undefined;
 
   const {
     componentId,
@@ -174,6 +183,11 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   } = useMultiFileUpload({
     id, // Pass component ID for isolation
     bucket,
+    maxSizeMB,
+    generateThumbnail,
+    skipThumbnailForLargeFiles,
+    largeSizeMB, // Pass this parameter to the hook
+    allowedMimeTypes,
     onUploadComplete,
     onAllUploadsComplete,
     onError,
@@ -611,6 +625,9 @@ MultiFileUpload.propTypes = {
   acceptedFileTypes: PropTypes.string,
   maxSizeMB: PropTypes.number,
   language: PropTypes.oneOf(['fa', 'en']),
+  generateThumbnail: PropTypes.bool,
+  skipThumbnailForLargeFiles: PropTypes.bool,
+  largeSizeMB: PropTypes.number,
   onUploadComplete: PropTypes.func,
   onAllUploadsComplete: PropTypes.func,
   onError: PropTypes.func,

@@ -43,6 +43,9 @@ const ExampleMultiUploadFile = () => {
         bucket="default"
         acceptedFileTypes="image/*,application/pdf,application/msword"
         maxSizeMB={10}
+        generateThumbnail={true}
+        skipThumbnailForLargeFiles={true}
+        largeSizeMB={20} // Size threshold for skipping thumbnails (in MB)
         onUploadComplete={handleUploadComplete}
         onAllUploadsComplete={handleAllUploadsComplete}
         onError={handleError}
@@ -61,6 +64,9 @@ const ExampleMultiUploadFile = () => {
                 {uploadResults.completed.map((file) => (
                   <li key={file.id} className="text-gray-700">
                     {file.fileData.name} - {(file.fileData.size / 1024 / 1024).toFixed(2)} MB
+                    {file.metadata?.thumbnailUrl && (
+                      <span className="ml-2 text-blue-500">(Thumbnail generated)</span>
+                    )}
                   </li>
                 ))}
               </ul>

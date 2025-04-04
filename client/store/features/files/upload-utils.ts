@@ -1,117 +1,166 @@
 /**
- * Utilities for file upload management
+ * Utility functions for file uploads
  */
+import { formatFileSize } from './file-helpers';
+import { FileUploadOptions } from './files.api';
 
-// Minimum time (in ms) between upload attempts for the same file
-// This helps prevent rapid repeated requests for small files
-export const UPLOAD_THROTTLE_TIME = 1000;
-
-// Map to track the last time a file was uploaded by its ID
-const lastUploadTimeMap = new Map<string, number>();
-
-// Map to track currently in-progress uploads
-const inProgressUploads = new Map<string, boolean>();
+// Map to keep track of throttled uploads
+const throttledUploads = new Map<string, boolean>();
+// Map to keep track of in-progress uploads
+const activeUploads = new Map<string, boolean>();
 
 /**
- * Throttles a file upload to prevent too many requests in a short time
+ * Throttle an upload to prevent multiple simultaneous uploads of the same file
  *
- * @param fileId The unique identifier for the file
- * @param callback The function to call if the upload should proceed
- * @returns A promise that resolves after the upload is complete or throttled
+ * @param fileId The ID of the file being uploaded
+ * @param uploadFn The function to execute for uploading
+ * @returns The result of the upload function
  */
-export const throttleUpload = async (
-  fileId: string,
-  callback: () => Promise<any>,
-): Promise<any> => {
-  const now = Date.now();
-  const lastUploadTime = lastUploadTimeMap.get(fileId) || 0;
-  const timeSinceLastUpload = now - lastUploadTime;
-
-  // If this file is already being uploaded, don't start another upload
-  if (inProgressUploads.get(fileId)) {
-    console.log(`Upload already in progress for file ${fileId}, skipping`);
-    return { data: { skipped: true, reason: 'already-in-progress' } };
+export const throttleUpload = async <T>(fileId: string, uploadFn: () => Promise<T>): Promise<T> => {
+  // If this file is already being throttled, wait for it to complete
+  if (isUploadThrottled(fileId)) {
+    throw new Error(`Upload for file ${fileId} is already in progress`);
   }
-
-  // If not enough time has passed since the last upload attempt, wait
-  if (timeSinceLastUpload < UPLOAD_THROTTLE_TIME) {
-    // Wait until enough time has passed
-    const waitTime = UPLOAD_THROTTLE_TIME - timeSinceLastUpload;
-
-    console.log(`Throttling upload of file ${fileId} for ${waitTime}ms`);
-
-    return new Promise((resolve) => {
-      setTimeout(async () => {
-        // Check again if it's already in progress
-        if (inProgressUploads.get(fileId)) {
-          console.log(`Upload already in progress for file ${fileId} after throttling, skipping`);
-          resolve({ data: { skipped: true, reason: 'already-in-progress-after-throttle' } });
-          return;
-        }
-
-        // Set last upload time and mark as in progress
-        lastUploadTimeMap.set(fileId, Date.now());
-        inProgressUploads.set(fileId, true);
-
-        try {
-          const result = await callback();
-          resolve(result);
-        } finally {
-          // Always mark as no longer in progress
-          inProgressUploads.set(fileId, false);
-        }
-      }, waitTime);
-    });
-  }
-
-  // If enough time has passed, update the last upload time and proceed
-  lastUploadTimeMap.set(fileId, now);
-  inProgressUploads.set(fileId, true);
 
   try {
-    return await callback();
+    // Mark this file as throttled
+    throttledUploads.set(fileId, true);
+    // Mark this file as actively uploading
+    activeUploads.set(fileId, true);
+
+    // Execute the upload function
+    return await uploadFn();
   } finally {
-    // Always mark as no longer in progress
-    inProgressUploads.set(fileId, false);
+    // Always clean up, even on error
+    throttledUploads.delete(fileId);
   }
 };
 
 /**
- * Returns true if an upload for the specified file ID is currently being throttled
+ * Check if an upload is currently being throttled
  *
- * @param fileId The unique identifier for the file
- * @returns True if the upload is being throttled
+ * @param fileId The ID of the file to check
+ * @returns True if the upload is throttled
  */
 export const isUploadThrottled = (fileId: string): boolean => {
-  const lastUploadTime = lastUploadTimeMap.get(fileId) || 0;
-  const timeSinceLastUpload = Date.now() - lastUploadTime;
-  return timeSinceLastUpload < UPLOAD_THROTTLE_TIME;
+  return throttledUploads.has(fileId);
 };
 
 /**
- * Returns true if an upload for the specified file ID is currently in progress
+ * Check if a file is currently being uploaded
  *
- * @param fileId The unique identifier for the file
- * @returns True if the upload is in progress
+ * @param fileId The ID of the file to check
+ * @returns True if the file is being uploaded
  */
 export const isUploadInProgress = (fileId: string): boolean => {
-  return !!inProgressUploads.get(fileId);
+  return activeUploads.has(fileId);
 };
 
 /**
- * Clear throttling and in-progress information for a specific file
+ * Clear the upload state for a file
  *
- * @param fileId The unique identifier for the file
+ * @param fileId The ID of the file to clear
  */
 export const clearUploadState = (fileId: string): void => {
-  lastUploadTimeMap.delete(fileId);
-  inProgressUploads.delete(fileId);
+  throttledUploads.delete(fileId);
+  activeUploads.delete(fileId);
 };
 
 /**
- * Clear all throttling and in-progress information
+ * Clear all upload states
  */
 export const clearAllUploadStates = (): void => {
-  lastUploadTimeMap.clear();
-  inProgressUploads.clear();
+  throttledUploads.clear();
+  activeUploads.clear();
 };
+
+// Default upload options
+export const DEFAULT_UPLOAD_OPTIONS = {
+  generateThumbnail: true,
+  maxSizeMB: 50, // 50MB max size by default
+  skipThumbnailForLargeFiles: true,
+  largeSizeMB: 20, // Skip thumbnails for files larger than 20MB
+};
+
+/**
+ * Get the appropriate upload options based on file type and size
+ *
+ * @param file The file to get options for
+ * @returns Optimized upload options
+ */
+export const getUploadOptionsForFile = (file: File): any => {
+  const options = { ...DEFAULT_UPLOAD_OPTIONS };
+
+  // For images, always generate thumbnails regardless of size
+  if (file.type.startsWith('image/')) {
+    options.skipThumbnailForLargeFiles = false;
+  }
+
+  // For videos, increase the size threshold for thumbnail generation
+  if (file.type.startsWith('video/')) {
+    options.largeSizeMB = 50; // Raise threshold for videos
+  }
+
+  // For documents, no need for thumbnails
+  if (file.type.includes('document') || file.type.includes('pdf')) {
+    options.generateThumbnail = false;
+  }
+
+  return options;
+};
+
+/**
+ * Create file info object for the upload API
+ *
+ * @param file The file to create info for
+ * @param ownerId The ID of the component that owns this file
+ * @returns File info object
+ */
+export const createFileInfo = (file: File, ownerId: string): any => {
+  return {
+    id: `${ownerId}-${generateUniqueId()}`,
+    ownerId,
+    fileData: {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    },
+    status: 'selected' as const,
+    progress: 0,
+    bytesUploaded: 0,
+    errorMessage: '',
+  };
+};
+
+/**
+ * Generate a unique identifier
+ *
+ * @returns A unique string ID
+ */
+export const generateUniqueId = (): string => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
+/**
+ * Prepares file upload options for API calls
+ *
+ * @param options User-provided upload options
+ * @returns Upload options with only defined properties
+ */
+export const prepareUploadOptions = (options?: Partial<FileUploadOptions>): FileUploadOptions => {
+  if (!options) return {};
+
+  const result: FileUploadOptions = {};
+
+  // Only add properties that are defined
+  if (options.generateThumbnail !== undefined) result.generateThumbnail = options.generateThumbnail;
+  if (options.maxSizeMB !== undefined) result.maxSizeMB = options.maxSizeMB;
+  if (options.skipThumbnailForLargeFiles !== undefined)
+    result.skipThumbnailForLargeFiles = options.skipThumbnailForLargeFiles;
+  if (options.largeSizeMB !== undefined) result.largeSizeMB = options.largeSizeMB;
+  if (options.allowedMimeTypes !== undefined) result.allowedMimeTypes = options.allowedMimeTypes;
+
+  return result;
+};
+
+export { formatFileSize };

@@ -15,9 +15,11 @@ import {
   QueueStatus,
   FileUploadStatus,
   removeFilesForComponent,
+  FileMetadata,
 } from '@/store/features/files/progress-slice';
 import {
   useUploadSingleFileMutation,
+  useUploadMultipleFilesMutation,
   selectFilesByOwnerId,
   selectQueueStatusByOwnerId,
   selectCurrentUploadingFileByOwnerId,
@@ -25,12 +27,20 @@ import {
   selectUploadedFilesByOwnerId,
   selectFailedFilesByOwnerId,
   cancelUploadRequest,
+  FileUploadOptions,
 } from '@/store/features/files/files.api';
-import { clearAllUploadStates, clearUploadState } from '@/store/features/files/upload-utils';
+
+// Import these functions directly from the upload-utils.ts
+import { clearUploadState } from '@/store/features/files/upload-utils';
 
 interface UseMultiFileUploadOptions {
   id?: string; // Unique ID for component instance
   bucket?: string;
+  maxSizeMB?: number;
+  generateThumbnail?: boolean;
+  skipThumbnailForLargeFiles?: boolean;
+  largeSizeMB?: number; // Added this option to fix the TypeScript error
+  allowedMimeTypes?: string[];
   onUploadComplete?: (uploadedFiles: FileUploadInfo[]) => void;
   onAllUploadsComplete?: (succeeded: FileUploadInfo[], failed: FileUploadInfo[]) => void;
   onError?: (error: any) => void;
@@ -44,6 +54,11 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
   const {
     id: providedId,
     bucket = 'default',
+    maxSizeMB,
+    generateThumbnail,
+    skipThumbnailForLargeFiles,
+    largeSizeMB,
+    allowedMimeTypes,
     onUploadComplete,
     onAllUploadsComplete,
     onError,
@@ -62,8 +77,9 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
   const uploadedFiles = useSelector(selectUploadedFilesByOwnerId(componentIdRef.current));
   const failedFiles = useSelector(selectFailedFilesByOwnerId(componentIdRef.current));
 
-  // Use RTK Query mutation hook
-  const [uploadSingleFile, { isLoading }] = useUploadSingleFileMutation();
+  // Use RTK Query mutations
+  const [uploadSingleFile] = useUploadSingleFileMutation();
+  const [uploadMultipleFiles] = useUploadMultipleFilesMutation();
 
   // Reference to track if we've already processed the "all files handled" state
   const allFilesHandledProcessed = useRef(false);
@@ -223,6 +239,76 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     [queue],
   );
 
+  // Option to upload multiple files at once
+  const uploadMultipleFilesAtOnce = useCallback(async () => {
+    // Get all waiting files
+    const pendingFiles = queue.filter(
+      (file) => file.status === 'waiting' || file.status === 'selected',
+    );
+
+    if (pendingFiles.length === 0) {
+      return;
+    }
+
+    // Prepare files with their File objects
+    const filesToUpload = pendingFiles
+      .map((fileInfo) => {
+        const fileObject = fileObjectsMap.get(fileInfo.id);
+        if (!fileObject) {
+          console.error(`File object not found for ID: ${fileInfo.id}`);
+          return null;
+        }
+
+        return {
+          ...fileInfo,
+          file: fileObject,
+        };
+      })
+      .filter(Boolean) as Array<FileUploadInfo & { file: File }>;
+
+    if (filesToUpload.length === 0) {
+      return;
+    }
+
+    try {
+      // Prepare upload options
+      const uploadOptions: FileUploadOptions = {};
+
+      // Only add properties that are defined
+      if (generateThumbnail !== undefined) uploadOptions.generateThumbnail = generateThumbnail;
+      if (maxSizeMB !== undefined) uploadOptions.maxSizeMB = maxSizeMB;
+      if (skipThumbnailForLargeFiles !== undefined)
+        uploadOptions.skipThumbnailForLargeFiles = skipThumbnailForLargeFiles;
+      if (largeSizeMB !== undefined) uploadOptions.largeSizeMB = largeSizeMB;
+      if (allowedMimeTypes !== undefined) uploadOptions.allowedMimeTypes = allowedMimeTypes;
+
+      // Use the batch upload endpoint
+      const result = await uploadMultipleFiles({
+        bucket,
+        files: filesToUpload,
+        options: uploadOptions,
+      }).unwrap();
+
+      // Don't need to handle the response here as the individual file
+      // updates are managed via Redux actions triggered in the RTK Query slice
+    } catch (error) {
+      if (onError) {
+        onError(error);
+      }
+      console.error('Failed to upload multiple files:', error);
+    }
+  }, [
+    bucket,
+    queue,
+    uploadMultipleFiles,
+    onError,
+    generateThumbnail,
+    maxSizeMB,
+    skipThumbnailForLargeFiles,
+    largeSizeMB,
+    allowedMimeTypes,
+  ]);
+
   // Effect to monitor and upload current file
   useEffect(() => {
     // Only proceed if there's a file to upload and it's different from the last one we processed
@@ -238,6 +324,17 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
       const fileObject = fileObjectsMap.get(currentUploadingFile.id);
 
       if (fileObject) {
+        // Create upload options object
+        const uploadOptions: FileUploadOptions = {};
+
+        // Only add properties that are defined
+        if (generateThumbnail !== undefined) uploadOptions.generateThumbnail = generateThumbnail;
+        if (maxSizeMB !== undefined) uploadOptions.maxSizeMB = maxSizeMB;
+        if (skipThumbnailForLargeFiles !== undefined)
+          uploadOptions.skipThumbnailForLargeFiles = skipThumbnailForLargeFiles;
+        if (largeSizeMB !== undefined) uploadOptions.largeSizeMB = largeSizeMB;
+        if (allowedMimeTypes !== undefined) uploadOptions.allowedMimeTypes = allowedMimeTypes;
+
         // Start the upload for this file
         uploadSingleFile({
           bucket,
@@ -246,6 +343,7 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
             // This is only for the API call and won't go into Redux
             file: fileObject,
           },
+          options: uploadOptions,
         }).catch((error) => {
           if (onError) {
             onError(error);
@@ -258,7 +356,17 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
       // Clear the ref when there's no file uploading
       currentUploadingFileId.current = null;
     }
-  }, [currentUploadingFile, uploadSingleFile, bucket, onError]);
+  }, [
+    currentUploadingFile,
+    uploadSingleFile,
+    bucket,
+    onError,
+    generateThumbnail,
+    maxSizeMB,
+    skipThumbnailForLargeFiles,
+    largeSizeMB,
+    allowedMimeTypes,
+  ]);
 
   // Effect to handle when all files are processed
   useEffect(() => {
@@ -317,13 +425,14 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     allFilesHandled,
     uploadedFiles,
     failedFiles,
-    isUploading: isLoading,
+    isUploading: !!currentUploadingFile,
 
     // Actions
     addFilesToQueue,
     removeFileFromQueue,
     clearFileQueue,
     startFileUpload,
+    uploadMultipleFilesAtOnce, // New function to upload multiple files at once
     cancelSingleUpload,
     cancelAllFileUploads,
     retryFailedUpload,

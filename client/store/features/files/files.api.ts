@@ -7,10 +7,17 @@ import {
   setFileUploading,
   clearFileUploading,
   QueueStatus,
+  FileMetadata,
 } from './progress-slice';
 import { createSelector } from '@reduxjs/toolkit';
 import { IRootState } from '@/store';
-import { throttleUpload, clearUploadState, isUploadInProgress } from './upload-utils';
+import {
+  throttleUpload,
+  clearUploadState,
+  isUploadInProgress,
+  isUploadThrottled,
+  clearAllUploadStates,
+} from './upload-utils';
 
 // Add this line to ensure the Files tag is registered with RTK Query
 baseApi.enhanceEndpoints({ addTagTypes: ['Files'] });
@@ -21,6 +28,49 @@ declare global {
     activeUploads?: Map<string, AbortController>;
     xhrRequests?: Map<string, XMLHttpRequest>;
   }
+}
+
+// API response types from your backend
+export interface UploadFileResponse {
+  message: string;
+  files: FileMetadata[];
+}
+
+export interface DownloadUrlResponse {
+  url: string;
+}
+
+export interface BatchDownloadUrlResponse {
+  urls: Record<string, string>;
+}
+
+export interface FileMetadataResponse {
+  metadata: FileMetadata;
+}
+
+export interface ListFilesResponse {
+  files: FileMetadata[];
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export interface BucketInfo {
+  name: string;
+  creationDate: Date;
+}
+
+export interface BucketsResponse {
+  buckets: BucketInfo[];
+}
+
+export interface FileUploadOptions {
+  generateThumbnail?: boolean; // Enable/disable thumbnail generation
+  maxSizeMB?: number; // Maximum file size in MB
+  allowedMimeTypes?: string[]; // Array of allowed MIME types
+  skipThumbnailForLargeFiles?: boolean; // Skip thumbnails for large files
+  largeSizeMB?: number; // Size threshold for skipping thumbnails (in MB)
 }
 
 // Ensure we have a single instance of the activeUploads map
@@ -154,14 +204,18 @@ const filesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Upload a single file from the queue
     uploadSingleFile: builder.mutation<
-      any,
-      { bucket: string; fileInfo: FileUploadInfo & { file?: File } }
+      UploadFileResponse,
+      {
+        bucket: string;
+        fileInfo: FileUploadInfo & { file?: File };
+        options?: FileUploadOptions;
+      }
     >({
-      queryFn: async ({ bucket, fileInfo }, { signal, dispatch }) => {
+      queryFn: async ({ bucket, fileInfo, options = {} }, { signal, dispatch }) => {
         // Check if this file is already being uploaded
         if (isUploadInProgress(fileInfo.id)) {
           console.log(`Upload already in progress for file ${fileInfo.id}, skipping`);
-          return { data: { skipped: true, reason: 'already-in-progress' } };
+          return { data: { message: 'Upload already in progress', files: [] } };
         }
 
         // If there's already an active controller for this file, abort it
@@ -200,7 +254,31 @@ const filesApi = baseApi.injectEndpoints({
               const requests = getXhrRequests();
               requests.set(fileInfo.id, xhr);
 
-              xhr.open('POST', `${baseUrl}files/upload/${bucket}`, true);
+              // Prepare URL with options as query parameters
+              let uploadUrl = `${baseUrl}files/upload/${bucket}`;
+              if (options) {
+                const params = new URLSearchParams();
+                if (options.generateThumbnail !== undefined)
+                  params.append('generateThumbnail', options.generateThumbnail.toString());
+                if (options.maxSizeMB !== undefined)
+                  params.append('maxSizeMB', options.maxSizeMB.toString());
+                if (options.allowedMimeTypes && options.allowedMimeTypes.length > 0)
+                  params.append('allowedMimeTypes', options.allowedMimeTypes.join(','));
+                if (options.skipThumbnailForLargeFiles !== undefined)
+                  params.append(
+                    'skipThumbnailForLargeFiles',
+                    options.skipThumbnailForLargeFiles.toString(),
+                  );
+                if (options.largeSizeMB !== undefined)
+                  params.append('largeSizeMB', options.largeSizeMB.toString());
+
+                const queryString = params.toString();
+                if (queryString) {
+                  uploadUrl = `${uploadUrl}?${queryString}`;
+                }
+              }
+
+              xhr.open('POST', uploadUrl, true);
 
               // Track upload progress
               xhr.upload.onprogress = (event) => {
@@ -324,7 +402,7 @@ const filesApi = baseApi.injectEndpoints({
             // Don't report as error if it was aborted
             if (error.status === 'aborted' || controller.signal.aborted) {
               console.log('Upload aborted:', fileInfo.id);
-              return { data: { aborted: true } };
+              return { data: { message: 'Upload aborted', files: [] } };
             }
 
             return {
@@ -339,17 +417,86 @@ const filesApi = baseApi.injectEndpoints({
       invalidatesTags: ['Files'],
     }),
 
+    // Upload multiple files at once
+    uploadMultipleFiles: builder.mutation<
+      UploadFileResponse,
+      { bucket: string; files: Array<FileUploadInfo & { file: File }>; options?: FileUploadOptions }
+    >({
+      queryFn: async ({ bucket, files, options }, { dispatch }) => {
+        try {
+          const results: FileMetadata[] = [];
+          const errors: any[] = [];
+
+          // Process files sequentially to avoid overwhelming the server
+          for (const fileInfo of files) {
+            try {
+              const result = await dispatch(
+                filesApi.endpoints.uploadSingleFile.initiate({
+                  bucket,
+                  fileInfo,
+                  options,
+                }),
+              ).unwrap();
+
+              if (result.files && result.files.length > 0) {
+                results.push(...result.files);
+              }
+            } catch (error) {
+              errors.push(error);
+              console.error(`Failed to upload file ${fileInfo.fileData.name}:`, error);
+            }
+          }
+
+          if (errors.length > 0 && results.length === 0) {
+            // If all uploads failed, throw the first error
+            throw errors[0];
+          }
+
+          return { data: { message: 'Files uploaded successfully', files: results } };
+        } catch (error: any) {
+          return {
+            error: {
+              status: error.status || 500,
+              data: error.data || 'Failed to upload files',
+            },
+          };
+        }
+      },
+      invalidatesTags: ['Files'],
+    }),
+
     // Get a file download URL
-    getFileDownloadUrl: builder.query<{ url: string }, { bucket: string; filename: string }>({
-      query: ({ bucket, filename }) => ({
-        url: `files/download/${bucket}/${filename}`,
-        method: 'GET',
-      }),
+    getFileDownloadUrl: builder.query<
+      DownloadUrlResponse,
+      { bucket: string; filename: string; expiry?: number }
+    >({
+      query: ({ bucket, filename, expiry }) => {
+        let url = `files/download/${bucket}/${filename}`;
+        if (expiry) {
+          url += `?expiry=${expiry}`;
+        }
+        return { url, method: 'GET' };
+      },
+      providesTags: ['Files'],
+    }),
+
+    // Get batch download URLs
+    getBatchDownloadUrls: builder.query<
+      BatchDownloadUrlResponse,
+      { bucket: string; filenames: string[]; expiry?: number }
+    >({
+      query: ({ bucket, filenames, expiry }) => {
+        let url = `files/batch-download?bucket=${bucket}&filenames=${filenames.join(',')}`;
+        if (expiry) {
+          url += `&expiry=${expiry}`;
+        }
+        return { url, method: 'GET' };
+      },
       providesTags: ['Files'],
     }),
 
     // Get file metadata
-    getFileMetadata: builder.query<any, { bucket: string; filename: string }>({
+    getFileMetadata: builder.query<FileMetadataResponse, { bucket: string; filename: string }>({
       query: ({ bucket, filename }) => ({
         url: `files/metadata/${bucket}/${filename}`,
         method: 'GET',
@@ -357,12 +504,77 @@ const filesApi = baseApi.injectEndpoints({
       providesTags: ['Files'],
     }),
 
+    // List files in a bucket
+    listFiles: builder.query<
+      ListFilesResponse,
+      { bucket: string; prefix?: string; recursive?: boolean }
+    >({
+      query: ({ bucket, prefix, recursive }) => {
+        let url = `files/list/${bucket}`;
+        const params = new URLSearchParams();
+
+        if (prefix) params.append('prefix', prefix);
+        if (recursive !== undefined) params.append('recursive', recursive.toString());
+
+        const queryString = params.toString();
+        if (queryString) {
+          url += `?${queryString}`;
+        }
+
+        return { url, method: 'GET' };
+      },
+      providesTags: ['Files'],
+    }),
+
     // Delete a file
-    deleteFile: builder.mutation<any, { bucket: string; filename: string }>({
+    deleteFile: builder.mutation<MessageResponse, { bucket: string; filename: string }>({
       query: ({ bucket, filename }) => ({
         url: `files/delete/${bucket}/${filename}`,
         method: 'DELETE',
       }),
+      invalidatesTags: ['Files'],
+    }),
+
+    // List all buckets
+    listBuckets: builder.query<BucketsResponse, void>({
+      query: () => ({
+        url: 'files/buckets',
+        method: 'GET',
+      }),
+      providesTags: ['Files'],
+    }),
+
+    // Create a bucket
+    createBucket: builder.mutation<
+      MessageResponse,
+      { name: string; region?: string; publicPolicy?: boolean }
+    >({
+      query: ({ name, region, publicPolicy }) => {
+        let url = `files/buckets/${name}`;
+        const params = new URLSearchParams();
+
+        if (region) params.append('region', region);
+        if (publicPolicy !== undefined) params.append('publicPolicy', publicPolicy.toString());
+
+        const queryString = params.toString();
+        if (queryString) {
+          url += `?${queryString}`;
+        }
+
+        return { url, method: 'POST' };
+      },
+      invalidatesTags: ['Files'],
+    }),
+
+    // Delete a bucket
+    deleteBucket: builder.mutation<MessageResponse, { name: string; force?: boolean }>({
+      query: ({ name, force }) => {
+        let url = `files/buckets/${name}`;
+        if (force !== undefined) {
+          url += `?force=${force}`;
+        }
+        return { url, method: 'DELETE' };
+      },
       invalidatesTags: ['Files'],
     }),
   }),
@@ -370,7 +582,13 @@ const filesApi = baseApi.injectEndpoints({
 
 export const {
   useUploadSingleFileMutation,
+  useUploadMultipleFilesMutation,
   useGetFileDownloadUrlQuery,
+  useGetBatchDownloadUrlsQuery,
   useGetFileMetadataQuery,
+  useListFilesQuery,
   useDeleteFileMutation,
+  useListBucketsQuery,
+  useCreateBucketMutation,
+  useDeleteBucketMutation,
 } = filesApi;

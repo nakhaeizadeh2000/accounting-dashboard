@@ -59,6 +59,8 @@ export type SingleFileUploadProps = {
   maxSizeMB?: number;
   uploadingDependsToForm?: boolean;
   language?: 'fa' | 'en'; // Language option: Persian (fa) or English (en)
+  generateThumbnail?: boolean; // Added property
+  skipThumbnailForLargeFiles?: boolean; // Added property
   onUploadSuccess?: (result: any) => void;
   onUploadError?: (error: any) => void;
   onFileSelect?: (file: File | null) => void;
@@ -105,6 +107,8 @@ const SingleFileUpload = ({
   maxSizeMB = 10,
   uploadingDependsToForm = true,
   language = 'fa', // Default to Persian
+  generateThumbnail = true, // Default to generating thumbnails
+  skipThumbnailForLargeFiles = true, // Default to skipping thumbnails for large files
   onUploadSuccess,
   onUploadError,
   onFileSelect: externalFileSelectHandler,
@@ -116,6 +120,7 @@ const SingleFileUpload = ({
 
   // Use our custom hook to handle file uploading
   const {
+    instanceId,
     selectedFile,
     fileInfo,
     uploadStatus,
@@ -126,12 +131,13 @@ const SingleFileUpload = ({
     startUpload,
     cancelUpload,
     resetUpload,
-    instanceId,
   } = useSingleFileUpload({
-    id, // Pass component ID for isolation
+    id,
     bucket,
     acceptedFileTypes,
     maxSizeMB,
+    generateThumbnail,
+    skipThumbnailForLargeFiles,
     onUploadSuccess,
     onUploadError,
     onFileSelect: externalFileSelectHandler,

@@ -10,19 +10,32 @@ import {
   setFileUploading,
   clearFileUploading,
   FileUploadStatus,
+  FileMetadata,
 } from '@/store/features/files/progress-slice';
 import {
   cancelUploadRequest,
   selectFilesByOwnerId,
   selectQueueStatusByOwnerId,
+  useUploadSingleFileMutation,
 } from '@/store/features/files/files.api';
-import { clearUploadState } from '@/store/features/files/upload-utils';
+
+// Import these functions directly from the file-helpers to avoid circular dependencies
+import { formatFileSize } from '@/store/features/files/file-helpers';
+
+// These functions are now explicitly exported in upload-utils.ts
+import {
+  clearUploadState,
+  throttleUpload,
+  isUploadInProgress,
+} from '@/store/features/files/upload-utils';
 
 export type UseSingleFileUploadOptions = {
   id?: string; // Component instance ID for isolation
   bucket?: string;
   acceptedFileTypes?: string;
   maxSizeMB?: number;
+  generateThumbnail?: boolean; // New option for API alignment
+  skipThumbnailForLargeFiles?: boolean; // New option for API alignment
   onUploadSuccess?: (result: any) => void;
   onUploadError?: (error: any) => void;
   onFileSelect?: (file: File | null) => void;
@@ -37,6 +50,8 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
     bucket = 'default',
     acceptedFileTypes = '',
     maxSizeMB = 10,
+    generateThumbnail = true,
+    skipThumbnailForLargeFiles = true,
     onUploadSuccess,
     onUploadError,
     onFileSelect: externalFileSelectHandler,
@@ -53,7 +68,9 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
   const [internalUploadStatus, setInternalUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
-  const uploadPromiseRef = useRef<any>(null);
+
+  // Use the RTK Query mutation
+  const [uploadFileMutation] = useUploadSingleFileMutation();
 
   // Track if we've already called success callback for the current file
   const [successCallbackCalled, setSuccessCallbackCalled] = useState(false);
@@ -95,10 +112,11 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
       if (
         currentFile.status === 'completed' &&
         onUploadSuccess &&
-        currentFile.response &&
+        (currentFile.response || currentFile.metadata) &&
         !successCallbackCalled
       ) {
-        onUploadSuccess(currentFile.response);
+        // Pass metadata if available, otherwise pass the entire response
+        onUploadSuccess(currentFile.metadata || currentFile.response);
         setSuccessCallbackCalled(true);
       }
     } else if (internalUploadStatus !== 'idle') {
@@ -118,18 +136,6 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
     onUploadSuccess,
     successCallbackCalled,
   ]);
-
-  // Format file size for display
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    const formattedSize = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
-
-    return `${formattedSize} ${sizes[i]}`;
-  };
 
   // Handle file selection
   const handleFileSelect = useCallback(
@@ -198,7 +204,7 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
     setErrorMessage(reason);
   }, []);
 
-  // Start the upload process
+  // Start the upload process using RTK Query
   const startUpload = useCallback(async () => {
     if (!fileId.current || !file) return null;
 
@@ -207,208 +213,114 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
     setUploadProgress(0);
 
     try {
-      // Create a controller for aborting
-      const controller = new AbortController();
-      const signal = controller.signal;
-
-      // Custom upload function using XMLHttpRequest
-      const uploadWithProgress = async () => {
-        return new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          const currentFileId = fileId.current as string;
-
-          xhr.open('POST', `/api/files/upload/${bucket}`, true);
-
-          // Add abort listener
-          signal.addEventListener('abort', () => {
-            xhr.abort();
-            reject({ status: 'aborted', message: 'Upload cancelled' });
-          });
-
-          // Track upload progress
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const percentComplete = Math.round((event.loaded / event.total) * 100);
-              // Update the progress state directly - don't rely solely on Redux
-              setUploadProgress(percentComplete);
-
-              // Keep the status as uploading
-              setInternalUploadStatus('uploading');
-
-              // Update Redux with progress
-              dispatch(
-                updateFileProgress({
-                  id: currentFileId,
-                  progress: percentComplete,
-                  bytesUploaded: event.loaded,
-                }),
-              );
-            }
-          };
-
-          // Handle response
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const response = JSON.parse(xhr.responseText);
-
-                // Update Redux with success
-                dispatch(
-                  fileUploadSuccess({
-                    id: currentFileId,
-                    response,
-                  }),
-                );
-
-                // Force progress to 100% and status to completed
-                setUploadProgress(100);
-                setInternalUploadStatus('completed');
-
-                resolve(response);
-              } catch (e) {
-                const errorMsg = 'Invalid response format';
-
-                dispatch(
-                  fileUploadFailure({
-                    id: currentFileId,
-                    errorMessage: errorMsg,
-                  }),
-                );
-
-                // Force status to failed
-                setInternalUploadStatus('failed');
-                setErrorMessage(errorMsg);
-
-                reject({ status: xhr.status, message: errorMsg });
-              }
-            } else {
-              let errorMsg;
-              try {
-                errorMsg = JSON.parse(xhr.responseText).message || 'Upload failed';
-              } catch (e) {
-                errorMsg = 'Upload failed';
-              }
-
-              dispatch(
-                fileUploadFailure({
-                  id: currentFileId,
-                  errorMessage: errorMsg,
-                }),
-              );
-
-              // Force status to failed
-              setInternalUploadStatus('failed');
-              setErrorMessage(errorMsg);
-
-              reject({ status: xhr.status, message: errorMsg });
-            }
-          };
-
-          // Handle errors
-          xhr.onerror = () => {
-            const errorMsg = 'Network error occurred';
-
-            dispatch(
-              fileUploadFailure({
-                id: currentFileId,
-                errorMessage: errorMsg,
-              }),
-            );
-
-            reject({ status: xhr.status, message: errorMsg });
-          };
-
-          // Prepare FormData
-          const formData = new FormData();
-          formData.append('file', file);
-
-          // Send request
-          xhr.send(formData);
-        });
+      // Get upload options specific to this file type
+      const uploadOptions = {
+        generateThumbnail,
+        maxSizeMB,
+        skipThumbnailForLargeFiles,
+        // Get allowed MIME types from acceptedFileTypes string
+        allowedMimeTypes: acceptedFileTypes ? acceptedFileTypes.split(',') : undefined,
       };
 
-      // Store the controller for possible cancellation
-      uploadPromiseRef.current = {
-        abort: () => controller.abort(),
-        promise: uploadWithProgress(),
-      };
-
-      // Set file as uploading in Redux
+      // Mark file as uploading in Redux
       dispatch(setFileUploading(fileId.current));
 
-      // Wait for the upload to complete
-      const result = await uploadPromiseRef.current.promise;
+      // Use the RTK Query mutation with proper ownerId
+      const result = await uploadFileMutation({
+        bucket,
+        fileInfo: {
+          id: fileId.current,
+          ownerId: componentIdRef.current, // Make sure to include the ownerId
+          fileData: {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+          },
+          status: 'uploading',
+          progress: 0,
+          bytesUploaded: 0,
+          errorMessage: '',
+          file,
+        },
+        options: uploadOptions,
+      }).unwrap();
 
-      // Update state on success
+      // Update status on success
       setInternalUploadStatus('completed');
       setUploadProgress(100);
 
-      // Call success callback if provided
-      // (We'll also handle this via the effect, but direct callback is useful for immediate feedback)
+      // Call success callback if provided and if not already called
       if (onUploadSuccess && !successCallbackCalled) {
-        onUploadSuccess(result);
+        // If there are files in the response, use the first one's metadata
+        if (result.files && result.files.length > 0) {
+          onUploadSuccess(result.files[0]);
+        } else {
+          onUploadSuccess(result);
+        }
         setSuccessCallbackCalled(true);
       }
 
       return result;
     } catch (error: any) {
-      // Check if this was canceled
-      if (error.status === 'aborted') {
-        setInternalUploadStatus('failed');
-        setErrorMessage('Upload cancelled');
-      } else {
-        setInternalUploadStatus('failed');
-        setErrorMessage(error.message || 'Upload failed');
+      // Set status to failed
+      setInternalUploadStatus('failed');
 
-        // Call error callback if provided
-        if (onUploadError) {
-          onUploadError(error);
-        }
+      let errorMsg = 'Upload failed';
+      if (error.data) {
+        errorMsg = typeof error.data === 'string' ? error.data : JSON.stringify(error.data);
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+
+      setErrorMessage(errorMsg);
+
+      // Call error callback if provided
+      if (onUploadError) {
+        onUploadError(error);
       }
 
       return null;
     } finally {
-      // Clear the promise reference
-      uploadPromiseRef.current = null;
-
-      // Clear file uploading status in Redux
+      // Clean up uploading status in Redux
       if (fileId.current) {
         dispatch(clearFileUploading(fileId.current));
       }
     }
-  }, [bucket, dispatch, onUploadError, onUploadSuccess, file, successCallbackCalled]);
+  }, [
+    bucket,
+    dispatch,
+    file,
+    onUploadError,
+    onUploadSuccess,
+    uploadFileMutation,
+    successCallbackCalled,
+    generateThumbnail,
+    maxSizeMB,
+    skipThumbnailForLargeFiles,
+    acceptedFileTypes,
+    componentIdRef,
+  ]);
 
   // Cancel an in-progress upload
   const cancelUpload = useCallback(() => {
-    if (uploadPromiseRef.current && uploadPromiseRef.current.abort) {
-      uploadPromiseRef.current.abort();
-      uploadPromiseRef.current = null;
+    if (fileId.current) {
+      // Cancel via API helper
+      cancelUploadRequest(fileId.current);
       setInternalUploadStatus('failed');
       setErrorMessage('Upload cancelled');
-
-      // Cancel via API helper
-      if (fileId.current) {
-        cancelUploadRequest(fileId.current);
-      }
     }
   }, []);
 
   // Reset the upload state
   const resetUpload = useCallback(() => {
     // Cancel any in-progress upload
-    if (uploadPromiseRef.current && uploadPromiseRef.current.abort) {
-      uploadPromiseRef.current.abort();
-      uploadPromiseRef.current = null;
+    if (fileId.current) {
+      cancelUploadRequest(fileId.current);
+      clearUploadState(fileId.current);
     }
 
     // Clean up from Redux by removing all files for this component
     dispatch(removeFilesForComponent(componentIdRef.current));
-
-    // If we had a file ID, clean up its specific state
-    if (fileId.current) {
-      clearUploadState(fileId.current);
-      fileId.current = null;
-    }
 
     // Reset local state
     setFile(null);
@@ -417,23 +329,20 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
     setUploadProgress(0);
     setErrorMessage('');
     setSuccessCallbackCalled(false);
+    fileId.current = null;
   }, [dispatch]);
 
   // Clean up on unmount
   useEffect(() => {
     return () => {
       // Cancel any in-progress upload
-      if (uploadPromiseRef.current && uploadPromiseRef.current.abort) {
-        uploadPromiseRef.current.abort();
+      if (fileId.current) {
+        cancelUploadRequest(fileId.current);
+        clearUploadState(fileId.current);
       }
 
       // Clean up Redux state for this component
       dispatch(removeFilesForComponent(componentIdRef.current));
-
-      // Clean up uploading state for any specific file
-      if (fileId.current) {
-        clearUploadState(fileId.current);
-      }
     };
   }, [dispatch]);
 

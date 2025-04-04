@@ -61,6 +61,8 @@ const ExampleSingleFileUpload = () => {
             bucket="default"
             acceptedFileTypes="image/*,application/pdf,application/msword"
             maxSizeMB={10}
+            generateThumbnail={true}
+            skipThumbnailForLargeFiles={true}
             uploadingDependsToForm={true} // Make sure this is true to show the start button
             onUploadSuccess={handleUploadSuccess1}
             onUploadError={handleUploadError1}
@@ -87,6 +89,8 @@ const ExampleSingleFileUpload = () => {
             bucket="default"
             acceptedFileTypes="video/*,audio/*,application/zip"
             maxSizeMB={20}
+            generateThumbnail={true}
+            skipThumbnailForLargeFiles={true}
             uploadingDependsToForm={true}
             onUploadSuccess={handleUploadSuccess2}
             onUploadError={handleUploadError2}
