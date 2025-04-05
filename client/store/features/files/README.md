@@ -29,6 +29,74 @@ This module provides a comprehensive file management system powered by Redux and
 - **file-operations.ts**: High-level functions for common file operations
 - **index.ts**: Main export file that brings everything together
 
+## Available Hooks and Functions
+
+| Hook/Function | Description | Use Case |
+|---------------|-------------|----------|
+| `useFileUpload` | Hook for single file uploads | When a single file needs to be uploaded with progress tracking |
+| `useBatchFileUpload` | Hook for multiple file uploads | When multiple files need to be uploaded at once |
+| `useFilesList` | Hook to fetch files from a bucket | When displaying files from storage |
+| `useFileMetadata` | Hook to get detailed file metadata | When needing specific information about a file |
+| `useDeleteFile` | Hook to delete files with confirmation | When allowing users to remove files |
+| `useBucketsList` | Hook to list available buckets | When switching between storage locations |
+| `downloadFile` | Function to download a file | When users need to get files from the system |
+| `previewThumbnail` | Function to preview file thumbnails | When showing previews of images/videos |
+
+## Upload Options
+
+### FileUploadOptions Interface
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `generateThumbnail` | boolean | `true` | Enable/disable thumbnail generation |
+| `maxSizeMB` | number | `50` | Maximum file size in MB |
+| `skipThumbnailForLargeFiles` | boolean | `true` | Skip thumbnails for large files |
+| `largeSizeMB` | number | `20` | Size threshold (MB) for skipping thumbnails |
+| `allowedMimeTypes` | string[] | `undefined` | Array of allowed MIME types |
+
+### File Type-Specific Defaults
+
+| File Type | Example MIME Types | Thumbnail Settings |
+|-----------|-------------------|-------------------|
+| Images | image/jpeg, image/png | Always generate (`skipThumbnailForLargeFiles: false`) |
+| Videos | video/mp4, video/webm | Higher threshold (`largeSizeMB: 50`) |
+| Documents | application/pdf, application/msword | No thumbnails (`generateThumbnail: false`) |
+| Audio | audio/mp3, audio/wav | No thumbnails (`generateThumbnail: false`) |
+| Archives | application/zip, application/x-rar-compressed | No thumbnails (`generateThumbnail: false`) |
+
+## Download Options
+
+### Download Configuration Parameters
+
+| Parameter | Type | Description | Use Case |
+|-----------|------|-------------|----------|
+| `direct` | boolean | Use direct streaming instead of presigned URL | For immediate downloads or secure files |
+| `expiry` | number | Expiry time in seconds for presigned URLs | For limited-time access links |
+
+### File Type-Specific Download Defaults
+
+| File Type | Example MIME Types | Default Settings |
+|-----------|-------------------|-----------------|
+| Images | image/jpeg, image/png | `{ direct: true, expiry: 3600 }` |
+| Videos | video/mp4, video/webm | `{ direct: true, expiry: 3600 }` |
+| Audio | audio/mp3, audio/wav | `{ direct: true, expiry: 3600 }` |
+| Documents | application/pdf, application/msword | `{ direct: false, expiry: 86400 }` |
+| Others | application/octet-stream | `{ direct: false, expiry: 86400 }` |
+
+## File Metadata Structure
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `originalName` | string | Original filename |
+| `uniqueName` | string | Unique filename in storage |
+| `size` | number | File size in bytes |
+| `mimetype` | string | File MIME type |
+| `thumbnailName` | string (optional) | Thumbnail filename (if generated) |
+| `url` | string | Presigned URL for access |
+| `thumbnailUrl` | string (optional) | Presigned URL for thumbnail |
+| `bucket` | string | Bucket name |
+| `uploadedAt` | Date | Upload timestamp |
+
 ## Usage Examples
 
 ### Basic File Upload
@@ -45,7 +113,8 @@ const MyComponent = () => {
     try {
       const result = await uploadFile(file, {
         generateThumbnail: true,
-        skipThumbnailForLargeFiles: true
+        skipThumbnailForLargeFiles: true,
+        largeSizeMB: 20
       });
       console.log('Upload success:', result);
     } catch (error) {
@@ -70,7 +139,11 @@ const MultiUploadComponent = () => {
   const handleBatchUpload = async (event) => {
     const files = Array.from(event.target.files);
     try {
-      const result = await uploadFiles(files);
+      const result = await uploadFiles(files, {
+        generateThumbnail: true,
+        skipThumbnailForLargeFiles: true,
+        largeSizeMB: 50
+      });
       console.log('Uploaded files:', result.files);
     } catch (error) {
       console.error('Upload error:', error);
@@ -83,14 +156,26 @@ const MultiUploadComponent = () => {
 };
 ```
 
-### File Download
+## Common Upload Scenarios
+
+| Scenario | Recommended Options | Code Example |
+|----------|---------------------|--------------|
+| Profile Pictures | `{ generateThumbnail: true, skipThumbnailForLargeFiles: false }` | `uploadFile(image, { generateThumbnail: true, skipThumbnailForLargeFiles: false })` |
+| Document Library | `{ generateThumbnail: false, maxSizeMB: 100 }` | `uploadFile(document, { generateThumbnail: false, maxSizeMB: 100 })` |
+| Video Uploads | `{ generateThumbnail: true, skipThumbnailForLargeFiles: true, largeSizeMB: 100 }` | `uploadFile(video, { generateThumbnail: true, skipThumbnailForLargeFiles: true, largeSizeMB: 100 })` |
+| Bulk Image Uploads | `{ generateThumbnail: true, skipThumbnailForLargeFiles: true, largeSizeMB: 10 }` | `uploadFiles(images, { generateThumbnail: true, skipThumbnailForLargeFiles: true, largeSizeMB: 10 })` |
+
+## Download Options and Examples
+
+### Direct File Download
 
 ```tsx
 import { downloadFile } from '@/store/features/files';
 
 const DownloadButton = ({ file }) => {
   const handleDownload = () => {
-    downloadFile(file); // Automatically uses direct download or presigned URL based on file type
+    // Direct download using streaming
+    downloadFile(file, { direct: true });
   };
   
   return (
@@ -99,22 +184,54 @@ const DownloadButton = ({ file }) => {
 };
 ```
 
-### Listing Files
+### Creating Shareable Links
 
 ```tsx
-import { useFilesList } from '@/store/features/files';
+import { useGetFileDownloadUrlQuery } from '@/store/features/files';
 
-const FilesList = () => {
-  const { files, isLoading, error } = useFilesList('images', { prefix: 'profile/' });
+const ShareLinkButton = ({ bucket, filename }) => {
+  const { data, isLoading } = useGetFileDownloadUrlQuery({
+    bucket,
+    filename,
+    expiry: 86400 // 24 hours
+  });
   
-  if (isLoading) return <div>Loading files...</div>;
-  if (error) return <div>Error loading files</div>;
+  const copyToClipboard = () => {
+    if (data?.url) {
+      navigator.clipboard.writeText(data.url);
+      alert('Download link copied to clipboard!');
+    }
+  };
+  
+  return (
+    <button onClick={copyToClipboard} disabled={isLoading}>
+      Copy Sharing Link (Valid for 24 hours)
+    </button>
+  );
+};
+```
+
+### Batch Download URLs
+
+```tsx
+import { useGetBatchDownloadUrlsQuery } from '@/store/features/files';
+
+const BatchDownloadLinks = ({ bucket, filenames }) => {
+  const { data, isLoading } = useGetBatchDownloadUrlsQuery({
+    bucket,
+    filenames,
+    expiry: 7200 // 2 hours
+  });
+  
+  if (isLoading) return <div>Loading download links...</div>;
   
   return (
     <ul>
-      {files.map(file => (
-        <li key={file.uniqueName}>
-          {file.originalName} - {formatFileSize(file.size)}
+      {data && Object.entries(data.urls).map(([filename, url]) => (
+        <li key={filename}>
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            Download {filename}
+          </a>
         </li>
       ))}
     </ul>
@@ -122,61 +239,95 @@ const FilesList = () => {
 };
 ```
 
+## File Selection and Listing
+
+### Listing Files with Thumbnails
+
+```tsx
+import { useFilesList } from '@/store/features/files';
+
+const FileGallery = ({ bucket }) => {
+  const { files, isLoading, error } = useFilesList(bucket);
+  
+  if (isLoading) return <div>Loading files...</div>;
+  if (error) return <div>Error loading files</div>;
+  
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {files.map(file => (
+        <div key={file.uniqueName} className="border p-2 rounded">
+          {file.thumbnailUrl ? (
+            <img src={file.thumbnailUrl} alt={file.originalName} className="w-full h-32 object-cover" />
+          ) : (
+            <div className="w-full h-32 flex items-center justify-center bg-gray-100">
+              {file.mimetype.split('/')[0]}
+            </div>
+          )}
+          <p className="mt-2 truncate">{file.originalName}</p>
+          <p className="text-sm text-gray-500">{formatFileSize(file.size)}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+### Using Selectors for Upload Status
+
+| Selector | Purpose | Example Use |
+|----------|---------|-------------|
+| `selectFilesByOwnerId` | Get files for a specific component | Track files in a specific uploader |
+| `selectQueueStatusByOwnerId` | Get upload queue status | Show overall upload status for a component |
+| `selectCurrentUploadingFileByOwnerId` | Get current uploading file | Show which file is currently being uploaded |
+| `selectUploadedFilesByOwnerId` | Get successfully uploaded files | Show completed uploads |
+| `selectFailedFilesByOwnerId` | Get failed uploads | Show error status and retry options |
+
+```tsx
+import { useSelector } from 'react-redux';
+import { selectUploadedFilesByOwnerId, selectFailedFilesByOwnerId } from '@/store/features/files';
+
+const UploadStatus = ({ ownerId }) => {
+  const uploadedFiles = useSelector(selectUploadedFilesByOwnerId(ownerId));
+  const failedFiles = useSelector(selectFailedFilesByOwnerId(ownerId));
+  
+  return (
+    <div>
+      <h3>Upload Status</h3>
+      <p>Successful: {uploadedFiles.length}</p>
+      <p>Failed: {failedFiles.length}</p>
+    </div>
+  );
+};
+```
+
 ## Advanced Configuration
 
-### Upload Options
+### Upload States and Transitions
 
-```typescript
-interface FileUploadOptions {
-  generateThumbnail?: boolean;     // Enable/disable thumbnail generation
-  maxSizeMB?: number;              // Maximum file size in MB
-  allowedMimeTypes?: string[];     // Array of allowed MIME types
-  skipThumbnailForLargeFiles?: boolean; // Skip thumbnails for large files
-  largeSizeMB?: number;            // Size threshold for skipping thumbnails
-}
-```
+| Status | Description | Next Possible States |
+|--------|-------------|---------------------|
+| `idle` | No file selected | `selected` |
+| `selected` | File chosen but not uploading | `waiting`, `uploading` |
+| `waiting` | File in queue waiting to upload | `uploading` |
+| `uploading` | File is actively uploading | `completed`, `failed` |
+| `completed` | Upload finished successfully | `idle` (after reset) |
+| `failed` | Upload encountered an error | `waiting`, `idle` (after reset) |
 
-### Working with Components
-
-The file system is designed to work seamlessly with our `SingleFileUpload` and `MultiFileUpload` components:
+### Using Helper Methods for Options Management
 
 ```tsx
-import { 
-  SingleFileUpload, 
-  MultiFileUpload, 
-  useSingleFileUpload, 
-  useMultiFileUpload 
-} from '@/store/features/files';
+import { getUploadOptionsForFile, prepareUploadOptions } from '@/store/features/files';
 
-// These components use the hooks internally and manage all the Redux state
-```
+// Automatically generate optimal options based on file type
+const file = event.target.files[0];
+const autoOptions = getUploadOptionsForFile(file);
 
-## Selectors
-
-The system provides various selectors to access file state:
-
-```tsx
-import {
-  selectFilesByOwnerId,
-  selectQueueStatusByOwnerId,
-  selectCurrentUploadingFileByOwnerId,
-  selectUploadedFilesByOwnerId,
-  selectFailedFilesByOwnerId
-} from '@/store/features/files';
-```
-
-## Utility Functions
-
-```tsx
-import {
-  formatFileSize,
-  formatFileName,
-  formatDate,
-  isImageFile,
-  isVideoFile,
-  isDocumentFile,
-  shouldHaveThumbnail
-} from '@/store/features/files';
+// For manual options, use the utility to ensure only valid properties are included
+const manualOptions = prepareUploadOptions({
+  generateThumbnail: true,
+  skipThumbnailForLargeFiles: file.size > 10 * 1024 * 1024,
+  // Only defined properties are included in the result
+});
 ```
 
 ## Implementation Notes
@@ -187,3 +338,86 @@ import {
 - Handles cancellation and cleanup automatically
 - Tracks progress with high precision
 - Avoids memory leaks with proper cleanup
+- Smart file option handling with the new `prepareUploadOptions` utility
+
+## Thumbnail Preview Examples
+
+### Basic Thumbnail Preview
+
+```tsx
+import { shouldHaveThumbnail } from '@/store/features/files';
+
+const FileThumbnail = ({ file }) => {
+  if (shouldHaveThumbnail(file) && file.thumbnailUrl) {
+    return <img src={file.thumbnailUrl} alt={file.originalName} className="w-20 h-20 object-cover" />;
+  }
+  
+  // Fallback for files without thumbnails
+  return (
+    <div className="w-20 h-20 flex items-center justify-center bg-gray-100 text-gray-500">
+      {file.mimetype.split('/')[1]?.toUpperCase() || 'FILE'}
+    </div>
+  );
+};
+```
+
+### Interactive Preview
+
+```tsx
+import { previewThumbnail } from '@/store/features/files';
+
+const InteractivePreview = ({ file }) => {
+  if (!shouldHaveThumbnail(file)) {
+    return <div>No preview available</div>;
+  }
+  
+  return (
+    <div className="cursor-pointer" onClick={() => previewThumbnail(file)}>
+      <img
+        src={file.thumbnailUrl || file.url}
+        alt={file.originalName}
+        className="max-w-full h-auto"
+      />
+      <p className="mt-2 text-center text-blue-500">Click to view full size</p>
+    </div>
+  );
+};
+```
+
+## Example Upload Queue Component
+
+```tsx
+import { useSelector } from 'react-redux';
+import { selectFilesByOwnerId, selectQueueStatusByOwnerId } from '@/store/features/files';
+
+const UploadQueue = ({ ownerId }) => {
+  const files = useSelector(selectFilesByOwnerId(ownerId));
+  const queueStatus = useSelector(selectQueueStatusByOwnerId(ownerId));
+  
+  return (
+    <div className="p-4 border rounded">
+      <h3 className="text-lg font-semibold">Upload Queue ({queueStatus})</h3>
+      <ul className="mt-2 divide-y">
+        {files.map(file => (
+          <li key={file.id} className="py-2">
+            <div className="flex justify-between items-center">
+              <span className="truncate">{file.fileData.name}</span>
+              <span className="ml-2 min-w-[80px] text-right">
+                {file.status === 'uploading' ? `${file.progress}%` : file.status}
+              </span>
+            </div>
+            {file.status === 'uploading' && (
+              <div className="mt-1 w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full" 
+                  style={{ width: `${file.progress}%` }}
+                ></div>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+```
