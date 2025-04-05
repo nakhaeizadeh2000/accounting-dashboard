@@ -1,9 +1,11 @@
+// components/modules/file-manager/hooks/useFileActions.ts
 import { useState, useCallback } from 'react';
 import { FileData, FileTag } from '../types';
 import {
   useDeleteFileMutation,
-  useGetFileDownloadUrlQuery,
-} from '@/store/features/files/files.api';
+  downloadFile as downloadFileApi,
+  previewThumbnail,
+} from '@/store/features/files';
 
 export function useFileActions(
   onFileViewCallback?: (file: FileData) => void,
@@ -14,7 +16,8 @@ export function useFileActions(
   const [activeMenuFileId, setActiveMenuFileId] = useState<string | null>(null);
   const [tagsModalFile, setTagsModalFile] = useState<FileData | null>(null);
 
-  const [deleteFile, { isLoading: isDeleting }] = useDeleteFileMutation();
+  // Use RTK Query mutation for file deletion
+  const [deleteFileMutation, { isLoading: isDeleting }] = useDeleteFileMutation();
 
   const toggleOptionsMenu = useCallback((fileId: string | null) => {
     setActiveMenuFileId((prev) => (prev === fileId ? null : fileId));
@@ -23,6 +26,24 @@ export function useFileActions(
   const handleView = useCallback(
     (file: FileData) => {
       toggleOptionsMenu(null);
+
+      // For images and videos with thumbnails, use the previewThumbnail function
+      if (file.thumbnailUrl || file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        previewThumbnail({
+          originalName: file.name,
+          uniqueName: file.id,
+          size: file.size,
+          mimetype: file.type,
+          uploadedAt: file.uploadDate,
+          url: file.url || '',
+          thumbnailUrl: file.thumbnailUrl,
+          bucket: file.bucket,
+        });
+      } else if (file.url) {
+        // For other files with URLs, open in a new tab
+        window.open(file.url, '_blank');
+      }
+
       if (onFileViewCallback) {
         onFileViewCallback(file);
       }
@@ -33,20 +54,20 @@ export function useFileActions(
   const handleDownload = useCallback(
     async (file: FileData) => {
       toggleOptionsMenu(null);
+
       try {
-        // If you have the URL directly on the file object
+        // Use the downloadFile function from the API
         if (file.url) {
-          const link = document.createElement('a');
-          link.href = file.url;
-          link.download = file.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        } else {
-          // Try to get the URL from the API
-          // You might need to adjust this based on your actual API
-          // const { data } = await getFileDownloadUrl({ bucket: file.bucket, filename: file.name }).unwrap();
-          // window.open(data.url, '_blank');
+          downloadFileApi({
+            originalName: file.name,
+            uniqueName: file.id,
+            size: file.size,
+            mimetype: file.type,
+            uploadedAt: file.uploadDate,
+            url: file.url,
+            thumbnailUrl: file.thumbnailUrl,
+            bucket: file.bucket,
+          });
         }
 
         if (onFileDownloadCallback) {
@@ -62,8 +83,13 @@ export function useFileActions(
   const handleDelete = useCallback(
     async (file: FileData) => {
       toggleOptionsMenu(null);
+
       try {
-        await deleteFile({ bucket: file.bucket, filename: file.name }).unwrap();
+        // Use the RTK Query mutation to delete the file
+        await deleteFileMutation({
+          bucket: file.bucket,
+          filename: file.id,
+        }).unwrap();
 
         if (onFileDeleteCallback) {
           onFileDeleteCallback(file);
@@ -72,7 +98,7 @@ export function useFileActions(
         console.error('Error deleting file:', error);
       }
     },
-    [toggleOptionsMenu, deleteFile, onFileDeleteCallback],
+    [toggleOptionsMenu, deleteFileMutation, onFileDeleteCallback],
   );
 
   const openTagsModal = useCallback(
@@ -91,6 +117,8 @@ export function useFileActions(
     (file: FileData, tags: FileTag[]) => {
       closeTagsModal();
 
+      // In a real implementation, we would call an API to update tags
+      // For now, we just call the callback
       if (onTagsUpdateCallback) {
         onTagsUpdateCallback(file, tags);
       }

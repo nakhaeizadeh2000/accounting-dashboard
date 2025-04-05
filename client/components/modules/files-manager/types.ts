@@ -17,11 +17,14 @@ export interface FileData {
   url?: string;
   metadata?: Record<string, any>;
   tags?: FileTag[];
+  // Added for uploading files
+  status?: string;
+  progress?: number;
 }
 
 export interface FileManagerProps {
   ownerId: string; // Unique ID for this instance of the file manager
-  bucket: string; // Bucket to fetch files from
+  bucket?: string; // Bucket to fetch files from
   title?: string; // Optional title for the component
   maxHeight?: string; // CSS max-height value
   allowMultiSelect?: boolean; // Allow selecting multiple files
@@ -38,6 +41,8 @@ export interface FileManagerProps {
   availableTags?: FileTag[]; // Available tags to choose from
   sortBy?: 'name' | 'date' | 'size' | 'type'; // Sort files by
   sortDirection?: 'asc' | 'desc'; // Sort direction
+  showUploadingFiles?: boolean; // Show files that are currently being uploaded
+  refreshInterval?: number; // Auto-refresh interval in ms
 }
 
 export type ViewMode = 'grid' | 'list';
@@ -115,8 +120,13 @@ export interface FilterBarProps {
   onDeleteSelected: () => void;
   onViewModeChange: (mode: ViewMode) => void;
   currentViewMode: ViewMode;
+  onRefresh?: () => void; // Added for manual refresh
 }
 
 export interface EmptyStateProps {
+  message?: string;
+}
+
+export interface LoadingStateProps {
   message?: string;
 }

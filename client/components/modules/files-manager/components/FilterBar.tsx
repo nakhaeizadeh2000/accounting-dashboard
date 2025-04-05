@@ -3,14 +3,6 @@ import React, { useState } from 'react';
 import { FilterBarProps } from '../types';
 import CompleteTickIcon from '@/components/icon/CompleteTickIcon';
 
-// Note: Need additional icons:
-// - SearchIcon
-// - ArrowUpDownIcon
-// - SortAscIcon
-// - SortDescIcon
-// - GridViewIcon
-// - ListViewIcon
-
 const FilterBar: React.FC<FilterBarProps> = ({
   searchQuery,
   onSearchChange,
@@ -26,6 +18,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
   onDeleteSelected,
   onViewModeChange,
   currentViewMode,
+  onRefresh,
 }) => {
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
 
@@ -60,7 +53,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
             className={`relative flex h-6 w-6 items-center justify-center rounded border ${
               selectedFiles.length > 0
                 ? 'border-blue-500 bg-blue-500 text-white'
-                : 'border-gray-300 text-gray-400'
+                : 'border-gray-300 text-gray-400 dark:border-gray-600 dark:text-gray-500'
             }`}
             aria-label={selectedFiles.length > 0 ? 'Deselect all' : 'Select all'}
           >
@@ -68,7 +61,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
           </button>
 
           {selectedFiles.length > 0 && (
-            <span className="ml-2 text-sm font-medium text-gray-700">
+            <span className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               {selectedFiles.length} selected
             </span>
           )}
@@ -77,24 +70,24 @@ const FilterBar: React.FC<FilterBarProps> = ({
         {/* Bulk actions - only show when items are selected */}
         {selectedFiles.length > 0 && (
           <div className="ml-2 flex items-center space-x-2">
-            <div className="mx-1 h-4 border-l border-gray-300"></div>
+            <div className="mx-1 h-4 border-l border-gray-300 dark:border-gray-600"></div>
             <button
               onClick={onDownloadSelected}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
               aria-label="Download selected"
             >
               ⬇️ Download
             </button>
             <button
               onClick={onDeleteSelected}
-              className="text-sm text-red-600 hover:text-red-800"
+              className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
               aria-label="Delete selected"
             >
               🗑️ Delete
             </button>
             <button
               onClick={onClearSelection}
-              className="text-sm text-gray-600 hover:text-gray-800"
+              className="text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
               aria-label="Clear selection"
             >
               ✕ Clear
@@ -114,42 +107,55 @@ const FilterBar: React.FC<FilterBarProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search files..."
-            className="block w-full rounded-md border-gray-300 pl-10 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            className="block w-full rounded-md border-gray-300 pl-10 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
           />
         </div>
+
+        {/* Refresh button */}
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            aria-label="Refresh files"
+          >
+            🔄 Refresh
+          </button>
+        )}
 
         {/* Sort dropdown */}
         <div className="relative">
           <button
             type="button"
             onClick={toggleSortDropdown}
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             {getSortOptionLabel()}
             <span className="ml-2">{currentSortDirection === 'asc' ? '↑' : '↓'}</span>
           </button>
 
           {isSortDropdownOpen && (
-            <div className="absolute right-0 z-10 mt-2 w-40 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+            <div className="absolute right-0 z-10 mt-2 w-40 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-700">
               <div className="py-1" role="menu" aria-orientation="vertical">
                 {sortOptions.map((option) => (
                   <button
                     key={option.value}
                     onClick={() => handleSortChange(option.value)}
                     className={`block w-full px-4 py-2 text-left text-sm ${
-                      currentSort === option.value ? 'bg-gray-100 text-gray-900' : 'text-gray-700'
-                    } hover:bg-gray-100`}
+                      currentSort === option.value
+                        ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
+                        : 'text-gray-700 dark:text-gray-300'
+                    } hover:bg-gray-100 dark:hover:bg-gray-700`}
                     role="menuitem"
                   >
                     {option.label}
                   </button>
                 ))}
-                <div className="my-1 border-t border-gray-100"></div>
+                <div className="my-1 border-t border-gray-100 dark:border-gray-700"></div>
                 <button
                   onClick={() =>
                     onSortDirectionChange(currentSortDirection === 'asc' ? 'desc' : 'asc')
                   }
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                   role="menuitem"
                 >
                   {currentSortDirection === 'asc' ? '↓ Descending' : '↑ Ascending'}
@@ -165,8 +171,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
             onClick={() => onViewModeChange('grid')}
             className={`relative inline-flex items-center rounded-l-md border px-3 py-2 text-sm font-medium ${
               currentViewMode === 'grid'
-                ? 'z-10 border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                ? 'z-10 border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
             }`}
           >
             Grid
@@ -175,8 +181,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
             onClick={() => onViewModeChange('list')}
             className={`relative -ml-px inline-flex items-center rounded-r-md border px-3 py-2 text-sm font-medium ${
               currentViewMode === 'list'
-                ? 'z-10 border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                ? 'z-10 border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
             }`}
           >
             List
