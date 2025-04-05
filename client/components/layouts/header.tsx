@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import Link from 'next/link';
 import { IRootState } from '@/store';
-import { toggleTheme, toggleSidebar, toggleRTL } from '@/store/features/theme/themeConfigSlice';
+import {
+  toggleTheme,
+  toggleSidebar,
+  toggleRTL,
+  toggleCalenderType,
+} from '@/store/features/theme/themeConfigSlice';
 import Dropdown from '@/components/dropdown';
 import IconMenu from '@/components/icon/icon-menu';
 import IconCalendar from '@/components/icon/icon-calendar';
@@ -81,8 +86,10 @@ const Header = () => {
     //* set the language for chosen rtl or ltr
 
     if (flag.toLowerCase() === 'ae' || flag.toLowerCase() === 'ir') {
+      dispatch(toggleCalenderType('jalali'));
       dispatch(toggleRTL('rtl'));
     } else {
+      dispatch(toggleCalenderType('gregorian'));
       dispatch(toggleRTL('ltr'));
     }
     router.refresh();
@@ -458,7 +465,7 @@ const Header = () => {
                                 </div>
                                 <button
                                   type="button"
-                                  className="text-neutral-300 opacity-0 hover:text-danger group-hover:opacity-100 ltr:ml-auto rtl:mr-auto"
+                                  className="text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-danger ltr:ml-auto rtl:mr-auto"
                                   onClick={() => removeNotification(notification.id)}
                                 >
                                   <IconXCircle />

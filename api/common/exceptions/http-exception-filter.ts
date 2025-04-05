@@ -10,7 +10,6 @@ import {
 @Catch(HttpException) // Change this to catch all HttpExceptions
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: HttpException, host: ArgumentsHost) {
-    console.warn('Caught an exception:', exception);
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<FastifyReply>();
     const status = exception.getStatus();

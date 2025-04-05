@@ -2,7 +2,7 @@
 import { RiArrowDropDownLine } from 'react-icons/ri';
 import IconMenuInvoice from '@/components/icon/menu/icon-menu-invoice';
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AnimateHeight from 'react-animate-height';
 import { getTranslation } from '@/i18n';
 import { dropDownItem } from '@/shared/types/sidebar-nav.model';
@@ -16,6 +16,14 @@ type Props = {
 const DropDownSidebarMenu = ({ item, pathName }: Props) => {
   const { IconComponent, childrenItem, name, className } = item;
   const [currentMenu, setCurrentMenu] = useState<string>('');
+
+  useEffect(() => {
+    const isActiveRoute = childrenItem.some((child) => child.link === pathName);
+    if (isActiveRoute) {
+      setCurrentMenu(name);
+    }
+  }, [pathName, name, childrenItem]);
+
   const toggleMenu = (value: string) => {
     setCurrentMenu((oldValue) => {
       return oldValue === value ? '' : value;

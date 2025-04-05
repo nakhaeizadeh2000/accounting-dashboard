@@ -1,0 +1,26 @@
+version: "3.6"
+
+services:
+  test:
+    networks:
+      - main
+    restart: unless-stopped
+    image: harbor.hyvatech.com/maskan/test:${CI_COMMIT_REF_SLUG:-latest}
+    user: root
+    tty: true
+    deploy:
+      replicas: ${TEST_CONCURRENT:-3}
+    command: "sleep"
+    env_file:
+      - .env
+    volumes:
+      - ./test:/home/app/test
+      - /home/app/test/node_modules
+      - ./libs:/home/app/test/libs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  main:
+    driver: bridge    
+    name: test_${APP_NAME:-app}

@@ -10,3 +10,6 @@ test/node_modules
 .idea
 .vscode-server
 client/Heap.*
+minio/data
+redis/data
+postgres/data

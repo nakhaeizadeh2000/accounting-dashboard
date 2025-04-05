@@ -7,24 +7,27 @@ import { Box } from '@mui/material';
 import Link from 'next/link';
 import { Route } from 'next';
 import { btnNavigation } from './btn-navigation.model';
+import { usePathname } from 'next/navigation';
+import { values } from 'lodash';
 
 type Props = {
   btn: btnNavigation[];
   children: React.ReactNode;
+  setUserId?: () => void;
+  currentTab?: number;
 };
 
-const BtnNavigationComponent = ({ btn, children }: Props) => {
-  const [currentTab, setCurrentTab] = useState<number>(0);
-
+const BtnNavigationComponent = ({ currentTab, btn, children }: Props) => {
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-    setCurrentTab(newValue);
+    // setCurrentTab(newValue);
+    // console.log(newValue, 'new value');
   };
   return (
     <Box sx={{ width: '100%', padding: '20px' }}>
       {/* Tabs navigation */}
 
       <Tabs
-        value={currentTab}
+        value={currentTab ?? false}
         onChange={handleChange}
         aria-label="scrollable force tabs example"
         variant="scrollable"

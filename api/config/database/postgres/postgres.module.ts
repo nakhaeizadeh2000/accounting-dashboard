@@ -28,4 +28,4 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   ],
   exports: [TypeOrmModule],
 })
-export class PostgresModule {}
+export class PostgresModule { }

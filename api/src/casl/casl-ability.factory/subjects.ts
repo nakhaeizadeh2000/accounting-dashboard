@@ -10,6 +10,7 @@ export type Subjects = InferSubjects<
   | typeof Permission
   | typeof Role
   // ... other entities
+  | 'Files'
   | 'all',
   true
 >;

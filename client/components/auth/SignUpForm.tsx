@@ -6,8 +6,8 @@ import { isResponseCatchError } from '@/store/features/base-response.model';
 import { useSignUpMutation } from '@/store/features/auth/sign-up/sign-up.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import AnimatedInputElement from '../Elements/input-elements/AnimatedInputElement';
-import FormButton from '../Elements/buttons/FormButton';
+import AnimatedInputElement from '../modules/input-elements/AnimatedInputElement';
+import FormButton from '../modules/buttons/FormButton';
 
 type SignUpErrorState = FormValidationsErrorState<SignUpFormData>;
 

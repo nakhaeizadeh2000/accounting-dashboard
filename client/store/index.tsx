@@ -1,15 +1,20 @@
 import { Action, combineReducers, configureStore, ThunkAction } from '@reduxjs/toolkit';
 import themeConfigSlice from '@/store/features/theme/themeConfigSlice';
 import { baseApi } from './api';
+import { authMiddleware } from './redux-middlewares/auth-middleware';
+import fileUploadReducer from './features/files/progress-slice';
 
 const rootReducer = combineReducers({
   [baseApi.reducerPath]: baseApi.reducer,
   themeConfig: themeConfigSlice,
+  upload: fileUploadReducer,
 });
 
 const store = configureStore({
   reducer: rootReducer,
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(baseApi.middleware),
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().concat(baseApi.middleware, authMiddleware),
+  // .concat(uploadProgressMiddleware),
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself

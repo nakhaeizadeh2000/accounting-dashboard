@@ -1,0 +1,23 @@
+.marquee {
+    display: inline-block; /* Allows for horizontal scrolling */
+    white-space: nowrap; /* Prevents line breaks */
+    overflow: hidden; /* Hides overflow content */
+}
+
+.marquee::after {
+    content: attr(data-text); /* Duplicates the text for continuous scrolling */
+    padding-left: 1rem; /* Space between the original and duplicated text */
+}
+
+@keyframes marquee {
+    from {
+        transform: translateX(100%); /* Start from right */
+    }
+    to {
+        transform: translateX(-100%); /* Move to left */
+    }
+}
+
+.marquee {
+    animation: marquee 10s linear infinite; /* Adjust duration as needed */
+}

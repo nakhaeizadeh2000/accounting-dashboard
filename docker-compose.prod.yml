@@ -1,0 +1,162 @@
+version: "3.8"
+
+# Settings and configurations that are common for all containers
+x-minio-common: &minio-common
+  image: minio/minio:RELEASE.2024-11-07T00-52-20Z.fips
+  command: server --console-address ":9001" /data
+  restart: unless-stopped
+  env_file:
+    - .env
+  expose:
+    - "9000"
+    - "9001"
+  environment:
+    MINIO_BROWSER_REDIRECT_URL: https://localhost/minio/console
+    # MINIO_ROOT_USER: minioadmin
+    # MINIO_ROOT_PASSWORD: minioadmin
+  # secrets:
+  #   - source: minio-pass
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "curl",
+        "-f",
+        --insecure,
+        "https://localhost:9000/minio/health/live",
+      ]
+    interval: 15s
+    timeout: 20s
+    retries: 3
+  networks:
+    isatis:
+      ipv4_address: "172.20.0.30"
+
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    env_file:
+      - .env.production
+    ports:
+      - "80:80" # HTTP
+      - "443:443" # HTTPS
+    volumes:
+      ### switch between default-ssl and default to disable and enable of having ssl
+      # - ./nginx/default-ssl.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/default.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro # SSL certificates for production
+    depends_on:
+      - api
+      - client
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.10"
+
+  api:
+    image: accounting-dashboard-api-prod:latest
+    container_name: api
+    build:
+      context: .
+      dockerfile: dev-env/api.prod.dockerfile
+      args:
+        NODE_ENV: production # Set environment to production
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    # volumes:
+    #   - .:/home/app # You may choose to adjust this for production to avoid mounting the entire app directory.
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.20" # Assign the desired static IP address
+    depends_on:
+      - postgres
+      - redis
+
+  minio1:
+    <<: *minio-common
+    hostname: minio
+    volumes:
+      - minio-data:/data
+    # secrets:
+    #   - source: minio-ca
+    #     target: /root/.minio/certs/CAs/myCA.crt
+    #     # uid: "1001" # long syntax only works in swarm mode, added for documentation
+    #     # gid: "1001"
+    #   - source: minio-certs
+    #     target: /root/.minio/certs/public.crt
+    #     # uid: "1001"
+    #     # gid: "1001"
+    #   - source: minio-key
+    #     target: /root/.minio/certs/private.key
+    #     # uid: "1001"
+    #     # gid: "1001"
+    env_file:
+      - ./minio/.env.minio
+    # ports:
+    #   - 127.0.0.1:9001:9001
+    #   - 127.0.0.1:9000:9000
+
+  client:
+    image: accounting-dashboard-client-prod:latest
+    container_name: client
+    build:
+      context: .
+      dockerfile: dev-env/client.prod.dockerfile
+      args:
+        NODE_ENV: production # Set environment to production
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    # volumes:
+    #   - .:/home/app # Again, consider adjusting this for production.
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.40" # Assign the desired static IP address
+
+  # Note that in production, you may want to avoid mounting the entire app directory.
+  # You can also consider using a multi-stage build to copy only the necessary files.
+
+  postgres:
+    container_name: ${POSTGRES_HOST}
+    image: postgres:16-alpine
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./api/database/postgres-db/data:/var/lib/postgresql/data
+      - ./api/database/postgres-db/sql:/docker-entrypoint-initdb.d
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.60"
+
+  redis:
+    container_name: ${REDIS_HOST}
+    image: redis:7.4.0-alpine
+    env_file:
+      - .env.production # Use a different env file for production if needed
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ./api/database/redis-database/:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.70"
+
+networks:
+  isatis:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "172.20.0.0/24" # Define the subnet including the desired IP address
