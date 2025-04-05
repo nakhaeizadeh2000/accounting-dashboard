@@ -2,6 +2,7 @@ import { CiBookmarkCheck } from 'react-icons/ci';
 import { RxAlignBaseline, RxCardStackPlus } from 'react-icons/rx';
 import { SideBarNavItems } from '@/shared/types/sidebar-nav.model';
 import { BsPersonVcard } from 'react-icons/bs';
+import { FaUserGear } from 'react-icons/fa6';
 
 export const sideBarMenu: SideBarNavItems[] = [
   {
@@ -26,6 +27,12 @@ export const sideBarMenu: SideBarNavItems[] = [
             link: '/user/main/list',
           },
         ],
+      },
+      {
+        name: 'عرفان',
+        type: 'link',
+        link: '/erfan',
+        IconComponent: FaUserGear,
       },
       //     {
       //       IconComponent: Fa42Group,
