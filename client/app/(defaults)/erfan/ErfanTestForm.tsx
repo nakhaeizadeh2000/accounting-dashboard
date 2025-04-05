@@ -23,13 +23,13 @@ const ErfanTestForm = () => {
     if (date) {
       const localDate = new Date(date);
       const utcDate = localDate.toISOString();
-      console.log(utcDate, 'parent');
+      // console.log(utcDate, 'parent');
     }
   };
 
   const setTime = (time: string) => {
     if (time) {
-      console.log(time, 'parent time');
+      // console.log(time, 'parent time');
     }
   };
 
@@ -48,7 +48,7 @@ const ErfanTestForm = () => {
       <DatePickerSimpleComponent
         options={{
           label: 'تاریخ',
-          getValue: (date) => console.log('Selected Date:', date),
+          getValue: setDate,
           views: ['year', 'month', 'day'],
           openModalDefault: 'day',
           showClearable: true,
@@ -68,15 +68,13 @@ const ErfanTestForm = () => {
       <div>
         <Badge
           badgeContent={
-            3
-            // <span className="absolute top-0 flex h-3 w-3 ltr:right-0 rtl:left-0">
-            //   <span className="absolute -top-[3px] inline-flex h-full w-full animate-ping rounded-full bg-success/50 opacity-75 ltr:-left-[3px] rtl:-right-[3px]"></span>
-            //   <span className="relative inline-flex h-[6px] w-[6px] rounded-full bg-success">
-            //     {3}
-            //   </span>
-            // </span>
+            <div>
+              <span className="absolute -top-[3px] h-full w-full animate-pulse rounded-full bg-success/50 opacity-75 ltr:-left-[3px] rtl:-right-[3px]"></span>
+              <span className="relative inline-flex h-[20px] w-[15px] rounded-full bg-success">
+                3
+              </span>
+            </div>
           }
-          color="secondary"
           anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
           aria-label="label"
           className="costume-badge"
