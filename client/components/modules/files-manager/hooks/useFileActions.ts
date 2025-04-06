@@ -27,7 +27,7 @@ export function useFileActions(
     (file: FileData) => {
       toggleOptionsMenu(null);
 
-      // For images and videos with thumbnails, use the previewThumbnail function
+      // For images, use the previewThumbnail function
       if (file.thumbnailUrl || file.type.startsWith('image/') || file.type.startsWith('video/')) {
         previewThumbnail({
           originalName: file.name,

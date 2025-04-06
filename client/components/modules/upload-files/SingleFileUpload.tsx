@@ -59,8 +59,6 @@ export type SingleFileUploadProps = {
   maxSizeMB?: number;
   uploadingDependsToForm?: boolean;
   language?: 'fa' | 'en'; // Language option: Persian (fa) or English (en)
-  generateThumbnail?: boolean; // Added property
-  skipThumbnailForLargeFiles?: boolean; // Added property
   onUploadSuccess?: (result: any) => void;
   onUploadError?: (error: any) => void;
   onFileSelect?: (file: File | null) => void;
@@ -107,8 +105,6 @@ const SingleFileUpload = ({
   maxSizeMB = 10,
   uploadingDependsToForm = true,
   language = 'fa', // Default to Persian
-  generateThumbnail = true, // Default to generating thumbnails
-  skipThumbnailForLargeFiles = true, // Default to skipping thumbnails for large files
   onUploadSuccess,
   onUploadError,
   onFileSelect: externalFileSelectHandler,
@@ -136,8 +132,6 @@ const SingleFileUpload = ({
     bucket,
     acceptedFileTypes,
     maxSizeMB,
-    generateThumbnail,
-    skipThumbnailForLargeFiles,
     onUploadSuccess,
     onUploadError,
     onFileSelect: externalFileSelectHandler,
@@ -169,12 +163,31 @@ const SingleFileUpload = ({
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate the file before proceeding
+      if (file.size === 0) {
+        console.error('Cannot upload empty file:', file.name);
+        alert(`Cannot upload empty file: ${file.name}`);
+        return;
+      }
+
+      // Log the file details for debugging
+      console.log('Selected file for upload:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
+
       handleFileSelect(file);
 
       // Auto-start upload if not dependent on form
       if (!uploadingDependsToForm) {
         setTimeout(startUpload, 100);
       }
+    }
+
+    // Reset input value to allow selecting the same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -359,7 +372,6 @@ const SingleFileUpload = ({
           </div>
         )}
 
-        {/* {NOTE: I made some conditions and check to stop showing Done btn for now. in future if needed i can show it.} */}
         {uploadStatus !== 'completed' && (
           <button
             onClick={resetUpload}

@@ -88,18 +88,13 @@ const FileUploadExample: React.FC = () => {
 
         // For single file
         if (files.length === 1) {
-          const result = await uploadFile(files[0], {
-            generateThumbnail: true,
-            skipThumbnailForLargeFiles: true,
-          });
+          const result = await uploadFile(files[0]);
           handleSingleFileSuccess(result);
         }
         // For multiple files
         else {
           const filesArray = Array.from(files);
-          const result = await uploadFiles(filesArray, {
-            generateThumbnail: true,
-          });
+          const result = await uploadFiles(filesArray);
           handleMultiFileSuccess(result.files);
         }
       } catch (error: any) {
@@ -193,7 +188,6 @@ const FileUploadExample: React.FC = () => {
             uploadingDependsToForm={true}
             onUploadSuccess={handleSingleFileSuccess}
             onUploadError={handleSingleFileError}
-            // Notice we've removed the generateThumbnail prop that was causing issues
           />
         </div>
 
@@ -264,6 +258,8 @@ const FileUploadExample: React.FC = () => {
                             src={file.thumbnailUrl}
                             alt={file.originalName}
                             className="mr-3 h-10 w-10 rounded object-cover"
+                            width={40}
+                            height={40}
                           />
                         ) : (
                           <div className="mr-3 flex h-10 w-10 items-center justify-center rounded bg-gray-200 text-gray-500">
@@ -317,53 +313,36 @@ const FileUploadExample: React.FC = () => {
         )}
       </div>
 
-      {/* Advanced Features Section */}
+      {/* API Information Section */}
       <div className="mt-8 rounded-lg bg-white p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-semibold">Advanced Features</h2>
+        <h2 className="mb-4 text-xl font-semibold">File API Usage</h2>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
-            <h3 className="mb-2 text-lg font-medium">Thumbnail Generation</h3>
+            <h3 className="mb-2 text-lg font-medium">Uploading Files</h3>
             <p className="mb-4 text-gray-700">
-              The API automatically generates thumbnails for images and videos. You can control this
-              feature with the following options:
+              The file API now handles thumbnail generation automatically for image files. You no
+              longer need to specify thumbnail generation options.
             </p>
             <ul className="list-disc pl-5 text-gray-600">
-              <li>generateThumbnail: Enable/disable thumbnail generation</li>
-              <li>skipThumbnailForLargeFiles: Skip thumbnails for large files</li>
-              <li>largeSizeMB: Size threshold for skipping thumbnails</li>
+              <li>Images will automatically get thumbnails</li>
+              <li>Direct file upload uses optimized streaming</li>
+              <li>Progress tracking works the same as before</li>
+              <li>Sequential uploads for multiple files is preserved</li>
             </ul>
           </div>
 
           <div>
-            <h3 className="mb-2 text-lg font-medium">Batch Operations</h3>
-            <p className="mb-4 text-gray-700">
-              You can perform batch operations on files using these features:
-            </p>
+            <h3 className="mb-2 text-lg font-medium">File Operations</h3>
+            <p className="mb-4 text-gray-700">The API provides these common file operations:</p>
             <ul className="list-disc pl-5 text-gray-600">
-              <li>Upload multiple files at once</li>
-              <li>Get batch download URLs</li>
-              <li>Delete multiple files with confirmation</li>
+              <li>Download files directly or via presigned URLs</li>
+              <li>Preview thumbnails for image files</li>
+              <li>Delete files with confirmation</li>
+              <li>List files with metadata</li>
+              <li>Filter and sort files</li>
             </ul>
           </div>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="mb-2 text-lg font-medium">Direct API Usage</h3>
-          <p className="mb-3 text-gray-700">
-            For more advanced scenarios, you can use our hooks directly in your components:
-          </p>
-          <pre className="rounded bg-gray-100 p-3 text-sm">
-            {`// Upload a file directly
-const { uploadFile } = useFileUpload('my-bucket');
-const result = await uploadFile(myFile, { generateThumbnail: true });
-
-// Get file metadata
-const { metadata } = useFileMetadata('my-bucket', 'filename.jpg');
-
-// List files in a bucket
-const { files } = useFilesList('my-bucket', { prefix: 'images/' });`}
-          </pre>
         </div>
       </div>
     </div>

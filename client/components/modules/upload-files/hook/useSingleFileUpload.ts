@@ -34,8 +34,6 @@ export type UseSingleFileUploadOptions = {
   bucket?: string;
   acceptedFileTypes?: string;
   maxSizeMB?: number;
-  generateThumbnail?: boolean; // New option for API alignment
-  skipThumbnailForLargeFiles?: boolean; // New option for API alignment
   onUploadSuccess?: (result: any) => void;
   onUploadError?: (error: any) => void;
   onFileSelect?: (file: File | null) => void;
@@ -50,8 +48,6 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
     bucket = 'default',
     acceptedFileTypes = '',
     maxSizeMB = 10,
-    generateThumbnail = true,
-    skipThumbnailForLargeFiles = true,
     onUploadSuccess,
     onUploadError,
     onFileSelect: externalFileSelectHandler,
@@ -213,15 +209,6 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
     setUploadProgress(0);
 
     try {
-      // Get upload options specific to this file type
-      const uploadOptions = {
-        generateThumbnail,
-        maxSizeMB,
-        skipThumbnailForLargeFiles,
-        // Get allowed MIME types from acceptedFileTypes string
-        allowedMimeTypes: acceptedFileTypes ? acceptedFileTypes.split(',') : undefined,
-      };
-
       // Mark file as uploading in Redux
       dispatch(setFileUploading(fileId.current));
 
@@ -242,7 +229,6 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
           errorMessage: '',
           file,
         },
-        options: uploadOptions,
       }).unwrap();
 
       // Update status on success
@@ -294,10 +280,6 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
     onUploadSuccess,
     uploadFileMutation,
     successCallbackCalled,
-    generateThumbnail,
-    maxSizeMB,
-    skipThumbnailForLargeFiles,
-    acceptedFileTypes,
     componentIdRef,
   ]);
 

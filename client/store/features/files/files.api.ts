@@ -65,14 +65,6 @@ export interface BucketsResponse {
   buckets: BucketInfo[];
 }
 
-export interface FileUploadOptions {
-  generateThumbnail?: boolean; // Enable/disable thumbnail generation
-  maxSizeMB?: number; // Maximum file size in MB
-  allowedMimeTypes?: string[]; // Array of allowed MIME types
-  skipThumbnailForLargeFiles?: boolean; // Skip thumbnails for large files
-  largeSizeMB?: number; // Size threshold for skipping thumbnails (in MB)
-}
-
 // Ensure we have a single instance of the activeUploads map
 const getActiveUploads = (): Map<string, AbortController> => {
   if (!window.activeUploads) {
@@ -208,10 +200,9 @@ const filesApi = baseApi.injectEndpoints({
       {
         bucket: string;
         fileInfo: FileUploadInfo & { file?: File };
-        options?: FileUploadOptions;
       }
     >({
-      queryFn: async ({ bucket, fileInfo, options = {} }, { signal, dispatch }) => {
+      queryFn: async ({ bucket, fileInfo }, { signal, dispatch }) => {
         // Check if this file is already being uploaded
         if (isUploadInProgress(fileInfo.id)) {
           console.log(`Upload already in progress for file ${fileInfo.id}, skipping`);
@@ -254,29 +245,8 @@ const filesApi = baseApi.injectEndpoints({
               const requests = getXhrRequests();
               requests.set(fileInfo.id, xhr);
 
-              // Prepare URL with options as query parameters
-              let uploadUrl = `${baseUrl}files/upload/${bucket}`;
-              if (options) {
-                const params = new URLSearchParams();
-                if (options.generateThumbnail !== undefined)
-                  params.append('generateThumbnail', options.generateThumbnail.toString());
-                if (options.maxSizeMB !== undefined)
-                  params.append('maxSizeMB', options.maxSizeMB.toString());
-                if (options.allowedMimeTypes && options.allowedMimeTypes.length > 0)
-                  params.append('allowedMimeTypes', options.allowedMimeTypes.join(','));
-                if (options.skipThumbnailForLargeFiles !== undefined)
-                  params.append(
-                    'skipThumbnailForLargeFiles',
-                    options.skipThumbnailForLargeFiles.toString(),
-                  );
-                if (options.largeSizeMB !== undefined)
-                  params.append('largeSizeMB', options.largeSizeMB.toString());
-
-                const queryString = params.toString();
-                if (queryString) {
-                  uploadUrl = `${uploadUrl}?${queryString}`;
-                }
-              }
+              // Prepare URL for upload
+              const uploadUrl = `${baseUrl}files/upload/${bucket}`;
 
               xhr.open('POST', uploadUrl, true);
 
@@ -388,10 +358,50 @@ const filesApi = baseApi.injectEndpoints({
               // Prepare and send FormData
               const formData = new FormData();
               if (fileInfo.file) {
+                // Validate file before uploading
+                if (!fileInfo.file || fileInfo.file.size === 0) {
+                  const errorMsg = 'Cannot upload empty file';
+                  dispatch(
+                    fileUploadFailure({
+                      id: fileInfo.id,
+                      errorMessage: errorMsg,
+                    }),
+                  );
+                  cleanup();
+                  reject({ status: 400, data: errorMsg });
+                  return;
+                }
+
+                // Log the file details for debugging
+                console.log('Uploading file:', {
+                  name: fileInfo.file.name,
+                  size: fileInfo.file.size,
+                  type: fileInfo.file.type,
+                });
+
+                // Add file to form data
                 formData.append('file', fileInfo.file);
+
+                // Log form data entries for debugging
+                for (const pair of formData.entries()) {
+                  console.log(
+                    pair[0],
+                    pair[1] instanceof File
+                      ? `File: ${pair[1].name}, ${pair[1].size} bytes`
+                      : pair[1],
+                  );
+                }
               } else {
+                const errorMsg = 'File object not provided for upload';
+                dispatch(
+                  fileUploadFailure({
+                    id: fileInfo.id,
+                    errorMessage: errorMsg,
+                  }),
+                );
                 cleanup();
-                throw new Error('File object not provided for upload');
+                reject({ status: 400, data: errorMsg });
+                return;
               }
 
               xhr.send(formData);
@@ -420,9 +430,9 @@ const filesApi = baseApi.injectEndpoints({
     // Upload multiple files at once
     uploadMultipleFiles: builder.mutation<
       UploadFileResponse,
-      { bucket: string; files: Array<FileUploadInfo & { file: File }>; options?: FileUploadOptions }
+      { bucket: string; files: Array<FileUploadInfo & { file: File }> }
     >({
-      queryFn: async ({ bucket, files, options }, { dispatch }) => {
+      queryFn: async ({ bucket, files }, { dispatch }) => {
         try {
           const results: FileMetadata[] = [];
           const errors: any[] = [];
@@ -434,7 +444,6 @@ const filesApi = baseApi.injectEndpoints({
                 filesApi.endpoints.uploadSingleFile.initiate({
                   bucket,
                   fileInfo,
-                  options,
                 }),
               ).unwrap();
 
@@ -468,12 +477,12 @@ const filesApi = baseApi.injectEndpoints({
     // Get a file download URL
     getFileDownloadUrl: builder.query<
       DownloadUrlResponse,
-      { bucket: string; filename: string; expiry?: number }
+      { bucket: string; filename: string; direct?: boolean }
     >({
-      query: ({ bucket, filename, expiry }) => {
+      query: ({ bucket, filename, direct }) => {
         let url = `files/download/${bucket}/${filename}`;
-        if (expiry) {
-          url += `?expiry=${expiry}`;
+        if (direct) {
+          url += `?direct=true`;
         }
         return { url, method: 'GET' };
       },
@@ -483,13 +492,10 @@ const filesApi = baseApi.injectEndpoints({
     // Get batch download URLs
     getBatchDownloadUrls: builder.query<
       BatchDownloadUrlResponse,
-      { bucket: string; filenames: string[]; expiry?: number }
+      { bucket: string; filenames: string[] }
     >({
-      query: ({ bucket, filenames, expiry }) => {
-        let url = `files/batch-download?bucket=${bucket}&filenames=${filenames.join(',')}`;
-        if (expiry) {
-          url += `&expiry=${expiry}`;
-        }
+      query: ({ bucket, filenames }) => {
+        const url = `files/batch-download?bucket=${bucket}&filenames=${filenames.join(',')}`;
         return { url, method: 'GET' };
       },
       providesTags: ['Files'],

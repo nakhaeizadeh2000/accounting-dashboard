@@ -1,6 +1,4 @@
-'use client';
-
-import { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent } from 'react';
 import PropTypes from 'prop-types';
 import useMultiFileUpload from './hook/useMultiFileUpload';
 import { FileUploadInfo } from '@/store/features/files/progress-slice';
@@ -22,9 +20,6 @@ export interface MultiFileUploadProps {
   acceptedFileTypes?: string;
   maxSizeMB?: number;
   language?: 'fa' | 'en'; // Language option: Persian (fa) or English (en)
-  generateThumbnail?: boolean;
-  skipThumbnailForLargeFiles?: boolean;
-  largeSizeMB?: number; // Added property to match the hook interface
   onUploadComplete?: (uploadedFiles: FileUploadInfo[]) => void;
   onAllUploadsComplete?: (succeeded: FileUploadInfo[], failed: FileUploadInfo[]) => void;
   onError?: (error: any) => void;
@@ -149,9 +144,6 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   acceptedFileTypes = 'image/jpeg,image/png,application/pdf',
   maxSizeMB = 10,
   language = 'fa', // Default to Persian
-  generateThumbnail = true, // Default to true
-  skipThumbnailForLargeFiles = true, // Default to true
-  largeSizeMB = 20, // Default value
   onUploadComplete,
   onAllUploadsComplete,
   onError,
@@ -184,9 +176,6 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
     id, // Pass component ID for isolation
     bucket,
     maxSizeMB,
-    generateThumbnail,
-    skipThumbnailForLargeFiles,
-    largeSizeMB, // Pass this parameter to the hook
     allowedMimeTypes,
     onUploadComplete,
     onAllUploadsComplete,
@@ -219,9 +208,15 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
 
     // Validate files before adding to queue
     const validFiles = selectedFiles.filter((file) => {
+      // Check for empty files
+      if (file.size === 0) {
+        setValidationError(`File "${file.name}" is empty and cannot be uploaded`);
+        return false;
+      }
+
       // Check file size
       if (file.size > maxSizeMB * 1024 * 1024) {
-        setValidationError(`File "${file.name}" exceeds the size limit`);
+        setValidationError(`File "${file.name}" exceeds the size limit of ${maxSizeMB}MB`);
         return false;
       }
 
@@ -237,7 +232,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
         });
 
         if (!fileTypeAccepted) {
-          setValidationError(`File "${file.name}" type is not accepted`);
+          setValidationError(`File "${file.name}" type ${file.type} is not accepted`);
           return false;
         }
       }
@@ -246,7 +241,20 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
     });
 
     if (validFiles.length > 0) {
+      // Log the file details for debugging
+      console.log(
+        'Adding files to queue:',
+        validFiles.map((f) => ({
+          name: f.name,
+          size: f.size,
+          type: f.type,
+        })),
+      );
+
       addFilesToQueue(validFiles);
+    } else if (selectedFiles.length > 0 && validFiles.length === 0) {
+      // If we had files selected but none passed validation
+      setValidationError('None of the selected files could be uploaded due to validation errors.');
     }
 
     // Reset input value to allow selecting the same file again
@@ -625,9 +633,6 @@ MultiFileUpload.propTypes = {
   acceptedFileTypes: PropTypes.string,
   maxSizeMB: PropTypes.number,
   language: PropTypes.oneOf(['fa', 'en']),
-  generateThumbnail: PropTypes.bool,
-  skipThumbnailForLargeFiles: PropTypes.bool,
-  largeSizeMB: PropTypes.number,
   onUploadComplete: PropTypes.func,
   onAllUploadsComplete: PropTypes.func,
   onError: PropTypes.func,

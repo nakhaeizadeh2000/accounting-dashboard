@@ -51,6 +51,16 @@ export class FileMetadataDto {
   @ApiProperty({ description: 'Date when the file was uploaded' })
   @IsDateString()
   uploadedAt: Date;
+
+  @ApiPropertyOptional({ description: 'Error message if upload failed' })
+  @IsOptional()
+  @IsString()
+  error?: string;
+
+  @ApiPropertyOptional({ description: 'Whether the upload was successful' })
+  @IsOptional()
+  @IsBoolean()
+  success?: boolean;
 }
 
 export class UploadFileResponseDto {
@@ -64,6 +74,15 @@ export class UploadFileResponseDto {
   })
   @IsArray()
   files: FileMetadataDto[];
+
+  @ApiProperty({
+    description: 'Array of failed file uploads with errors',
+    type: [FileMetadataDto],
+    required: false,
+  })
+  @IsArray()
+  @IsOptional()
+  failures?: FileMetadataDto[];
 }
 
 export class DownloadUrlResponseDto {
@@ -138,55 +157,4 @@ export class BucketConfigDto {
   @IsOptional()
   @IsBoolean()
   publicPolicy?: boolean;
-}
-
-export class FileUploadOptionsDto {
-  @ApiPropertyOptional({
-    description: 'Whether to generate thumbnails for supported files',
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  generateThumbnail?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Maximum file size in MB (0 means no limit)',
-    minimum: 0,
-    maximum: 5000,
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(5000)
-  maxSizeMB?: number;
-
-  @ApiPropertyOptional({
-    description: 'Array of allowed MIME types',
-    example: ['image/jpeg', 'image/png', 'application/pdf'],
-  })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  allowedMimeTypes?: string[];
-
-  @ApiPropertyOptional({
-    description: 'Skip thumbnail generation for large files to save resources',
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  skipThumbnailForLargeFiles?: boolean;
-
-  @ApiPropertyOptional({
-    description: 'Size threshold in MB for skipping thumbnail generation',
-    default: 100,
-    minimum: 1,
-    maximum: 1000,
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(1000)
-  @ValidateIf((o) => o.skipThumbnailForLargeFiles === true)
-  largeSizeMB?: number;
 }

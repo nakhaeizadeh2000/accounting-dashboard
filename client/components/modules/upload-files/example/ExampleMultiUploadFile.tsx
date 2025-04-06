@@ -43,9 +43,6 @@ const ExampleMultiUploadFile = () => {
         bucket="default"
         acceptedFileTypes="image/*,application/pdf,application/msword"
         maxSizeMB={10}
-        generateThumbnail={true}
-        skipThumbnailForLargeFiles={true}
-        largeSizeMB={20} // Size threshold for skipping thumbnails (in MB)
         onUploadComplete={handleUploadComplete}
         onAllUploadsComplete={handleAllUploadsComplete}
         onError={handleError}

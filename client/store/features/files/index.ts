@@ -36,7 +36,6 @@ export {
   type MessageResponse,
   type BucketInfo,
   type BucketsResponse,
-  type FileUploadOptions,
 } from './files.api';
 
 // Export the simplified file operation hooks
@@ -51,7 +50,7 @@ export {
   useBucketsList,
   useBatchDownloadUrls,
   shouldHaveThumbnail,
-  getDownloadOptionsForMimeType,
+  isDirectDownloadType,
   // Utility functions
   formatFileSize,
   formatFileName,
@@ -75,8 +74,6 @@ export {
   isUploadInProgress,
   clearUploadState,
   clearAllUploadStates,
-  DEFAULT_UPLOAD_OPTIONS,
-  getUploadOptionsForFile,
   createFileInfo,
   generateUniqueId,
 } from './upload-utils';

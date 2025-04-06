@@ -45,9 +45,26 @@ const FileManager: React.FC<FileManagerProps> = ({
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredFiles, setFilteredFiles] = useState<FileData[]>([]);
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
-  // Refs
+  const {
+    sortBy: currentSortBy,
+    sortDirection: currentSortDirection,
+    changeSortOption,
+    toggleSortDirection,
+    sortFiles,
+  } = useFileSorting(sortBy, sortDirection);
+
+  // Refs to track initialization and changes
+  const initializedRef = useRef(false);
+  const prevBucketRef = useRef(bucket);
+  const prevApiFilesRef = useRef<any>(null);
+  const prevUploadedFilesRef = useRef<any>(null);
+  const prevSearchQueryRef = useRef(searchQuery);
+  const prevFilterTypesRef = useRef(filterTypes);
+  const prevSortByRef = useRef(currentSortBy);
+  const prevSortDirectionRef = useRef(currentSortDirection);
+
+  // Intersection observer ref
   const containerRef = useRef<HTMLDivElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
 
@@ -60,14 +77,6 @@ const FileManager: React.FC<FileManagerProps> = ({
     isSelected,
     getSelectedFiles,
   } = useFileSelection(allowMultiSelect);
-
-  const {
-    sortBy: currentSortBy,
-    sortDirection: currentSortDirection,
-    changeSortOption,
-    toggleSortDirection,
-    sortFiles,
-  } = useFileSorting(sortBy, sortDirection);
 
   const {
     activeMenuFileId,
@@ -85,7 +94,9 @@ const FileManager: React.FC<FileManagerProps> = ({
   // Get uploaded files from Redux (for in-progress uploads)
   const uploadedFiles = useSelector(selectUploadedFilesByOwnerId(ownerId));
 
-  // Fetch files from the API using the new hooks
+  // Fetch files from the API using the new hooks with skip option
+  const skipQuery = !bucket; // Skip if bucket is empty
+
   const {
     data: apiFiles,
     isLoading,
@@ -103,6 +114,7 @@ const FileManager: React.FC<FileManagerProps> = ({
       refetchOnMountOrArgChange: true,
       refetchOnFocus: true,
       refetchOnReconnect: true,
+      skip: skipQuery,
     },
   );
 
@@ -113,9 +125,51 @@ const FileManager: React.FC<FileManagerProps> = ({
     filteredFiles.length > 0 && filteredFiles.length >= itemsPerPage * page,
   );
 
-  // Transform files to FileData with memoization
-  const transformFilesToFileData = useCallback((): FileData[] => {
-    // First, transform files from the API
+  // Effect for infinite scrolling - with stable dependency
+  useEffect(() => {
+    if (isIntersecting && !isLoading) {
+      setPage((prev) => prev + 1);
+    }
+  }, [isIntersecting, isLoading]);
+
+  // Reset page when the bucket changes
+  useEffect(() => {
+    if (prevBucketRef.current !== bucket) {
+      setPage(1);
+      clearSelection();
+      prevBucketRef.current = bucket;
+    }
+  }, [bucket, clearSelection]);
+
+  // Process files only when necessary
+  const processAndUpdateFiles = useCallback(() => {
+    // Skip if we're loading initial data
+    if (isLoading && !initializedRef.current) return;
+
+    // Check if we need to update files based on dependency changes
+    const bucketChanged = prevBucketRef.current !== bucket;
+    const apiFilesChanged = prevApiFilesRef.current !== apiFiles;
+    const uploadedFilesChanged = prevUploadedFilesRef.current !== uploadedFiles;
+    const searchQueryChanged = prevSearchQueryRef.current !== searchQuery;
+    const filterTypesChanged = prevFilterTypesRef.current !== filterTypes;
+    const sortByChanged = prevSortByRef.current !== currentSortBy;
+    const sortDirectionChanged = prevSortDirectionRef.current !== currentSortDirection;
+
+    // Only process if something relevant has changed
+    if (
+      !bucketChanged &&
+      !apiFilesChanged &&
+      !uploadedFilesChanged &&
+      !searchQueryChanged &&
+      !filterTypesChanged &&
+      !sortByChanged &&
+      !sortDirectionChanged &&
+      initializedRef.current
+    ) {
+      return;
+    }
+
+    // Step 1: Transform API files to FileData format
     const transformedApiFiles: FileData[] =
       apiFiles?.files?.map((file: FileMetadata) => ({
         id: file.uniqueName,
@@ -126,17 +180,16 @@ const FileManager: React.FC<FileManagerProps> = ({
         uploadDate: new Date(file.uploadedAt),
         thumbnailUrl: file.thumbnailUrl,
         url: file.url,
-        tags: [], // API doesn't have tags yet, could be added later
+        tags: [], // API doesn't have tags yet
       })) || [];
 
-    // If we should show uploading files, merge them with API files
+    // Step 2: Add upload files if needed
+    let allFiles = [...transformedApiFiles];
+
     if (showUploadingFiles && uploadedFiles.length > 0) {
-      // Transform uploaded files from Redux to match FileData format
       const transformedUploadedFiles = uploadedFiles
-        // Only include files that are uploading or recently completed and not already in the API response
         .filter(
           (file) =>
-            // Exclude files that are already in the API response
             !transformedApiFiles.some(
               (apiFile) =>
                 apiFile.name === file.fileData.name && apiFile.size === file.fileData.size,
@@ -152,32 +205,20 @@ const FileManager: React.FC<FileManagerProps> = ({
           url: file.metadata?.url,
           thumbnailUrl: file.metadata?.thumbnailUrl,
           tags: [],
-          status: file.status as FileUploadStatus,
+          status: file.status,
           progress: file.progress,
         }));
 
-      // Combine both arrays giving priority to API files
-      return [...transformedApiFiles, ...transformedUploadedFiles];
+      allFiles = [...transformedApiFiles, ...transformedUploadedFiles];
     }
 
-    return transformedApiFiles;
-  }, [apiFiles, bucket, showUploadingFiles, uploadedFiles]);
+    // Step 3: Apply filtering
+    let filtered = [...allFiles];
 
-  // Memoize the transformed files to prevent unnecessary re-renders
-  const transformedFiles = useMemo(() => transformFilesToFileData(), [transformFilesToFileData]);
-
-  // Memoize filtering and sorting logic
-  const processedFiles = useMemo(() => {
-    if (isLoading && isFirstLoad) return [];
-
-    let filtered = [...transformedFiles];
-
-    // Apply file type filter
     if (filterTypes && filterTypes.length > 0) {
       filtered = filtered.filter((file) => filterTypes.some((type) => file.type.includes(type)));
     }
 
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((file) => {
@@ -188,49 +229,67 @@ const FileManager: React.FC<FileManagerProps> = ({
       });
     }
 
-    // Apply sorting
-    return sortFiles(filtered);
-  }, [transformedFiles, filterTypes, searchQuery, sortFiles, isLoading, isFirstLoad]);
+    // Step 4: Apply sorting
+    const sorted = sortFiles(filtered);
 
-  // Effect for infinite scrolling
+    // Step 5: Update state (OUTSIDE this effect)
+    setFilteredFiles(sorted);
+
+    // Update refs to current values to detect changes
+    prevApiFilesRef.current = apiFiles;
+    prevUploadedFilesRef.current = uploadedFiles;
+    prevSearchQueryRef.current = searchQuery;
+    prevFilterTypesRef.current = filterTypes;
+    prevSortByRef.current = currentSortBy;
+    prevSortDirectionRef.current = currentSortDirection;
+    initializedRef.current = true;
+  }, [
+    apiFiles,
+    bucket,
+    currentSortBy,
+    currentSortDirection,
+    filterTypes,
+    isLoading,
+    searchQuery,
+    showUploadingFiles,
+    sortFiles,
+    uploadedFiles,
+  ]);
+
+  // Run the processing function only when necessary with requestAnimationFrame
   useEffect(() => {
-    if (isIntersecting && !isLoading) {
-      setPage((prev) => prev + 1);
-    }
-  }, [isIntersecting, isLoading]);
+    // Use requestAnimationFrame to ensure we don't get stuck in a render loop
+    const frameId = requestAnimationFrame(() => {
+      processAndUpdateFiles();
+    });
 
-  // Update filtered files when processed files change
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [processAndUpdateFiles]);
+
+  // Notify parent component about selection changes
+  const prevSelectedIdsRef = useRef<string[]>([]);
+
   useEffect(() => {
-    // Use a deep comparison to prevent unnecessary updates
-    const shouldUpdate = JSON.stringify(processedFiles) !== JSON.stringify(filteredFiles);
-
-    if (shouldUpdate) {
-      setFilteredFiles(processedFiles);
-
-      // Only set isFirstLoad to false when files are actually processed
-      if (isFirstLoad) {
-        setIsFirstLoad(false);
-      }
-    }
-  }, [processedFiles, filteredFiles, isFirstLoad]);
-
-  // Combined file selection effect
-  useEffect(() => {
-    // Early return if no callback is provided
     if (!onFileSelect) return;
 
-    // Handle file selection
-    if (selectedFileIds.length > 0) {
-      const selectedFiles = getSelectedFiles(filteredFiles);
-      onFileSelect(selectedFiles);
-    }
-    // Send empty array when no files are selected but files exist
-    else if (filteredFiles.length > 0) {
-      onFileSelect([]);
-    }
-  }, [selectedFileIds.length, filteredFiles, onFileSelect, getSelectedFiles]);
+    // Check if selection has actually changed
+    const selectionChanged =
+      prevSelectedIdsRef.current.length !== selectedFileIds.length ||
+      selectedFileIds.some((id) => !prevSelectedIdsRef.current.includes(id)) ||
+      prevSelectedIdsRef.current.some((id) => !selectedFileIds.includes(id));
 
-  // Handle batch operations for selected files
+    if (selectionChanged) {
+      const selectedFiles = selectedFileIds.length > 0 ? getSelectedFiles(filteredFiles) : [];
+
+      onFileSelect(selectedFiles);
+
+      // Update the ref with current selection
+      prevSelectedIdsRef.current = [...selectedFileIds];
+    }
+  }, [selectedFileIds, filteredFiles, onFileSelect, getSelectedFiles]);
+
   const handleBatchDownload = useCallback(() => {
     const selectedFiles = getSelectedFiles(filteredFiles);
     selectedFiles.forEach((file) => {
@@ -241,7 +300,6 @@ const FileManager: React.FC<FileManagerProps> = ({
   const handleBatchDelete = useCallback(() => {
     const selectedFiles = getSelectedFiles(filteredFiles);
 
-    // In a real app you might want to show a confirmation dialog
     if (confirm(`Delete ${selectedFiles.length} selected file(s)?`)) {
       selectedFiles.forEach((file) => {
         handleDelete(file);
@@ -251,35 +309,18 @@ const FileManager: React.FC<FileManagerProps> = ({
   }, [filteredFiles, getSelectedFiles, handleDelete, clearSelection]);
 
   // View mode toggle handler
-  const handleViewModeChange = (mode: ViewMode) => {
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
-  };
-
-  // Handlers for file actions
-  const handleFileView = (file: FileData) => {
-    handleView(file);
-  };
-
-  const handleFileDownload = (file: FileData) => {
-    handleDownload(file);
-  };
-
-  const handleFileDelete = (file: FileData) => {
-    handleDelete(file);
-  };
-
-  const handleFileTagsEdit = (file: FileData) => {
-    openTagsModal(file);
-  };
+  }, []);
 
   // Handle manual refresh
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
 
   // Render content based on current view mode and files
   const renderContent = () => {
-    if (isLoading && isFirstLoad) {
+    if (isLoading && !initializedRef.current) {
       return <LoadingState />;
     }
 
@@ -314,10 +355,10 @@ const FileManager: React.FC<FileManagerProps> = ({
             onSelect={toggleFileSelection}
             onOptionsToggle={toggleOptionsMenu}
             isOptionsOpen={activeMenuFileId === file.id}
-            onView={() => handleFileView(file)}
-            onDownload={() => handleFileDownload(file)}
-            onDelete={() => handleFileDelete(file)}
-            onTagsEdit={() => handleFileTagsEdit(file)}
+            onView={() => handleView(file)}
+            onDownload={() => handleDownload(file)}
+            onDelete={() => handleDelete(file)}
+            onTagsEdit={() => openTagsModal(file)}
           />
         ))}
       </div>
@@ -377,10 +418,10 @@ const FileManager: React.FC<FileManagerProps> = ({
                   onSelect={toggleFileSelection}
                   onOptionsToggle={toggleOptionsMenu}
                   isOptionsOpen={activeMenuFileId === file.id}
-                  onView={() => handleFileView(file)}
-                  onDownload={() => handleFileDownload(file)}
-                  onDelete={() => handleFileDelete(file)}
-                  onTagsEdit={() => handleFileTagsEdit(file)}
+                  onView={() => handleView(file)}
+                  onDownload={() => handleDownload(file)}
+                  onDelete={() => handleDelete(file)}
+                  onTagsEdit={() => openTagsModal(file)}
                 />
               ))}
             </tbody>

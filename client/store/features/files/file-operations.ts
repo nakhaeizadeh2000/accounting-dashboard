@@ -12,56 +12,37 @@ import {
   useDeleteFileMutation,
   useListFilesQuery,
   useListBucketsQuery,
-  FileUploadOptions,
+  selectFilesByOwnerId,
+  selectQueueStatusByOwnerId,
+  selectCurrentUploadingFileByOwnerId,
+  selectAllFilesHandledByOwnerId,
+  selectUploadedFilesByOwnerId,
+  selectFailedFilesByOwnerId,
+  selectFileById,
 } from './files.api';
 import { FileMetadata } from './progress-slice';
 import * as utils from './file-helpers';
 
 /**
- * Simplified hook for file uploads with defaults
+ * Simplified hook for file uploads
  *
- * @param bucket The bucket name to upload to
+ * @param bucket - The bucket name to upload to
  * @returns Upload function and loading state
  */
 export const useFileUpload = (bucket = 'default') => {
   const [uploadSingleFileMutation, { isLoading }] = useUploadSingleFileMutation();
 
   /**
-   * Upload a file with appropriate options
+   * Upload a file
    *
-   * @param file The file to upload
-   * @param customOptions Custom upload options to override defaults
+   * @param file - The file to upload
    * @returns Upload result
    */
-  const uploadFile = async (file: File, customOptions?: Partial<FileUploadOptions>) => {
+  const uploadFile = async (file: File) => {
     // Generate a unique component ID for this upload
     const ownerId = `upload-${uuidv4()}`;
     // Generate a unique ID for this file
     const fileId = `${ownerId}-${uuidv4()}`;
-
-    // Default options based on file type
-    const defaultOptions = {
-      generateThumbnail: true,
-      skipThumbnailForLargeFiles: true,
-      maxSizeMB: 50,
-      largeSizeMB: 20,
-    };
-
-    // For images, always generate thumbnails
-    if (file.type.startsWith('image/')) {
-      defaultOptions.skipThumbnailForLargeFiles = false;
-    }
-
-    // For videos, increase the size threshold
-    if (file.type.startsWith('video/')) {
-      defaultOptions.largeSizeMB = 50;
-    }
-
-    // Merge with custom options
-    const options = {
-      ...defaultOptions,
-      ...customOptions,
-    };
 
     // Prepare file info with proper ownerId
     const fileInfo = {
@@ -83,7 +64,6 @@ export const useFileUpload = (bucket = 'default') => {
       const result = await uploadSingleFileMutation({
         bucket,
         fileInfo,
-        options,
       }).unwrap();
 
       return result;
@@ -99,7 +79,7 @@ export const useFileUpload = (bucket = 'default') => {
 /**
  * Simplified hook for batch file uploads
  *
- * @param bucket The bucket name to upload to
+ * @param bucket - The bucket name to upload to
  * @returns Batch upload function and loading state
  */
 export const useBatchFileUpload = (bucket = 'default') => {
@@ -108,11 +88,10 @@ export const useBatchFileUpload = (bucket = 'default') => {
   /**
    * Upload multiple files at once
    *
-   * @param files The files to upload
-   * @param customOptions Custom upload options to override defaults
+   * @param files - The files to upload
    * @returns Upload result
    */
-  const uploadFiles = async (files: File[], customOptions?: Partial<FileUploadOptions>) => {
+  const uploadFiles = async (files: File[]) => {
     // Generate a unique component ID for this batch upload
     const ownerId = `batch-upload-${uuidv4()}`;
 
@@ -141,7 +120,6 @@ export const useBatchFileUpload = (bucket = 'default') => {
       const result = await uploadMultipleFilesMutation({
         bucket,
         files: fileInfos,
-        options: customOptions,
       }).unwrap();
 
       return result;
@@ -157,12 +135,12 @@ export const useBatchFileUpload = (bucket = 'default') => {
 /**
  * Get a download URL or directly download a file
  *
- * @param metadata File metadata
- * @param options Download options
+ * @param metadata - File metadata
+ * @param options - Download options
  */
-export const downloadFile = (metadata: FileMetadata, options?: { direct?: boolean }) => {
+export const downloadFile = async (metadata: FileMetadata, options?: { direct?: boolean }) => {
   // Determine if we should use direct download
-  const useDirect = options?.direct ?? getDownloadOptionsForMimeType(metadata.mimetype).direct;
+  const useDirect = options?.direct ?? isDirectDownloadType(metadata.mimetype);
 
   if (useDirect) {
     // For direct download, navigate to the URL with direct=true
@@ -180,30 +158,16 @@ export const downloadFile = (metadata: FileMetadata, options?: { direct?: boolea
 };
 
 /**
- * Get appropriate download options based on file type
+ * Determine if this file type should use direct download
  */
-export const getDownloadOptionsForMimeType = (
-  mimetype: string,
-): { direct: boolean; expiry: number } => {
-  // For images, videos, and audio, use direct streaming with a shorter expiry
-  if (utils.isImageFile(mimetype) || utils.isVideoFile(mimetype) || mimetype.startsWith('audio/')) {
-    return {
-      direct: true,
-      expiry: 3600, // 1 hour
-    };
-  }
-
-  // For other files, use presigned URLs with longer expiry
-  return {
-    direct: false,
-    expiry: 86400, // 24 hours
-  };
+export const isDirectDownloadType = (mimetype: string): boolean => {
+  return ['image/', 'video/', 'audio/'].some((prefix) => mimetype.startsWith(prefix));
 };
 
 /**
  * Open a file's thumbnail for preview
  *
- * @param metadata File metadata
+ * @param metadata - File metadata
  */
 export const previewThumbnail = (metadata: FileMetadata) => {
   if (metadata.thumbnailUrl) {
@@ -216,20 +180,17 @@ export const previewThumbnail = (metadata: FileMetadata) => {
 
 /**
  * Check if a file should have a thumbnail
+ * With the new implementation, only images have thumbnails generated
  */
 export const shouldHaveThumbnail = (metadata: FileMetadata): boolean => {
-  return (
-    !!metadata.thumbnailUrl ||
-    utils.isImageFile(metadata.mimetype) ||
-    utils.isVideoFile(metadata.mimetype)
-  );
+  return !!metadata.thumbnailUrl || utils.isImageFile(metadata.mimetype);
 };
 
 /**
  * Hook to get list of files with metadata from a bucket
  *
- * @param bucket The bucket name
- * @param options Query options
+ * @param bucket - The bucket name
+ * @param options - Query options
  * @returns Files and query state
  */
 export const useFilesList = (
@@ -264,8 +225,8 @@ export const useDeleteFile = () => {
   /**
    * Delete a file with confirmation
    *
-   * @param metadata File metadata
-   * @param skipConfirmation Whether to skip the confirmation dialog
+   * @param metadata - File metadata
+   * @param skipConfirmation - Whether to skip the confirmation dialog
    * @returns Delete result
    */
   const deleteFile = async (metadata: FileMetadata, skipConfirmation = false) => {
@@ -298,9 +259,9 @@ export const useDeleteFile = () => {
 /**
  * Hook to get detailed file metadata
  *
- * @param bucket The bucket name
- * @param filename The filename
- * @param skip Whether to skip the query
+ * @param bucket - The bucket name
+ * @param filename - The filename
+ * @param skip - Whether to skip the query
  * @returns File metadata and query state
  */
 export const useFileMetadata = (bucket: string, filename: string, skip = false) => {
@@ -338,15 +299,14 @@ export const useBucketsList = () => {
 export const useBatchDownloadUrls = (
   bucket: string,
   filenames: string[],
-  options?: { expiry?: number; skip?: boolean },
+  options?: { skip?: boolean },
 ) => {
-  const { expiry, skip } = options || {};
+  const { skip } = options || {};
 
   const result = useGetBatchDownloadUrlsQuery(
     {
       bucket,
       filenames,
-      expiry,
     },
     { skip },
   );

@@ -6,6 +6,7 @@ import {
   Post,
   Delete,
   UseGuards,
+  Body,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -38,36 +39,6 @@ export function filesUploadEndpointDecorators() {
     ApiOperation({ summary: 'Upload files to MinIO' }),
     ApiConsumes('multipart/form-data'),
     ApiParam({ name: 'bucket', description: 'The bucket to upload to' }),
-    ApiQuery({
-      name: 'generateThumbnail',
-      required: false,
-      description: 'Whether to generate thumbnails for supported files',
-      type: Boolean,
-    }),
-    ApiQuery({
-      name: 'maxSizeMB',
-      required: false,
-      description: 'Maximum file size in MB',
-      type: Number,
-    }),
-    ApiQuery({
-      name: 'allowedMimeTypes',
-      required: false,
-      description: 'Comma-separated list of allowed MIME types',
-      type: String,
-    }),
-    ApiQuery({
-      name: 'skipThumbnailForLargeFiles',
-      required: false,
-      description: 'Skip thumbnail generation for large files',
-      type: Boolean,
-    }),
-    ApiQuery({
-      name: 'largeSizeMB',
-      required: false,
-      description: 'Size threshold in MB for skipping thumbnail generation',
-      type: Number,
-    }),
     ApiResponse({
       status: 200,
       description: 'Files uploaded successfully',
@@ -87,12 +58,6 @@ export function filesDownloadEndpointDecorators() {
     ApiOperation({ summary: 'Download a file or get a presigned URL' }),
     ApiParam({ name: 'bucket', description: 'The bucket containing the file' }),
     ApiParam({ name: 'filename', description: 'The filename to download' }),
-    ApiQuery({
-      name: 'expiry',
-      required: false,
-      description: 'URL expiry time in seconds (default: 24 hours)',
-      type: Number,
-    }),
     ApiQuery({
       name: 'direct',
       required: false,
@@ -131,7 +96,7 @@ export function filesBatchDownloadEndpointDecorators() {
     ApiQuery({
       name: 'expiry',
       required: false,
-      description: 'URL expiry time in seconds (default: 24 hours)',
+      description: 'URL expiry time in seconds (default from configuration)',
       type: Number,
     }),
     ApiResponse({

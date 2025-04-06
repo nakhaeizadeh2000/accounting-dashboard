@@ -227,14 +227,13 @@ export const getReadableFileType = (mimetype: string): string => {
 
 /**
  * Check if a file should have a thumbnail
+ * The new API only generates thumbnails for images
  *
  * @param metadata File metadata
  * @returns True if the file should have a thumbnail
  */
 export const shouldHaveThumbnail = (metadata: FileMetadata): boolean => {
-  return (
-    !!metadata.thumbnailUrl || isImageFile(metadata.mimetype) || isVideoFile(metadata.mimetype)
-  );
+  return !!metadata.thumbnailUrl || isImageFile(metadata.mimetype);
 };
 
 /**
@@ -246,13 +245,9 @@ export const shouldHaveThumbnail = (metadata: FileMetadata): boolean => {
  */
 export const createDownloadParams = (
   fileMetadata: FileMetadata,
-  options?: { expiry?: number; direct?: boolean },
+  options?: { direct?: boolean },
 ): string => {
   const params = new URLSearchParams();
-
-  if (options?.expiry) {
-    params.append('expiry', options.expiry.toString());
-  }
 
   if (options?.direct !== undefined) {
     params.append('direct', options.direct.toString());

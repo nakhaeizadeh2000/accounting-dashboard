@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import FileManager from '../FileManager';
 import { FileData, FileTag } from '../types';
 import SingleFileUpload from '@/components/modules/upload-files/SingleFileUpload';
 import MultiFileUpload from '@/components/modules/upload-files/MultiFileUpload';
-import { useFilesList, useBucketsList } from '@/store/features/files';
+import { useBucketsList } from '@/store/features/files';
 
 const SimpleFileManager: React.FC = () => {
   // Define available buckets and tags
@@ -17,42 +17,54 @@ const SimpleFileManager: React.FC = () => {
     { id: '4', name: 'Archive', color: 'gray' },
   ]);
 
+  // Refs to track selection
+  const selectedFilesRef = useRef<FileData[]>([]);
+
   // Get buckets from API
-  const { buckets, isLoading: bucketsLoading } = useBucketsList();
+  const { buckets } = useBucketsList();
 
   // Example handlers for the file manager
-  const handleFileSelect = (files: FileData[]) => {
-    console.log('Selected files:', files);
-  };
+  const handleFileSelect = useCallback((files: FileData[]) => {
+    // Only log if the selection has actually changed
+    const currentSelection = JSON.stringify(files.map((f) => f.id));
+    const prevSelection = JSON.stringify(selectedFilesRef.current.map((f) => f.id));
 
-  const handleFileView = (file: FileData) => {
+    if (currentSelection !== prevSelection) {
+      console.log('Selected files:', files);
+      selectedFilesRef.current = files;
+    }
+  }, []);
+
+  const handleFileView = useCallback((file: FileData) => {
     console.log('Viewing file:', file);
     // The viewing is handled by the useFileActions hook
-  };
+  }, []);
 
-  const handleFileDownload = (file: FileData) => {
+  const handleFileDownload = useCallback((file: FileData) => {
     console.log('Downloading file:', file);
     // The download is handled by the useFileActions hook
-  };
+  }, []);
 
-  const handleFileDelete = (file: FileData) => {
+  const handleFileDelete = useCallback((file: FileData) => {
     console.log('Deleting file:', file);
     // The deletion is handled by the useFileActions hook
-  };
+  }, []);
 
-  const handleTagsUpdate = (file: FileData, tags: FileTag[]) => {
+  const handleTagsUpdate = useCallback((file: FileData, tags: FileTag[]) => {
     console.log('Updating tags for file:', file, 'with tags:', tags);
     // In a real app, you would call your API to update the file's tags
-  };
+  }, []);
 
-  const handleBucketChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleBucketChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedBucket(e.target.value);
-  };
+    // Reset selection when bucket changes
+    selectedFilesRef.current = [];
+  }, []);
 
   // Handle successful uploads
-  const handleUploadSuccess = (result: any) => {
+  const handleUploadSuccess = useCallback((result: any) => {
     console.log('Upload successful:', result);
-  };
+  }, []);
 
   return (
     <div className="container mx-auto p-4">
@@ -91,8 +103,6 @@ const SimpleFileManager: React.FC = () => {
             bucket={selectedBucket}
             acceptedFileTypes="image/*,application/pdf,video/*"
             maxSizeMB={50}
-            generateThumbnail={true}
-            skipThumbnailForLargeFiles={true}
             onUploadSuccess={handleUploadSuccess}
           />
         </div>
@@ -104,8 +114,6 @@ const SimpleFileManager: React.FC = () => {
             bucket={selectedBucket}
             acceptedFileTypes="image/*,application/pdf,video/*,audio/*"
             maxSizeMB={100}
-            generateThumbnail={true}
-            skipThumbnailForLargeFiles={true}
             onUploadComplete={handleUploadSuccess}
           />
         </div>

@@ -7,14 +7,13 @@ import {
   NotFoundException,
   InternalServerErrorException,
   HttpException,
-  Body,
   Res,
+  Body,
 } from '@nestjs/common';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import {
   MinioFilesService,
   FileMetadata,
-  FileUploadOptions,
 } from '../services/minio-files.service';
 import { FileMetadataDto } from '../dto/minio-files.dto';
 import {
@@ -39,6 +38,7 @@ import {
   BucketsResponseDto,
   BucketConfigDto,
 } from '../dto/minio-files.dto';
+import { BusboyFileStream } from '@fastify/busboy';
 
 @filesControllerDecorators()
 export class MinioFilesController {
@@ -48,88 +48,184 @@ export class MinioFilesController {
   async uploadFiles(
     @Param('bucket') bucket: string,
     @Req() req: FastifyRequest,
-    @Query('generateThumbnail') generateThumbnail?: string,
-    @Query('maxSizeMB') maxSizeMB?: string,
-    @Query('allowedMimeTypes') allowedMimeTypesStr?: string,
-    @Query('skipThumbnailForLargeFiles') skipThumbnailForLargeFiles?: string,
-    @Query('largeSizeMB') largeSizeMB?: string,
   ): Promise<UploadFileResponseDto> {
     try {
-      const allowedMimeTypes = allowedMimeTypesStr
-        ? allowedMimeTypesStr.split(',')
-        : [];
+      // Validate bucket
+      if (!bucket || typeof bucket !== 'string') {
+        throw new BadRequestException('Valid bucket name is required');
+      }
 
-      // Parse and validate options
-      const options: FileUploadOptions = {
-        generateThumbnail: generateThumbnail !== 'false',
-        maxSizeMB: maxSizeMB ? parseFloat(maxSizeMB) : undefined,
-        allowedMimeTypes:
-          allowedMimeTypes.length > 0 ? allowedMimeTypes : undefined,
-        skipThumbnailForLargeFiles: skipThumbnailForLargeFiles !== 'false',
-        largeSizeMB: largeSizeMB ? parseFloat(largeSizeMB) : undefined,
-      };
+      // Ensure the request is multipart
+      if (!req.isMultipart()) {
+        throw new BadRequestException('Request is not multipart');
+      }
 
       const files = await req.files();
       const uploadResults: FileMetadataDto[] = [];
 
-      // Manually iterate over the AsyncGenerator with .next()
-      let file = await files.next();
-
-      if (file.done) {
+      // Check if there are any files to process
+      const firstFile = await files.next();
+      if (firstFile.done) {
         throw new BadRequestException('No files were provided');
       }
 
-      while (!file.done) {
-        // Extract file properties
-        const { file: fileStream, filename, mimetype } = file.value;
+      // Reset to process all files
+      let filePromises = [];
+      let currentFile = firstFile;
 
-        try {
-          // Process and upload file using the optimized service
-          const result = await this.minioService.uploadFile(
-            bucket,
-            filename,
-            fileStream,
-            mimetype,
-            options,
-          );
+      while (!currentFile.done) {
+        const { file: fileStream, filename, mimetype } = currentFile.value;
 
-          // Convert FileMetadata to FileMetadataDto
-          const fileDto: FileMetadataDto = {
-            originalName: result.originalName,
-            uniqueName: result.uniqueName,
-            size: result.size,
-            mimetype: result.mimetype,
-            thumbnailName: result.thumbnailName,
-            url: result.url,
-            thumbnailUrl: result.thumbnailUrl,
-            bucket: result.bucket,
-            uploadedAt: result.uploadedAt,
-          };
-
-          uploadResults.push(fileDto);
-        } catch (error) {
-          throw new HttpException(
-            `Error uploading file ${filename}: ${error.message}`,
-            error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-          );
+        // Basic validations
+        if (!fileStream) {
+          console.warn(`Skipping file with missing stream: ${filename}`);
+          currentFile = await files.next();
+          continue;
         }
 
+        if (!filename) {
+          console.warn('Skipping file with missing filename');
+          currentFile = await files.next();
+          continue;
+        }
+
+        // Log the incoming file for debugging
+        console.log(
+          `Processing file: ${filename}, mimetype: ${mimetype || 'unknown'}`,
+        );
+
+        // Process file upload asynchronously
+        const uploadPromise = this.processFileUpload(
+          bucket,
+          fileStream,
+          filename,
+          mimetype,
+          uploadResults,
+        );
+        filePromises.push(uploadPromise);
+
         // Move to the next file
-        file = await files.next();
+        currentFile = await files.next();
+      }
+
+      // Wait for all uploads to complete
+      await Promise.all(filePromises);
+
+      // Separate successful and failed uploads
+      const successfulUploads = uploadResults.filter((file) => !file.error);
+      const failedUploads = uploadResults.filter((file) => !!file.error);
+
+      // If all files failed, throw an error with details
+      if (successfulUploads.length === 0 && failedUploads.length > 0) {
+        throw new BadRequestException({
+          message: 'No files were successfully uploaded',
+          failures: failedUploads,
+        });
       }
 
       return {
-        message: 'Files uploaded successfully',
-        files: uploadResults,
+        message:
+          failedUploads.length > 0
+            ? `${successfulUploads.length} files uploaded successfully, ${failedUploads.length} failed`
+            : 'Files uploaded successfully',
+        files: successfulUploads,
+        failures: failedUploads.length > 0 ? failedUploads : undefined,
       };
     } catch (error) {
+      // Handle errors that may occur outside the file processing
       if (error instanceof HttpException) {
         throw error;
       }
 
+      // If it's a BadRequestException with failures, rethrow it
+      if (
+        error instanceof BadRequestException &&
+        error.getResponse()['failures']
+      ) {
+        throw error;
+      }
+
+      console.error(`Upload failed: ${error.message}`, error.stack);
       throw new InternalServerErrorException(
         `File upload failed: ${error.message}`,
       );
+    }
+  }
+
+  /**
+   * Helper method to process a single file upload
+   */
+  private async processFileUpload(
+    bucket: string,
+    fileStream: BusboyFileStream,
+    filename: string,
+    mimetype: string,
+    results: FileMetadataDto[],
+  ): Promise<void> {
+    try {
+      // Process and upload file using the optimized service
+      const result = await this.minioService.uploadFile(
+        bucket,
+        filename,
+        fileStream,
+        mimetype,
+      );
+
+      // Convert FileMetadata to FileMetadataDto
+      const fileDto: FileMetadataDto = {
+        originalName: result.originalName,
+        uniqueName: result.uniqueName,
+        size: result.size,
+        mimetype: result.mimetype,
+        thumbnailName: result.thumbnailName,
+        url: result.url,
+        thumbnailUrl: result.thumbnailUrl,
+        bucket: result.bucket,
+        uploadedAt: result.uploadedAt,
+        success: true,
+      };
+
+      // Add to results array
+      results.push(fileDto);
+      console.log(`Successfully uploaded: ${filename}`);
+    } catch (error) {
+      console.error(`Error processing file ${filename}: ${error.message}`);
+
+      // Create an error result to include in the response
+      results.push({
+        originalName: filename,
+        uniqueName: '',
+        size: 0,
+        mimetype: mimetype,
+        bucket: bucket,
+        uploadedAt: new Date(),
+        error: error.message, // Add error information
+        success: false, // Mark as failed
+      });
+
+      // Ensure the stream is fully consumed to prevent hanging
+      try {
+        if (fileStream && typeof fileStream.resume === 'function') {
+          fileStream.resume();
+        }
+
+        // To be even more thorough, you can attempt to consume the stream
+        // This is a safety measure to ensure streams don't hang
+        if (fileStream && typeof fileStream.pipe === 'function') {
+          const devNull = new require('stream').Writable({
+            write(chunk, encoding, callback) {
+              // Discard the chunk and call the callback
+              callback();
+            },
+          });
+          fileStream.pipe(devNull);
+        }
+      } catch (streamError) {
+        // Just log if there's any issue with stream handling
+        console.warn(
+          `Error handling stream for ${filename}: ${streamError.message}`,
+        );
+      }
     }
   }
 
@@ -137,12 +233,11 @@ export class MinioFilesController {
   async downloadFile(
     @Param('bucket') bucket: string,
     @Param('filename') filename: string,
-    @Query('expiry') expiry?: string,
     @Query('direct') direct?: string,
     @Res() response?: FastifyReply,
   ): Promise<DownloadUrlResponseDto | void> {
     try {
-      // If direct=true is specified, stream the file directly
+      // If direct=true is specified or the file type is in the direct download list, stream the file directly
       if (direct === 'true' && response) {
         // Get file metadata to determine content type
         const metadata = await this.minioService.getFileMetadata(
@@ -164,14 +259,37 @@ export class MinioFilesController {
         );
         return response.send(fileStream);
       } else {
-        // Regular presigned URL generation
-        const expirySeconds = expiry ? parseInt(expiry) : 24 * 60 * 60;
-        const url = await this.minioService.generatePresignedUrl(
+        // Check if this file type should use direct download by default
+        const metadata = await this.minioService.getFileMetadata(
           bucket,
           filename,
-          expirySeconds,
         );
-        return { url };
+
+        if (
+          this.minioService.isDirectDownloadType(metadata.mimetype) &&
+          response
+        ) {
+          // Set appropriate headers for streaming
+          response.header(
+            'Content-Disposition',
+            `attachment; filename="${metadata.originalName}"`,
+          );
+          response.header('Content-Type', metadata.mimetype);
+
+          // Start streaming the file directly to the response
+          const fileStream = await this.minioService.getFileStream(
+            bucket,
+            filename,
+          );
+          return response.send(fileStream);
+        } else {
+          // Regular presigned URL generation
+          const url = await this.minioService.generatePresignedUrl(
+            bucket,
+            filename,
+          );
+          return { url };
+        }
       }
     } catch (error) {
       if (error.code === 'NotFound') {
@@ -196,7 +314,8 @@ export class MinioFilesController {
     }
 
     const filenames = filenamesStr.split(',');
-    const expirySeconds = expiry ? parseInt(expiry) : 24 * 60 * 60;
+    // Expiry is now optional as we have a default in the service
+    const expirySeconds = expiry ? parseInt(expiry) : undefined;
 
     try {
       const urlsMap = await this.minioService.generateBatchPresignedUrls(

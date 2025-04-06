@@ -1,6 +1,6 @@
 # File Manager Component
 
-A modern, responsive, and feature-rich file management component for Next.js applications. This component provides a complete solution for displaying and managing files with support for grid and list views, file tagging, sorting, filtering, and more.
+A comprehensive, modern file management system for React applications with powerful browsing, filtering, and organization capabilities.
 
 ## Features
 
@@ -13,34 +13,17 @@ A modern, responsive, and feature-rich file management component for Next.js app
 - ✅ **Multi-select functionality** for batch operations
 - 🎛️ **Comprehensive file actions** including view, download, delete, and tag management
 - 🧩 **Highly customizable** through props and theming
+- 🔄 **Real-time upload status** integration with the upload system
+- 🌙 **Dark mode support** with automatic theme detection
 
 ## Installation
 
-1. Copy the `file-manager` directory into your project's components folder
-2. Ensure you have the required icon components:
-   - AudioFileIcon
-   - CompleteTickIcon
-   - CompressedFileIcon
-   - DocumentFileIcon
-   - FailedXmarkIcon
-   - FolderIcon
-   - ImageFileIcon
-   - VideoFileIcon
-   - XIcon
+The File Manager is integrated into the main project and requires no additional installation.
 
-3. Install required dependencies if not already present:
-```bash
-npm install @reduxjs/toolkit react-redux
-# or
-yarn add @reduxjs/toolkit react-redux
-```
-
-## Usage
-
-### Basic Usage
+## Basic Usage
 
 ```tsx
-import FileManager from '@/components/modules/file-manager/FileManager';
+import { FileManager } from '@/components/modules/file-manager';
 
 const MyFilesPage = () => {
   return (
@@ -60,61 +43,70 @@ const MyFilesPage = () => {
 export default MyFilesPage;
 ```
 
-### With Custom Handlers
+## Advanced Usage
 
 ```tsx
-import FileManager from '@/components/modules/file-manager/FileManager';
+import { FileManager } from '@/components/modules/file-manager';
 import { FileData, FileTag } from '@/components/modules/file-manager/types';
 
-const MyFilesPage = () => {
+const AdvancedFilesPage = () => {
   const handleFileView = (file: FileData) => {
-    // Your custom view logic
     console.log('Viewing file:', file);
   };
   
   const handleFileDownload = (file: FileData) => {
-    // Your custom download logic
     console.log('Downloading file:', file);
   };
   
   const handleFileDelete = (file: FileData) => {
-    // Your custom delete logic
     console.log('Deleting file:', file);
   };
   
   const handleTagsUpdate = (file: FileData, tags: FileTag[]) => {
-    // Your custom tag update logic
     console.log('Updating tags for file:', file, 'with tags:', tags);
   };
   
+  const availableTags: FileTag[] = [
+    { id: '1', name: 'Important', color: 'red' },
+    { id: '2', name: 'Work', color: 'blue' },
+    { id: '3', name: 'Personal', color: 'green' },
+  ];
+  
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">My Files</h1>
+      <h1 className="text-2xl font-bold mb-4">Advanced File Management</h1>
       
       <FileManager
-        ownerId="my-files-page"
+        ownerId="advanced-file-manager"
         bucket="documents"
         title="Documents"
         maxHeight="600px"
+        defaultView="grid"
+        sortBy="date"
+        sortDirection="desc"
+        filterTypes={["application/pdf", "text/"]}
+        availableTags={availableTags}
         onFileView={handleFileView}
         onFileDownload={handleFileDownload}
         onFileDelete={handleFileDelete}
         onTagsUpdate={handleTagsUpdate}
+        showUploadingFiles={true}
+        refreshInterval={30000}
       />
     </div>
   );
 };
-
-export default MyFilesPage;
 ```
 
 ## Props
 
+The FileManager component accepts the following props:
+
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `ownerId` | `string` | **Required** | Unique ID for this instance of the file manager |
-| `bucket` | `string` | **Required** | Bucket to fetch files from |
-| `title` | `string` | `'Files'` | Optional title for the component |
+| `bucket` | `string` | `'default'` | Bucket to fetch files from |
+| `title` | `string` | `'Files'` | Title displayed in the component header |
 | `maxHeight` | `string` | `'600px'` | CSS max-height value |
 | `allowMultiSelect` | `boolean` | `true` | Allow selecting multiple files |
 | `onFileSelect` | `(files: FileData[]) => void` | - | Callback when files are selected |
@@ -130,64 +122,255 @@ export default MyFilesPage;
 | `availableTags` | `FileTag[]` | `[]` | Available tags to choose from |
 | `sortBy` | `'name' \| 'date' \| 'size' \| 'type'` | `'date'` | Sort files by |
 | `sortDirection` | `'asc' \| 'desc'` | `'desc'` | Sort direction |
+| `showUploadingFiles` | `boolean` | `true` | Show files that are currently being uploaded |
+| `refreshInterval` | `number` | - | Auto-refresh interval in ms |
 
-## Component Structure
+## Core Types
 
-The file manager is built as a modular system with the following key components:
+### FileData
 
-- `FileManager.tsx` - Main component that orchestrates everything
-- `FileCard.tsx` - Grid view item component
-- `FileRow.tsx` - List view item component
-- `FileTypeIcon.tsx` - Displays appropriate icon based on file type
-- `FileTags.tsx` - Displays file tags
-- `OptionsMenu.tsx` - Context menu for file actions
-- `TagsEditorModal.tsx` - Modal for editing file tags
-- `FilterBar.tsx` - Filter and search controls
-- `EmptyState.tsx` - Display when no files are found
+```typescript
+interface FileData {
+  id: string;
+  name: string;
+  bucket: string;
+  path?: string;
+  type: string;
+  size: number;
+  uploadDate: Date;
+  thumbnailUrl?: string;
+  url?: string;
+  metadata?: Record<string, any>;
+  tags?: FileTag[];
+  status?: string;
+  progress?: number;
+}
+```
 
-## State Management
+### FileTag
 
-The file manager integrates with Redux Toolkit through several hooks:
+```typescript
+interface FileTag {
+  id: string;
+  name: string;
+  color?: string;
+}
+```
 
-- `useFileSelection` - Manages file selection state
-- `useFileSorting` - Manages sorting options
-- `useFileActions` - Handles file operations
-- `useIntersectionObserver` - Powers the infinite scrolling functionality
+## File Views
 
-## Custom Styling
+The FileManager supports two view modes:
 
-The file manager uses Tailwind CSS for styling and is designed to be easily customizable. You can override the default styles by:
+### Grid View
 
-1. Adding custom class names to the `className` prop
-2. Modifying the Tailwind theme in your `tailwind.config.js`
-3. Directly editing the component files to match your design system
+Displays files as thumbnails in a responsive grid layout, ideal for visual content like images and videos. This view emphasizes thumbnails and provides a visual overview of the files.
 
-## Integration with Redux
+### List View
 
-If you need to customize the state management or integrate with a different API, you'll want to modify the following files:
+Displays files in a detailed list with columns for name, tags, size, date, and type. This view is better for document-heavy collections where metadata is more important than visual preview.
 
-- `hooks/useFileActions.ts` - Contains the actions for file operations
-- `FileManager.tsx` - Contains the state handling logic
+## File Actions
 
-## Examples
+Each file can be interacted with using the following actions:
 
-Check out the examples directory for more advanced usage patterns:
+| Action | Description | Use Case |
+|--------|-------------|----------|
+| View | Opens the file for preview | Viewing images, PDFs, or other previewable content |
+| Download | Downloads the file to the user's device | Obtaining a local copy of the file |
+| Delete | Removes the file permanently | Removing unwanted files |
+| Edit Tags | Opens a modal to manage file tags | Organizing files with metadata |
 
-- `examples/SimpleFileManager.tsx` - A basic implementation
-- `examples/AdvancedFileManager.tsx` - Advanced implementation with filtering
+## Batch Operations
 
-## Additional Icon Requirements
+When multiple files are selected, the following batch operations become available:
 
-For complete functionality, you may want to add these additional icons:
+| Operation | Description |
+|-----------|-------------|
+| Download Selected | Downloads all selected files |
+| Delete Selected | Deletes all selected files (with confirmation) |
 
-- EyeIcon (for preview action)
-- DownloadIcon (for download action)
-- TagIcon (for managing tags)
-- TrashIcon (for delete action)
-- SearchIcon (for search functionality)
-- SortAscIcon / SortDescIcon (for sorting indicators)
-- GridViewIcon / ListViewIcon (for view mode toggle)
+## Filtering and Sorting
 
-## License
+The file manager provides robust filtering and sorting capabilities:
 
-This component is provided as-is with no warranty. Use it as you see fit in your projects.
+### Filtering Options
+
+- Text search across filename, type, and tags
+- MIME type filtering (e.g., only show images or documents)
+
+### Sorting Options
+
+| Option | Direction | Description |
+|--------|-----------|-------------|
+| Name | Asc/Desc | Alphabetical sorting by filename |
+| Date | Asc/Desc | Chronological sorting by upload date |
+| Size | Asc/Desc | Sorting by file size |
+| Type | Asc/Desc | Sorting by file type/extension |
+
+## File Tagging
+
+The tagging system allows for flexible file organization:
+
+- Each file can have multiple tags
+- Tags have colors for visual identification
+- Available tags can be predefined via the `availableTags` prop
+- Tags can be added, removed, or managed via the tag editor modal
+
+Example tag structure:
+
+```tsx
+const availableTags = [
+  { id: '1', name: 'Important', color: 'red' },
+  { id: '2', name: 'Work', color: 'blue' },
+  { id: '3', name: 'Personal', color: 'green' },
+  { id: '4', name: 'Archive', color: 'gray' },
+];
+```
+
+## Upload Integration
+
+The file manager can display files that are currently being uploaded by setting `showUploadingFiles` to `true`. This creates a seamless experience between upload and management.
+
+Files in the upload process will display:
+- Upload progress indicators
+- Current status (uploading, waiting, completed, failed)
+- File metadata (name, size, type)
+
+## Infinite Scrolling
+
+For large file collections, the component implements efficient infinite scrolling:
+
+1. Initial batch of files is loaded based on `itemsPerPage`
+2. As the user scrolls, additional batches are loaded
+3. Loading indicators are displayed during fetch operations
+4. Only visible files are rendered for optimal performance
+
+## Error Handling
+
+The component handles various error scenarios gracefully:
+
+- API connection errors with retry options
+- File not found errors during operations
+- Permission errors with appropriate messages
+- Network interruptions with recovery options
+
+## Integration Examples
+
+### With File Upload Components
+
+```tsx
+import { FileManager } from '@/components/modules/file-manager';
+import { MultiFileUpload } from '@/components/modules/upload-files';
+
+const FilesWithUpload = () => {
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6">My Files</h1>
+      
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Upload Files</h2>
+        <MultiFileUpload
+          id="file-uploader"
+          bucket="documents"
+          acceptedFileTypes="image/*,application/pdf,video/*"
+        />
+      </div>
+      
+      <FileManager
+        ownerId="my-files-display"
+        bucket="documents"
+        showUploadingFiles={true}
+        refreshInterval={5000}
+      />
+    </div>
+  );
+};
+```
+
+### With Custom Styling
+
+```tsx
+import { FileManager } from '@/components/modules/file-manager';
+
+const CustomStyledFileManager = () => {
+  return (
+    <div className="container mx-auto p-4">
+      <FileManager
+        ownerId="styled-file-manager"
+        bucket="images"
+        title="Image Gallery"
+        className="border border-purple-300 rounded-xl shadow-xl"
+        maxHeight="800px"
+        defaultView="grid"
+        filterTypes={["image/"]}
+      />
+    </div>
+  );
+};
+```
+
+## Custom Integration
+
+The file manager is built from composable parts that can be used individually:
+
+```tsx
+import { useFileSelection } from '@/components/modules/file-manager/hooks/useFileSelection';
+import { useFileSorting } from '@/components/modules/file-manager/hooks/useFileSorting';
+import { FileCard } from '@/components/modules/file-manager/components/FileCard';
+
+const CustomFileGrid = ({ files }) => {
+  const { selectedFileIds, toggleFileSelection } = useFileSelection();
+  const { sortFiles } = useFileSorting('name', 'asc');
+  
+  const sortedFiles = sortFiles(files);
+  
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {sortedFiles.map(file => (
+        <FileCard
+          key={file.id}
+          file={file}
+          isSelected={selectedFileIds.includes(file.id)}
+          onSelect={toggleFileSelection}
+          // other props...
+        />
+      ))}
+    </div>
+  );
+};
+```
+
+## Best Practices
+
+1. **Provide a unique `ownerId`** for each FileManager instance to prevent state conflicts
+2. **Set appropriate `maxHeight`** to fit within your page layout
+3. **Use `filterTypes`** to narrow down file types for specific contexts
+4. **Include custom `onFile*` handlers** for specialized behavior
+5. **Implement appropriate tag colors** that match your application's color scheme
+6. **Configure `refreshInterval`** based on expected update frequency
+7. **Consider accessibility** when designing custom integrations
+
+## Implementation Notes
+
+The FileManager is built using a collection of specialized hooks and components:
+
+- `useFileSelection`: Manages file selection state
+- `useFileSorting`: Handles file sorting logic
+- `useFileActions`: Coordinates file operations (view, download, delete)
+- `useIntersectionObserver`: Powers the infinite scrolling functionality
+
+These building blocks can be used independently for custom implementations.
+
+## Browser Compatibility
+
+The component is fully compatible with modern browsers:
+- Chrome, Firefox, Safari, Edge (latest 2 versions)
+- Mobile browsers on iOS and Android
+- Responsive design works from phones to desktop screens
+
+## Performance Considerations
+
+For optimal performance with large file collections:
+- Use the `itemsPerPage` prop to control batch size (20-50 items recommended)
+- Implement appropriate server-side filtering when possible
+- Consider using `refreshInterval` strategically (higher values reduce API load)
