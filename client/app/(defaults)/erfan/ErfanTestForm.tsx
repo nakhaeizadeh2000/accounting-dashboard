@@ -8,6 +8,7 @@ import { StaticDatePicker } from '@mui/x-date-pickers-pro';
 import { BsMailbox } from 'react-icons/bs';
 import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
 import Badge, { BadgeProps } from '@mui/material/Badge';
+import BadgesComponents from '@/components/modules/badges/BadgesComponents';
 
 const StyledBadge = styled(Badge)<BadgeProps>(({ theme }) => ({
   '& .MuiBadge-badge': {
@@ -44,7 +45,7 @@ const ErfanTestForm = () => {
       <TimePickersSimpleComponent
         options={{ label: 'ساعت', getValue: setTime, formatTime: 'HH:mm' }}
       />
-      <br />
+      <hr className="m-4" />
       <DatePickerSimpleComponent
         options={{
           label: 'تاریخ',
@@ -56,36 +57,26 @@ const ErfanTestForm = () => {
           openButtonIcon: PiAirplaneTakeoffDuotone,
         }}
       />
-      <br />
+      <hr className="m-4" />
       <TextField id="outlined-basic" label="ایمیل" variant="outlined" size="small" />
-      <br />
+      <hr className="m-4" />
       <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
-      <br />
+      <hr className="m-4" />
       <Editor onChange={(data) => console.log(data)} />
-      <br />
+      <hr className="m-4" />
       <span className="text-lg">Badge</span>
-
-      <div>
-        <Badge
-          badgeContent={
-            <div>
-              <span className="absolute -top-[3px] h-full w-full animate-pulse rounded-full bg-success/50 opacity-75 ltr:-left-[3px] rtl:-right-[3px]"></span>
-              <span className="relative inline-flex h-[20px] w-[15px] rounded-full bg-success">
-                3
-              </span>
-            </div>
-          }
-          anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-          aria-label="label"
-          className="costume-badge"
-          overlap="circular"
-        >
-          <BsMailbox
-            style={{ width: '24px', height: '24px', cursor: 'pointer' }}
-            onClick={() => console.log('ehh')}
-          />
-        </Badge>
-      </div>
+      <BadgesComponents
+        content={100}
+        options={{
+          colorTypeBadge: 'bg-red-600',
+          showZero: false,
+          anchorOriginBadge: { vertical: 'top', horizontal: 'left' },
+          contentClass: 'text-white',
+          max: 99,
+          animateEnabled: false,
+        }}
+        Icon={BsMailbox}
+      />
     </div>
   );
 };
