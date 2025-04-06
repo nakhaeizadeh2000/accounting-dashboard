@@ -147,10 +147,11 @@ export class MinioFilesService {
       });
 
       if (!isAllowed) {
-        throw new BadRequestException(`File type ${mimetype} is not allowed`);
+        throw new BadRequestException(
+          `mimetype : File type ${mimetype} is not allowed`,
+        );
       }
     }
-
     // Basic validation
     if (!fileStream) {
       this.logger.error(`Missing file stream for file: ${filename}`);

@@ -33,9 +33,10 @@ export class FileMetadataDto {
   @IsString()
   thumbnailName?: string;
 
-  @ApiProperty({ description: 'Presigned URL for accessing the file' })
+  @ApiPropertyOptional({ description: 'Presigned URL for accessing the file' })
+  @IsOptional() // Make URL optional
   @IsString()
-  url: string;
+  url?: string; // Now optional
 
   @ApiPropertyOptional({
     description: 'Presigned URL for accessing the thumbnail (if available)',
@@ -75,13 +76,12 @@ export class UploadFileResponseDto {
   @IsArray()
   files: FileMetadataDto[];
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Array of failed file uploads with errors',
     type: [FileMetadataDto],
-    required: false,
   })
-  @IsArray()
   @IsOptional()
+  @IsArray()
   failures?: FileMetadataDto[];
 }
 

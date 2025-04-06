@@ -364,9 +364,9 @@ const SingleFileUpload = ({
             </p>
           </div>
         ) : (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 px-8">
             <FailedXmarkIcon width={20} height={20} />
-            <p className="text-sm leading-tight text-red-500 dark:text-red-400 sm:text-base md:text-xl md:leading-[1.125rem]">
+            <p className="text-center text-sm leading-tight text-red-500 dark:text-red-400 sm:text-base md:text-xl md:leading-[1.125rem]">
               {errorMessage || texts.uploadFailed}
             </p>
           </div>

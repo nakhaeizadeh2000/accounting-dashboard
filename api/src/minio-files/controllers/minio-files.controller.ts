@@ -39,6 +39,8 @@ import {
   BucketConfigDto,
 } from '../dto/minio-files.dto';
 import { BusboyFileStream } from '@fastify/busboy';
+import { Writable } from 'stream';
+import { ValidationException } from 'common/exceptions/validation.exception';
 
 @filesControllerDecorators()
 export class MinioFilesController {
@@ -52,12 +54,14 @@ export class MinioFilesController {
     try {
       // Validate bucket
       if (!bucket || typeof bucket !== 'string') {
-        throw new BadRequestException('Valid bucket name is required');
+        throw new BadRequestException('bucket : Valid bucket name is required');
       }
 
       // Ensure the request is multipart
       if (!req.isMultipart()) {
-        throw new BadRequestException('Request is not multipart');
+        throw new BadRequestException(
+          'files : Request must be multipart format',
+        );
       }
 
       const files = await req.files();
@@ -66,7 +70,7 @@ export class MinioFilesController {
       // Check if there are any files to process
       const firstFile = await files.next();
       if (firstFile.done) {
-        throw new BadRequestException('No files were provided');
+        throw new BadRequestException('files : No files were provided');
       }
 
       // Reset to process all files
@@ -115,21 +119,20 @@ export class MinioFilesController {
       const successfulUploads = uploadResults.filter((file) => !file.error);
       const failedUploads = uploadResults.filter((file) => !!file.error);
 
-      // If all files failed, throw an error with details
+      // If all files failed, throw a properly formatted error
       if (successfulUploads.length === 0 && failedUploads.length > 0) {
-        throw new BadRequestException({
-          message: 'No files were successfully uploaded',
-          failures: failedUploads,
-        });
+        // Format error messages according to your standard format for ValidationException
+        const errorMessages = failedUploads.map(
+          (file) => `${file.originalName} : ${file.error}`,
+        );
+
+        throw new ValidationException(errorMessages);
       }
 
       return {
-        message:
-          failedUploads.length > 0
-            ? `${successfulUploads.length} files uploaded successfully, ${failedUploads.length} failed`
-            : 'Files uploaded successfully',
+        message: 'Files uploaded successfully',
         files: successfulUploads,
-        failures: failedUploads.length > 0 ? failedUploads : undefined,
+        // Don't include failures in success response, they're handled via exceptions
       };
     } catch (error) {
       // Handle errors that may occur outside the file processing
@@ -137,17 +140,9 @@ export class MinioFilesController {
         throw error;
       }
 
-      // If it's a BadRequestException with failures, rethrow it
-      if (
-        error instanceof BadRequestException &&
-        error.getResponse()['failures']
-      ) {
-        throw error;
-      }
-
       console.error(`Upload failed: ${error.message}`, error.stack);
       throw new InternalServerErrorException(
-        `File upload failed: ${error.message}`,
+        `file : Upload failed - ${error.message}`,
       );
     }
   }
@@ -182,7 +177,6 @@ export class MinioFilesController {
         thumbnailUrl: result.thumbnailUrl,
         bucket: result.bucket,
         uploadedAt: result.uploadedAt,
-        success: true,
       };
 
       // Add to results array
@@ -197,6 +191,7 @@ export class MinioFilesController {
         uniqueName: '',
         size: 0,
         mimetype: mimetype,
+        url: '', // Empty URL to satisfy TypeScript
         bucket: bucket,
         uploadedAt: new Date(),
         error: error.message, // Add error information
@@ -209,10 +204,9 @@ export class MinioFilesController {
           fileStream.resume();
         }
 
-        // To be even more thorough, you can attempt to consume the stream
-        // This is a safety measure to ensure streams don't hang
+        // To be even more thorough, attempt to consume the stream
         if (fileStream && typeof fileStream.pipe === 'function') {
-          const devNull = new require('stream').Writable({
+          const devNull = new Writable({
             write(chunk, encoding, callback) {
               // Discard the chunk and call the callback
               callback();
