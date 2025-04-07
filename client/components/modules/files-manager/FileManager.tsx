@@ -98,7 +98,7 @@ const FileManager: React.FC<FileManagerProps> = ({
   const skipQuery = !bucket; // Skip if bucket is empty
 
   const {
-    data: apiFiles,
+    data: apiResponse,
     isLoading,
     isFetching,
     error,
@@ -117,6 +117,9 @@ const FileManager: React.FC<FileManagerProps> = ({
       skip: skipQuery,
     },
   );
+
+  // Extract files from the standardized response structure
+  const apiFiles = apiResponse?.data;
 
   // Observe the loader element for infinite scrolling
   const isIntersecting = useIntersectionObserver(

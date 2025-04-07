@@ -27,6 +27,7 @@ import {
   selectUploadedFilesByOwnerId,
   selectFailedFilesByOwnerId,
   cancelUploadRequest,
+  UploadFileResponse,
 } from '@/store/features/files/files.api';
 
 // Import these functions directly from the upload-utils.ts
@@ -40,6 +41,34 @@ interface UseMultiFileUploadOptions {
   onUploadComplete?: (uploadedFiles: FileUploadInfo[]) => void;
   onAllUploadsComplete?: (succeeded: FileUploadInfo[], failed: FileUploadInfo[]) => void;
   onError?: (error: any) => void;
+}
+
+// Create an interface for the file response data
+interface FileResponseData {
+  originalName: string;
+  uniqueName: string;
+  size: number;
+  mimetype: string;
+  thumbnailName?: string;
+  url: string; // Making url required to match FileMetadata
+  thumbnailUrl?: string;
+  bucket: string;
+  uploadedAt: string | Date;
+  [key: string]: any; // For any additional properties
+}
+
+// Extend the FileUploadInfo to include a properly typed response
+interface FileUploadInfoWithResponse extends FileUploadInfo {
+  response?: {
+    success?: boolean;
+    statusCode?: number;
+    message?: string[];
+    data?: {
+      message?: string;
+      files?: FileResponseData[];
+    };
+    files?: FileResponseData[]; // For backward compatibility
+  };
 }
 
 // This map will store the actual File objects outside of Redux
@@ -67,7 +96,9 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     selectCurrentUploadingFileByOwnerId(componentIdRef.current),
   );
   const allFilesHandled = useSelector(selectAllFilesHandledByOwnerId(componentIdRef.current));
-  const uploadedFiles = useSelector(selectUploadedFilesByOwnerId(componentIdRef.current));
+  const uploadedFiles = useSelector(
+    selectUploadedFilesByOwnerId(componentIdRef.current),
+  ) as FileUploadInfoWithResponse[];
   const failedFiles = useSelector(selectFailedFilesByOwnerId(componentIdRef.current));
 
   // Use RTK Query mutations
@@ -274,7 +305,39 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     // Only call the callback once per set of uploads
     if (allFilesHandled && !allUploadsCompleteCalled && queue.length > 0) {
       if (onAllUploadsComplete) {
-        onAllUploadsComplete(uploadedFiles, failedFiles);
+        // Process the uploaded files to extract metadata from the standardized response structure if necessary
+        const processedUploadedFiles = uploadedFiles.map((file) => {
+          // If file has response with the new structure, extract the data
+          if (file.response?.data?.files) {
+            const fileData = file.response.data.files.find(
+              (resFile: FileResponseData) => resFile.originalName === file.fileData.name,
+            );
+
+            if (fileData && fileData.url) {
+              // Ensure url exists before applying
+              // Ensure compatibility with FileMetadata by creating a properly typed object
+              const compatibleMetadata: FileMetadata = {
+                originalName: fileData.originalName,
+                uniqueName: fileData.uniqueName,
+                size: fileData.size,
+                mimetype: fileData.mimetype,
+                thumbnailName: fileData.thumbnailName,
+                url: fileData.url,
+                thumbnailUrl: fileData.thumbnailUrl,
+                bucket: fileData.bucket,
+                uploadedAt: new Date(fileData.uploadedAt),
+              };
+
+              return {
+                ...file,
+                metadata: compatibleMetadata,
+              } as FileUploadInfo;
+            }
+          }
+          return file as FileUploadInfo;
+        });
+
+        onAllUploadsComplete(processedUploadedFiles, failedFiles);
         setAllUploadsCompleteCalled(true);
       }
     }
@@ -291,7 +354,39 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
   useEffect(() => {
     // Only call if we have completed files and haven't called the callback yet
     if (uploadedFiles.length > 0 && !uploadCompleteCalled && onUploadComplete) {
-      onUploadComplete(uploadedFiles);
+      // Process the uploaded files to extract metadata from the standardized response structure if necessary
+      const processedUploadedFiles = uploadedFiles.map((file) => {
+        // If file has response with the new structure, extract the data
+        if (file.response?.data?.files) {
+          const fileData = file.response.data.files.find(
+            (resFile: FileResponseData) => resFile.originalName === file.fileData.name,
+          );
+
+          if (fileData && fileData.url) {
+            // Ensure url exists before applying
+            // Ensure compatibility with FileMetadata by creating a properly typed object
+            const compatibleMetadata: FileMetadata = {
+              originalName: fileData.originalName,
+              uniqueName: fileData.uniqueName,
+              size: fileData.size,
+              mimetype: fileData.mimetype,
+              thumbnailName: fileData.thumbnailName,
+              url: fileData.url,
+              thumbnailUrl: fileData.thumbnailUrl,
+              bucket: fileData.bucket,
+              uploadedAt: new Date(fileData.uploadedAt),
+            };
+
+            return {
+              ...file,
+              metadata: compatibleMetadata,
+            } as FileUploadInfo;
+          }
+        }
+        return file as FileUploadInfo;
+      });
+
+      onUploadComplete(processedUploadedFiles);
       setUploadCompleteCalled(true);
     }
   }, [uploadedFiles, onUploadComplete, uploadCompleteCalled]);

@@ -61,11 +61,13 @@ export const useFileUpload = (bucket = 'default') => {
     };
 
     try {
-      const result = await uploadSingleFileMutation({
+      const response = await uploadSingleFileMutation({
         bucket,
         fileInfo,
       }).unwrap();
 
+      // Extract data from the standard response structure
+      const result = response.data || { message: 'Upload completed', files: [] };
       return result;
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -117,11 +119,13 @@ export const useBatchFileUpload = (bucket = 'default') => {
 
     try {
       // Use common options for all files or let the backend determine per-file
-      const result = await uploadMultipleFilesMutation({
+      const response = await uploadMultipleFilesMutation({
         bucket,
         files: fileInfos,
       }).unwrap();
 
+      // Extract data from the standard response structure
+      const result = response.data || { message: 'Upload completed', files: [] };
       return result;
     } catch (error) {
       console.error('Error uploading files:', error);
@@ -209,7 +213,8 @@ export const useFilesList = (
   );
 
   return {
-    files: result.data?.files || [],
+    // Extract files from the nested data structure
+    files: result.data?.data?.files || [],
     ...result,
   };
 };
@@ -241,12 +246,12 @@ export const useDeleteFile = () => {
     }
 
     try {
-      const result = await deleteFileMutation({
+      const response = await deleteFileMutation({
         bucket: metadata.bucket,
         filename: metadata.uniqueName,
       }).unwrap();
 
-      return result;
+      return response.data;
     } catch (error) {
       console.error('Error deleting file:', error);
       throw error;
@@ -274,7 +279,8 @@ export const useFileMetadata = (bucket: string, filename: string, skip = false) 
   );
 
   return {
-    metadata: result.data?.metadata,
+    // Extract metadata from the nested data structure
+    metadata: result.data?.data?.metadata,
     ...result,
   };
 };
@@ -288,7 +294,8 @@ export const useBucketsList = () => {
   const result = useListBucketsQuery();
 
   return {
-    buckets: result.data?.buckets || [],
+    // Extract buckets from the nested data structure
+    buckets: result.data?.data?.buckets || [],
     ...result,
   };
 };
@@ -312,7 +319,8 @@ export const useBatchDownloadUrls = (
   );
 
   return {
-    urls: result.data?.urls || {},
+    // Extract URLs from the nested data structure
+    urls: result.data?.data?.urls || {},
     ...result,
   };
 };

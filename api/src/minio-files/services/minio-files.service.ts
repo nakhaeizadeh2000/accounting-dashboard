@@ -118,15 +118,6 @@ export class MinioFilesService {
    * @param mimetype - The file's MIME type
    * @returns Metadata for the uploaded file
    */
-  /**
-   * Upload a file to MinIO using optimized streaming approach
-   *
-   * @param bucket - The bucket to upload to
-   * @param filename - The original filename
-   * @param fileStream - The file stream to upload
-   * @param mimetype - The file's MIME type
-   * @returns Metadata for the uploaded file
-   */
   async uploadFile(
     bucket: string,
     filename: string,
@@ -232,10 +223,10 @@ export class MinioFilesService {
         `File saved to temp path: ${tempFilePath}, size: ${stats.size} bytes`,
       );
 
-      // Create metadata for the file
+      // Create metadata for the file - ENSURE ORIGINAL FILENAME IS PRESERVED
       const metadata = {
         'Content-Type': mimetype,
-        'Original-Name': filename,
+        'Original-Name': filename, // Store the ACTUAL original filename
         'Upload-Date': new Date().toISOString(),
       };
 
@@ -252,7 +243,7 @@ export class MinioFilesService {
       );
 
       const result: FileMetadata = {
-        originalName: filename,
+        originalName: filename, // Use the ACTUAL original filename here, not uniqueName
         uniqueName,
         size: fileSize,
         mimetype,
@@ -401,7 +392,7 @@ export class MinioFilesService {
       const stat = await this.minioClient.statObject(bucket, objectName);
 
       const metadata: FileMetadata = {
-        originalName: stat.metaData['Original-Name'] || objectName,
+        originalName: stat.metaData['Original-Name'] || objectName, // Use stored original name
         uniqueName: objectName,
         size: stat.size,
         mimetype: stat.metaData['Content-Type'] || 'application/octet-stream',

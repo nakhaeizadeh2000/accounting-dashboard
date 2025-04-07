@@ -18,6 +18,7 @@ import {
   isUploadThrottled,
   clearAllUploadStates,
 } from './upload-utils';
+import { BaseResponse } from '../base-response.model';
 
 // Add this line to ensure the Files tag is registered with RTK Query
 baseApi.enhanceEndpoints({ addTagTypes: ['Files'] });
@@ -196,7 +197,7 @@ const filesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Upload a single file from the queue
     uploadSingleFile: builder.mutation<
-      UploadFileResponse,
+      BaseResponse<UploadFileResponse>,
       {
         bucket: string;
         fileInfo: FileUploadInfo & { file?: File };
@@ -206,7 +207,14 @@ const filesApi = baseApi.injectEndpoints({
         // Check if this file is already being uploaded
         if (isUploadInProgress(fileInfo.id)) {
           console.log(`Upload already in progress for file ${fileInfo.id}, skipping`);
-          return { data: { message: 'Upload already in progress', files: [] } };
+          return {
+            data: {
+              success: true,
+              statusCode: 200,
+              message: ['Upload already in progress'],
+              data: { message: 'Upload already in progress', files: [] },
+            },
+          };
         }
 
         // If there's already an active controller for this file, abort it
@@ -275,6 +283,26 @@ const filesApi = baseApi.injectEndpoints({
                 if (xhr.status >= 200 && xhr.status < 300) {
                   try {
                     const response = JSON.parse(xhr.responseText);
+
+                    // Ensure the original filename is preserved in the response data
+                    if (response.data?.files && response.data.files.length > 0 && fileInfo.file) {
+                      // Only attempt to fix filenames if we have the actual file object
+                      response.data.files = response.data.files.map((file: any) => {
+                        if (
+                          fileInfo.file &&
+                          (file.size === fileInfo.file.size ||
+                            (file.uniqueName &&
+                              file.uniqueName.includes(fileInfo.id.split('-').pop() || '')))
+                        ) {
+                          return {
+                            ...file,
+                            originalName: fileInfo.file.name, // Now safe to use because we checked fileInfo.file exists
+                          };
+                        }
+                        return file;
+                      });
+                    }
+
                     dispatch(
                       fileUploadSuccess({
                         id: fileInfo.id,
@@ -297,7 +325,10 @@ const filesApi = baseApi.injectEndpoints({
                 } else {
                   let errorMsg;
                   try {
-                    errorMsg = JSON.parse(xhr.responseText).message || 'Upload failed';
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    errorMsg = Array.isArray(errorResponse.message)
+                      ? errorResponse.message.join(', ')
+                      : errorResponse.message || 'Upload failed';
                   } catch (e) {
                     errorMsg = 'Upload failed';
                   }
@@ -341,7 +372,15 @@ const filesApi = baseApi.injectEndpoints({
                     }),
                   );
                   cleanup();
-                  reject({ status: 'aborted', data: errorMsg });
+                  // Return a proper error response instead of resolving with success
+                  reject({
+                    status: 'cancelled',
+                    data: {
+                      success: false,
+                      statusCode: 499, // Client Closed Request
+                      message: ['Upload cancelled by user'],
+                    },
+                  });
                 }
               };
 
@@ -410,9 +449,22 @@ const filesApi = baseApi.injectEndpoints({
             cleanup();
 
             // Don't report as error if it was aborted
-            if (error.status === 'aborted' || controller.signal.aborted) {
-              console.log('Upload aborted:', fileInfo.id);
-              return { data: { message: 'Upload aborted', files: [] } };
+            if (
+              error.status === 'aborted' ||
+              error.status === 'cancelled' ||
+              controller.signal.aborted
+            ) {
+              console.log('Upload aborted/cancelled:', fileInfo.id);
+              return {
+                error: {
+                  status: 499, // Client Closed Request
+                  data: {
+                    success: false,
+                    statusCode: 499,
+                    message: ['Upload cancelled by user'],
+                  },
+                },
+              };
             }
 
             return {
@@ -429,7 +481,7 @@ const filesApi = baseApi.injectEndpoints({
 
     // Upload multiple files at once
     uploadMultipleFiles: builder.mutation<
-      UploadFileResponse,
+      BaseResponse<UploadFileResponse>,
       { bucket: string; files: Array<FileUploadInfo & { file: File }> }
     >({
       queryFn: async ({ bucket, files }, { dispatch }) => {
@@ -447,12 +499,47 @@ const filesApi = baseApi.injectEndpoints({
                 }),
               ).unwrap();
 
-              if (result.files && result.files.length > 0) {
-                results.push(...result.files);
+              if (result.data?.files && result.data.files.length > 0) {
+                // Process each file to ensure original filename is preserved
+                const processedFiles = result.data.files.map((file: any) => {
+                  // Find the matching original file info
+                  const originalFileInfo = files.find(
+                    (info) =>
+                      info.file &&
+                      (file.size === info.file.size ||
+                        (file.uniqueName &&
+                          file.uniqueName.includes(info.id.split('-').pop() || ''))),
+                  );
+
+                  if (originalFileInfo && originalFileInfo.file) {
+                    return {
+                      ...file,
+                      originalName: originalFileInfo.file.name, // Safe to use after checking
+                    };
+                  }
+                  return file;
+                });
+
+                results.push(...processedFiles);
               }
             } catch (error) {
-              errors.push(error);
-              console.error(`Failed to upload file ${fileInfo.fileData.name}:`, error);
+              // TODO: fix error type error for commented section bellow
+              console.log('eroooooooooooor: ', error);
+              // Check if this was a cancellation
+              // const isCancelled =
+              //   error?.status === 'cancelled' ||
+              //   error?.status === 499 ||
+              //   (error?.data?.message &&
+              //     Array.isArray(error.data.message) &&
+              //     error.data.message.some((msg: string) => msg.includes('cancel')));
+
+              // if (isCancelled) {
+              //   // For cancellations, don't treat as a regular error
+              //   console.log(`Upload cancelled for file ${fileInfo.fileData.name}`);
+              // } else {
+              //   errors.push(error);
+              //   console.error(`Failed to upload file ${fileInfo.fileData.name}:`, error);
+              // }
             }
           }
 
@@ -461,7 +548,14 @@ const filesApi = baseApi.injectEndpoints({
             throw errors[0];
           }
 
-          return { data: { message: 'Files uploaded successfully', files: results } };
+          return {
+            data: {
+              success: true,
+              statusCode: 200,
+              message: ['Files uploaded successfully'],
+              data: { message: 'Files uploaded successfully', files: results },
+            },
+          };
         } catch (error: any) {
           return {
             error: {
@@ -476,7 +570,7 @@ const filesApi = baseApi.injectEndpoints({
 
     // Get a file download URL
     getFileDownloadUrl: builder.query<
-      DownloadUrlResponse,
+      BaseResponse<DownloadUrlResponse>,
       { bucket: string; filename: string; direct?: boolean }
     >({
       query: ({ bucket, filename, direct }) => {
@@ -486,33 +580,39 @@ const filesApi = baseApi.injectEndpoints({
         }
         return { url, method: 'GET' };
       },
+      transformResponse: (response: BaseResponse<DownloadUrlResponse>) => response,
       providesTags: ['Files'],
     }),
 
     // Get batch download URLs
     getBatchDownloadUrls: builder.query<
-      BatchDownloadUrlResponse,
+      BaseResponse<BatchDownloadUrlResponse>,
       { bucket: string; filenames: string[] }
     >({
       query: ({ bucket, filenames }) => {
         const url = `files/batch-download?bucket=${bucket}&filenames=${filenames.join(',')}`;
         return { url, method: 'GET' };
       },
+      transformResponse: (response: BaseResponse<BatchDownloadUrlResponse>) => response,
       providesTags: ['Files'],
     }),
 
     // Get file metadata
-    getFileMetadata: builder.query<FileMetadataResponse, { bucket: string; filename: string }>({
+    getFileMetadata: builder.query<
+      BaseResponse<FileMetadataResponse>,
+      { bucket: string; filename: string }
+    >({
       query: ({ bucket, filename }) => ({
         url: `files/metadata/${bucket}/${filename}`,
         method: 'GET',
       }),
+      transformResponse: (response: BaseResponse<FileMetadataResponse>) => response,
       providesTags: ['Files'],
     }),
 
     // List files in a bucket
     listFiles: builder.query<
-      ListFilesResponse,
+      BaseResponse<ListFilesResponse>,
       { bucket: string; prefix?: string; recursive?: boolean }
     >({
       query: ({ bucket, prefix, recursive }) => {
@@ -529,30 +629,36 @@ const filesApi = baseApi.injectEndpoints({
 
         return { url, method: 'GET' };
       },
+      transformResponse: (response: BaseResponse<ListFilesResponse>) => response,
       providesTags: ['Files'],
     }),
 
     // Delete a file
-    deleteFile: builder.mutation<MessageResponse, { bucket: string; filename: string }>({
+    deleteFile: builder.mutation<
+      BaseResponse<MessageResponse>,
+      { bucket: string; filename: string }
+    >({
       query: ({ bucket, filename }) => ({
         url: `files/delete/${bucket}/${filename}`,
         method: 'DELETE',
       }),
+      transformResponse: (response: BaseResponse<MessageResponse>) => response,
       invalidatesTags: ['Files'],
     }),
 
     // List all buckets
-    listBuckets: builder.query<BucketsResponse, void>({
+    listBuckets: builder.query<BaseResponse<BucketsResponse>, void>({
       query: () => ({
         url: 'files/buckets',
         method: 'GET',
       }),
+      transformResponse: (response: BaseResponse<BucketsResponse>) => response,
       providesTags: ['Files'],
     }),
 
     // Create a bucket
     createBucket: builder.mutation<
-      MessageResponse,
+      BaseResponse<MessageResponse>,
       { name: string; region?: string; publicPolicy?: boolean }
     >({
       query: ({ name, region, publicPolicy }) => {
@@ -569,11 +675,15 @@ const filesApi = baseApi.injectEndpoints({
 
         return { url, method: 'POST' };
       },
+      transformResponse: (response: BaseResponse<MessageResponse>) => response,
       invalidatesTags: ['Files'],
     }),
 
     // Delete a bucket
-    deleteBucket: builder.mutation<MessageResponse, { name: string; force?: boolean }>({
+    deleteBucket: builder.mutation<
+      BaseResponse<MessageResponse>,
+      { name: string; force?: boolean }
+    >({
       query: ({ name, force }) => {
         let url = `files/buckets/${name}`;
         if (force !== undefined) {
@@ -581,6 +691,7 @@ const filesApi = baseApi.injectEndpoints({
         }
         return { url, method: 'DELETE' };
       },
+      transformResponse: (response: BaseResponse<MessageResponse>) => response,
       invalidatesTags: ['Files'],
     }),
   }),

@@ -161,14 +161,14 @@ export class MinioFilesController {
       // Process and upload file using the optimized service
       const result = await this.minioService.uploadFile(
         bucket,
-        filename,
+        filename, // This is the actual original filename that should be preserved
         fileStream,
         mimetype,
       );
 
       // Convert FileMetadata to FileMetadataDto
       const fileDto: FileMetadataDto = {
-        originalName: result.originalName,
+        originalName: filename, // Ensure we use the original filename passed to the method
         uniqueName: result.uniqueName,
         size: result.size,
         mimetype: result.mimetype,
@@ -187,7 +187,7 @@ export class MinioFilesController {
 
       // Create an error result to include in the response
       results.push({
-        originalName: filename,
+        originalName: filename, // Again, preserve the original filename
         uniqueName: '',
         size: 0,
         mimetype: mimetype,

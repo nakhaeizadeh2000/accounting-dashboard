@@ -22,7 +22,7 @@ import {
 // Import these functions directly from the file-helpers to avoid circular dependencies
 import { formatFileSize } from '@/store/features/files/file-helpers';
 
-// These functions are now explicitly exported in upload-utils.ts
+// These functions are explicitly exported in upload-utils.ts
 import {
   clearUploadState,
   throttleUpload,
@@ -112,7 +112,13 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
         !successCallbackCalled
       ) {
         // Pass metadata if available, otherwise pass the entire response
-        onUploadSuccess(currentFile.metadata || currentFile.response);
+        // Extract from the nested data structure if needed
+        const responseData =
+          currentFile.response?.data?.files?.[0] ||
+          currentFile.response?.files?.[0] ||
+          currentFile.metadata;
+
+        onUploadSuccess(responseData);
         setSuccessCallbackCalled(true);
       }
     } else if (internalUploadStatus !== 'idle') {
@@ -237,12 +243,9 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
 
       // Call success callback if provided and if not already called
       if (onUploadSuccess && !successCallbackCalled) {
-        // If there are files in the response, use the first one's metadata
-        if (result.files && result.files.length > 0) {
-          onUploadSuccess(result.files[0]);
-        } else {
-          onUploadSuccess(result);
-        }
+        // Extract the file data from the nested response structure
+        const fileData = result.data?.files?.[0] || {};
+        onUploadSuccess(fileData);
         setSuccessCallbackCalled(true);
       }
 
@@ -251,9 +254,23 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
       // Set status to failed
       setInternalUploadStatus('failed');
 
-      let errorMsg = 'Upload failed';
+      // Check if this was a cancellation
+      const isCancelled =
+        error?.message?.includes('cancelled') ||
+        error?.status === 'cancelled' ||
+        error?.status === 499;
+
+      let errorMsg = isCancelled ? 'Upload cancelled' : 'Upload failed';
       if (error.data) {
-        errorMsg = typeof error.data === 'string' ? error.data : JSON.stringify(error.data);
+        if (Array.isArray(error.data.message)) {
+          errorMsg = error.data.message.join(', ');
+        } else if (typeof error.data.message === 'string') {
+          errorMsg = error.data.message;
+        } else if (typeof error.data === 'string') {
+          errorMsg = error.data;
+        } else {
+          errorMsg = JSON.stringify(error.data);
+        }
       } else if (error.message) {
         errorMsg = error.message;
       }
@@ -290,8 +307,21 @@ const useSingleFileUpload = (options: UseSingleFileUploadOptions = {}) => {
       cancelUploadRequest(fileId.current);
       setInternalUploadStatus('failed');
       setErrorMessage('Upload cancelled');
+
+      // Call error callback with cancellation data
+      if (onUploadError) {
+        onUploadError({
+          status: 'cancelled',
+          message: 'Upload cancelled by user',
+          data: {
+            success: false,
+            statusCode: 499,
+            message: ['Upload cancelled by user'],
+          },
+        });
+      }
     }
-  }, []);
+  }, [onUploadError]);
 
   // Reset the upload state
   const resetUpload = useCallback(() => {

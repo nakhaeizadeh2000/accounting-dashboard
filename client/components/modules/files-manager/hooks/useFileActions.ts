@@ -86,13 +86,16 @@ export function useFileActions(
 
       try {
         // Use the RTK Query mutation to delete the file
-        await deleteFileMutation({
+        const response = await deleteFileMutation({
           bucket: file.bucket,
           filename: file.id,
         }).unwrap();
 
-        if (onFileDeleteCallback) {
+        // Check if the deletion was successful based on the standardized response
+        if (response.success && onFileDeleteCallback) {
           onFileDeleteCallback(file);
+        } else if (!response.success) {
+          console.error('Error deleting file:', response.message);
         }
       } catch (error) {
         console.error('Error deleting file:', error);
