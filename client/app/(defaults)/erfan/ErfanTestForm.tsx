@@ -9,6 +9,7 @@ import { BsMailbox } from 'react-icons/bs';
 import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
 import Badge, { BadgeProps } from '@mui/material/Badge';
 import BadgesComponents from '@/components/modules/badges/BadgesComponents';
+import CheckBoxComponent from '@/components/modules/checkBox/CheckBoxComponent';
 
 const StyledBadge = styled(Badge)<BadgeProps>(({ theme }) => ({
   '& .MuiBadge-badge': {
@@ -76,6 +77,19 @@ const ErfanTestForm = () => {
           animateEnabled: false,
         }}
         Icon={BsMailbox}
+      />
+      <hr className="m-4" />
+      <span className="text-lg">CheckBox</span>
+      <CheckBoxComponent
+        options={{
+          label: 'تست',
+          // checked: true,
+          onChange: (e) => console.log(e.target.checked),
+          disabled: false,
+          color: 'default',
+          size: 'small',
+          indeterminate: false,
+        }}
       />
     </div>
   );
