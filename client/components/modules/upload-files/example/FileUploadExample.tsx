@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Example component showing how to use the updated file upload system
  */
@@ -24,7 +26,9 @@ const FileUploadExample: React.FC = () => {
   // State for file management
   const [selectedBucket, setSelectedBucket] = useState('default');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showCancelledMessage, setShowCancelledMessage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<{ [key: string]: File }>({});
 
   // Get files from the selected bucket
   const { files, isLoading: isLoadingFiles, refetch: refetchFiles } = useFilesList(selectedBucket);
@@ -41,6 +45,8 @@ const FileUploadExample: React.FC = () => {
     (result: any) => {
       console.log('File uploaded successfully:', result);
       setShowSuccessMessage(true);
+      setShowCancelledMessage(false);
+      setErrorMessage(null);
       refetchFiles(); // Refresh the file list
 
       // Clear success message after 3 seconds
@@ -54,12 +60,32 @@ const FileUploadExample: React.FC = () => {
   // Handle single file upload error
   const handleSingleFileError = useCallback((error: any) => {
     console.error('Upload error:', error);
-    setErrorMessage(error.message || 'Failed to upload file');
 
-    // Clear error message after 5 seconds
-    setTimeout(() => {
+    // Check if this was a cancellation
+    const isCancelled =
+      error?.message?.includes('cancelled') ||
+      error?.status === 'cancelled' ||
+      error?.status === 499;
+
+    if (isCancelled) {
+      setShowCancelledMessage(true);
+      setShowSuccessMessage(false);
       setErrorMessage(null);
-    }, 5000);
+
+      // Clear cancellation message after 3 seconds
+      setTimeout(() => {
+        setShowCancelledMessage(false);
+      }, 3000);
+    } else {
+      setErrorMessage(error.message || 'Failed to upload file');
+      setShowSuccessMessage(false);
+      setShowCancelledMessage(false);
+
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setErrorMessage(null);
+      }, 5000);
+    }
   }, []);
 
   // Handle multiple files upload completion
@@ -67,6 +93,8 @@ const FileUploadExample: React.FC = () => {
     (uploadedFiles: any[]) => {
       console.log('Multiple files uploaded successfully:', uploadedFiles);
       setShowSuccessMessage(true);
+      setShowCancelledMessage(false);
+      setErrorMessage(null);
       refetchFiles(); // Refresh the file list
 
       // Clear success message after 3 seconds
@@ -77,6 +105,37 @@ const FileUploadExample: React.FC = () => {
     [refetchFiles],
   );
 
+  // Handle multiple files upload error
+  const handleMultiFileError = useCallback((error: any) => {
+    console.error('Multiple files upload error:', error);
+
+    // Check if this was a cancellation
+    const isCancelled =
+      error?.message?.includes('cancelled') ||
+      error?.status === 'cancelled' ||
+      error?.status === 499;
+
+    if (isCancelled) {
+      setShowCancelledMessage(true);
+      setShowSuccessMessage(false);
+      setErrorMessage(null);
+
+      // Clear cancellation message after 3 seconds
+      setTimeout(() => {
+        setShowCancelledMessage(false);
+      }, 3000);
+    } else {
+      setErrorMessage(error.message || 'Failed to upload files');
+      setShowSuccessMessage(false);
+      setShowCancelledMessage(false);
+
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setErrorMessage(null);
+      }, 5000);
+    }
+  }, []);
+
   // Handle direct file upload using the file upload hook
   const handleDirectUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,6 +144,15 @@ const FileUploadExample: React.FC = () => {
 
       try {
         setErrorMessage(null);
+        setShowSuccessMessage(false);
+        setShowCancelledMessage(false);
+
+        // Save selected files for reference (helpful when displaying cancellation messages)
+        const newSelectedFiles = { ...selectedFiles };
+        for (let i = 0; i < files.length; i++) {
+          newSelectedFiles[files[i].name] = files[i];
+        }
+        setSelectedFiles(newSelectedFiles);
 
         // For single file
         if (files.length === 1) {
@@ -98,16 +166,34 @@ const FileUploadExample: React.FC = () => {
           handleMultiFileSuccess(result.files);
         }
       } catch (error: any) {
-        handleSingleFileError(error);
+        // Check if this was a cancellation
+        const isCancelled =
+          error?.message?.includes('cancelled') ||
+          error?.status === 'cancelled' ||
+          error?.status === 499;
+
+        if (isCancelled) {
+          setShowCancelledMessage(true);
+          setShowSuccessMessage(false);
+          setErrorMessage(null);
+
+          // Clear cancellation message after 3 seconds
+          setTimeout(() => {
+            setShowCancelledMessage(false);
+          }, 3000);
+        } else {
+          setErrorMessage(error.message || 'Failed to upload files');
+          setShowSuccessMessage(false);
+          setShowCancelledMessage(false);
+        }
+      } finally {
+        // Reset the input to allow uploading the same file again
+        if (event.target) {
+          event.target.value = '';
+        }
       }
     },
-    [
-      uploadFile,
-      uploadFiles,
-      handleSingleFileSuccess,
-      handleSingleFileError,
-      handleMultiFileSuccess,
-    ],
+    [uploadFile, uploadFiles, handleSingleFileSuccess, handleMultiFileSuccess, selectedFiles],
   );
 
   // Handle file deletion
@@ -149,10 +235,16 @@ const FileUploadExample: React.FC = () => {
     <div className="container mx-auto p-4">
       <h1 className="mb-4 text-2xl font-bold">File Upload Examples</h1>
 
-      {/* Success/Error Messages */}
+      {/* Success/Error/Cancelled Messages */}
       {showSuccessMessage && (
         <div className="mb-4 rounded border border-green-400 bg-green-100 px-4 py-3 text-green-700">
           <p>File uploaded successfully!</p>
+        </div>
+      )}
+
+      {showCancelledMessage && (
+        <div className="mb-4 rounded border border-yellow-400 bg-yellow-100 px-4 py-3 text-yellow-700">
+          <p>Upload was cancelled.</p>
         </div>
       )}
 
@@ -200,7 +292,7 @@ const FileUploadExample: React.FC = () => {
             acceptedFileTypes="image/*,application/pdf,video/*,audio/*"
             maxSizeMB={100}
             onUploadComplete={handleMultiFileSuccess}
-            onError={handleSingleFileError}
+            onError={handleMultiFileError}
           />
         </div>
 

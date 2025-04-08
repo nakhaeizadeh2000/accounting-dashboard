@@ -19,9 +19,15 @@ import {
   clearAllUploadStates,
 } from './upload-utils';
 import { BaseResponse } from '../base-response.model';
+import { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 
 // Add this line to ensure the Files tag is registered with RTK Query
 baseApi.enhanceEndpoints({ addTagTypes: ['Files'] });
+
+// Define our own version of QueryReturnValue to match RTK's expectations
+type QueryReturnValue<T> =
+  | { data: T; error?: undefined }
+  | { error: FetchBaseQueryError; data?: undefined };
 
 // Add type declaration for global window object
 declare global {
@@ -64,6 +70,18 @@ export interface BucketInfo {
 
 export interface BucketsResponse {
   buckets: BucketInfo[];
+}
+
+// Define error interface for type checking
+interface ErrorWithStatus {
+  status?: number | string;
+  data?: {
+    message?: string[] | string;
+    success?: boolean;
+    statusCode?: number;
+  };
+  message?: string;
+  stack?: string;
 }
 
 // Ensure we have a single instance of the activeUploads map
@@ -203,7 +221,10 @@ const filesApi = baseApi.injectEndpoints({
         fileInfo: FileUploadInfo & { file?: File };
       }
     >({
-      queryFn: async ({ bucket, fileInfo }, { signal, dispatch }) => {
+      queryFn: async (
+        { bucket, fileInfo },
+        { signal, dispatch },
+      ): Promise<QueryReturnValue<BaseResponse<UploadFileResponse>>> => {
         // Check if this file is already being uploaded
         if (isUploadInProgress(fileInfo.id)) {
           console.log(`Upload already in progress for file ${fileInfo.id}, skipping`);
@@ -244,75 +265,214 @@ const filesApi = baseApi.injectEndpoints({
         };
 
         // Use throttling to prevent rapid successive requests
-        return await throttleUpload(fileInfo.id, async () => {
-          try {
-            return await new Promise((resolve, reject) => {
-              const xhr = new XMLHttpRequest();
+        try {
+          const result = await throttleUpload(fileInfo.id, async () => {
+            try {
+              return await new Promise<QueryReturnValue<BaseResponse<UploadFileResponse>>>(
+                (resolve, reject) => {
+                  const xhr = new XMLHttpRequest();
 
-              // Store the xhr request in the global map
-              const requests = getXhrRequests();
-              requests.set(fileInfo.id, xhr);
+                  // Store the xhr request in the global map
+                  const requests = getXhrRequests();
+                  requests.set(fileInfo.id, xhr);
 
-              // Prepare URL for upload
-              const uploadUrl = `${baseUrl}files/upload/${bucket}`;
+                  // Prepare URL for upload
+                  const uploadUrl = `${baseUrl}files/upload/${bucket}`;
 
-              xhr.open('POST', uploadUrl, true);
+                  xhr.open('POST', uploadUrl, true);
 
-              // Track upload progress
-              xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                  const percentComplete = Math.floor((event.loaded / event.total) * 100);
-                  dispatch(
-                    updateFileProgress({
-                      id: fileInfo.id,
-                      progress: percentComplete,
-                      bytesUploaded: event.loaded,
-                    }),
-                  );
-                }
-              };
+                  // Track upload progress - Cap at 90% to account for server processing time
+                  xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                      // Cap progress at 90% until server processing is complete
+                      const actualPercent = Math.floor((event.loaded / event.total) * 100);
+                      const displayPercent = Math.min(actualPercent, 90);
 
-              // Handle successful upload
-              xhr.onload = () => {
-                // If this request has been superseded by another, ignore the response
-                if (!isActiveController(fileInfo.id, controller)) {
-                  console.log('Ignoring response for outdated request for file', fileInfo.id);
-                  return;
-                }
+                      dispatch(
+                        updateFileProgress({
+                          id: fileInfo.id,
+                          progress: displayPercent,
+                          bytesUploaded: event.loaded,
+                        }),
+                      );
+                    }
+                  };
 
-                if (xhr.status >= 200 && xhr.status < 300) {
-                  try {
-                    const response = JSON.parse(xhr.responseText);
-
-                    // Ensure the original filename is preserved in the response data
-                    if (response.data?.files && response.data.files.length > 0 && fileInfo.file) {
-                      // Only attempt to fix filenames if we have the actual file object
-                      response.data.files = response.data.files.map((file: any) => {
-                        if (
-                          fileInfo.file &&
-                          (file.size === fileInfo.file.size ||
-                            (file.uniqueName &&
-                              file.uniqueName.includes(fileInfo.id.split('-').pop() || '')))
-                        ) {
-                          return {
-                            ...file,
-                            originalName: fileInfo.file.name, // Now safe to use because we checked fileInfo.file exists
-                          };
-                        }
-                        return file;
-                      });
+                  // Handle successful upload
+                  xhr.onload = () => {
+                    // If this request has been superseded by another, ignore the response
+                    if (!isActiveController(fileInfo.id, controller)) {
+                      console.log('Ignoring response for outdated request for file', fileInfo.id);
+                      return;
                     }
 
-                    dispatch(
-                      fileUploadSuccess({
-                        id: fileInfo.id,
-                        response,
-                      }),
-                    );
-                    cleanup();
-                    resolve({ data: response });
-                  } catch (error) {
-                    const errorMsg = 'Invalid server response format';
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                      try {
+                        // Set progress to 100% only after server has processed the file
+                        dispatch(
+                          updateFileProgress({
+                            id: fileInfo.id,
+                            progress: 100,
+                            bytesUploaded: fileInfo.file?.size || 0,
+                          }),
+                        );
+
+                        const response = JSON.parse(xhr.responseText);
+
+                        // Ensure the original filename is preserved in the response data
+                        if (
+                          response.data?.files &&
+                          response.data.files.length > 0 &&
+                          fileInfo.file
+                        ) {
+                          // Only attempt to fix filenames if we have the actual file object
+                          response.data.files = response.data.files.map((file: any) => {
+                            if (
+                              fileInfo.file &&
+                              (file.size === fileInfo.file.size ||
+                                (file.uniqueName &&
+                                  file.uniqueName.includes(fileInfo.id.split('-').pop() || '')))
+                            ) {
+                              return {
+                                ...file,
+                                originalName: fileInfo.file.name, // Now safe to use because we checked fileInfo.file exists
+                              };
+                            }
+                            return file;
+                          });
+                        }
+
+                        dispatch(
+                          fileUploadSuccess({
+                            id: fileInfo.id,
+                            response,
+                          }),
+                        );
+                        cleanup();
+                        resolve({ data: response });
+                      } catch (error) {
+                        const errorMsg = 'Invalid server response format';
+                        dispatch(
+                          fileUploadFailure({
+                            id: fileInfo.id,
+                            errorMessage: errorMsg,
+                          }),
+                        );
+                        cleanup();
+                        reject({ error: { status: xhr.status, data: errorMsg } });
+                      }
+                    } else {
+                      let errorMsg;
+                      try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMsg = Array.isArray(errorResponse.message)
+                          ? errorResponse.message.join(', ')
+                          : errorResponse.message || 'Upload failed';
+                      } catch (e) {
+                        errorMsg = 'Upload failed';
+                      }
+
+                      dispatch(
+                        fileUploadFailure({
+                          id: fileInfo.id,
+                          errorMessage: errorMsg,
+                        }),
+                      );
+                      cleanup();
+                      reject({ error: { status: xhr.status, data: errorMsg } });
+                    }
+                  };
+
+                  // Handle network errors
+                  xhr.onerror = () => {
+                    // Only process if this is still the active request
+                    if (isActiveController(fileInfo.id, controller)) {
+                      const errorMsg = 'Network error occurred';
+                      dispatch(
+                        fileUploadFailure({
+                          id: fileInfo.id,
+                          errorMessage: errorMsg,
+                        }),
+                      );
+                      cleanup();
+                      reject({ error: { status: 500, data: errorMsg } });
+                    }
+                  };
+
+                  // Handle abort
+                  xhr.onabort = () => {
+                    // Don't report error if it's aborted due to a new request taking over
+                    if (isActiveController(fileInfo.id, controller)) {
+                      const errorMsg = 'Upload cancelled';
+                      dispatch(
+                        fileUploadFailure({
+                          id: fileInfo.id,
+                          errorMessage: errorMsg,
+                        }),
+                      );
+                      cleanup();
+                      // Return a proper error response instead of resolving with success
+                      reject({
+                        error: {
+                          status: 499, // Client Closed Request
+                          data: {
+                            success: false,
+                            statusCode: 499,
+                            message: ['Upload cancelled by user'],
+                          },
+                        },
+                      });
+                    }
+                  };
+
+                  // Tie the AbortSignal from RTK Query to xhr.abort()
+                  signal?.addEventListener('abort', () => {
+                    xhr.abort();
+                  });
+
+                  // Also tie our controller's signal to xhr.abort()
+                  controller.signal.addEventListener('abort', () => {
+                    xhr.abort();
+                  });
+
+                  // Prepare and send FormData
+                  const formData = new FormData();
+                  if (fileInfo.file) {
+                    // Validate file before uploading
+                    if (!fileInfo.file || fileInfo.file.size === 0) {
+                      const errorMsg = 'Cannot upload empty file';
+                      dispatch(
+                        fileUploadFailure({
+                          id: fileInfo.id,
+                          errorMessage: errorMsg,
+                        }),
+                      );
+                      cleanup();
+                      reject({ error: { status: 400, data: errorMsg } });
+                      return;
+                    }
+
+                    // Log the file details for debugging
+                    console.log('Uploading file:', {
+                      name: fileInfo.file.name,
+                      size: fileInfo.file.size,
+                      type: fileInfo.file.type,
+                    });
+
+                    // Add file to form data
+                    formData.append('file', fileInfo.file);
+
+                    // Log form data entries for debugging
+                    for (const pair of formData.entries()) {
+                      console.log(
+                        pair[0],
+                        pair[1] instanceof File
+                          ? `File: ${pair[1].name}, ${pair[1].size} bytes`
+                          : pair[1],
+                      );
+                    }
+                  } else {
+                    const errorMsg = 'File object not provided for upload';
                     dispatch(
                       fileUploadFailure({
                         id: fileInfo.id,
@@ -320,161 +480,60 @@ const filesApi = baseApi.injectEndpoints({
                       }),
                     );
                     cleanup();
-                    reject({ status: xhr.status, data: errorMsg });
-                  }
-                } else {
-                  let errorMsg;
-                  try {
-                    const errorResponse = JSON.parse(xhr.responseText);
-                    errorMsg = Array.isArray(errorResponse.message)
-                      ? errorResponse.message.join(', ')
-                      : errorResponse.message || 'Upload failed';
-                  } catch (e) {
-                    errorMsg = 'Upload failed';
+                    reject({ error: { status: 400, data: errorMsg } });
+                    return;
                   }
 
-                  dispatch(
-                    fileUploadFailure({
-                      id: fileInfo.id,
-                      errorMessage: errorMsg,
-                    }),
-                  );
-                  cleanup();
-                  reject({ status: xhr.status, data: errorMsg });
-                }
-              };
+                  xhr.send(formData);
+                },
+              );
+            } catch (error: unknown) {
+              cleanup();
 
-              // Handle network errors
-              xhr.onerror = () => {
-                // Only process if this is still the active request
-                if (isActiveController(fileInfo.id, controller)) {
-                  const errorMsg = 'Network error occurred';
-                  dispatch(
-                    fileUploadFailure({
-                      id: fileInfo.id,
-                      errorMessage: errorMsg,
-                    }),
-                  );
-                  cleanup();
-                  reject({ status: xhr.status, data: errorMsg });
-                }
-              };
+              const errorObj = error as any;
 
-              // Handle abort
-              xhr.onabort = () => {
-                // Don't report error if it's aborted due to a new request taking over
-                if (isActiveController(fileInfo.id, controller)) {
-                  const errorMsg = 'Upload cancelled';
-                  dispatch(
-                    fileUploadFailure({
-                      id: fileInfo.id,
-                      errorMessage: errorMsg,
-                    }),
-                  );
-                  cleanup();
-                  // Return a proper error response instead of resolving with success
-                  reject({
-                    status: 'cancelled',
+              // Don't report as error if it was aborted
+              if (controller.signal.aborted) {
+                console.log('Upload aborted/cancelled:', fileInfo.id);
+                return {
+                  error: {
+                    status: 499,
                     data: {
                       success: false,
-                      statusCode: 499, // Client Closed Request
+                      statusCode: 499,
                       message: ['Upload cancelled by user'],
                     },
-                  });
-                }
-              };
-
-              // Tie the AbortSignal from RTK Query to xhr.abort()
-              signal?.addEventListener('abort', () => {
-                xhr.abort();
-              });
-
-              // Also tie our controller's signal to xhr.abort()
-              controller.signal.addEventListener('abort', () => {
-                xhr.abort();
-              });
-
-              // Prepare and send FormData
-              const formData = new FormData();
-              if (fileInfo.file) {
-                // Validate file before uploading
-                if (!fileInfo.file || fileInfo.file.size === 0) {
-                  const errorMsg = 'Cannot upload empty file';
-                  dispatch(
-                    fileUploadFailure({
-                      id: fileInfo.id,
-                      errorMessage: errorMsg,
-                    }),
-                  );
-                  cleanup();
-                  reject({ status: 400, data: errorMsg });
-                  return;
-                }
-
-                // Log the file details for debugging
-                console.log('Uploading file:', {
-                  name: fileInfo.file.name,
-                  size: fileInfo.file.size,
-                  type: fileInfo.file.type,
-                });
-
-                // Add file to form data
-                formData.append('file', fileInfo.file);
-
-                // Log form data entries for debugging
-                for (const pair of formData.entries()) {
-                  console.log(
-                    pair[0],
-                    pair[1] instanceof File
-                      ? `File: ${pair[1].name}, ${pair[1].size} bytes`
-                      : pair[1],
-                  );
-                }
-              } else {
-                const errorMsg = 'File object not provided for upload';
-                dispatch(
-                  fileUploadFailure({
-                    id: fileInfo.id,
-                    errorMessage: errorMsg,
-                  }),
-                );
-                cleanup();
-                reject({ status: 400, data: errorMsg });
-                return;
+                  },
+                };
               }
 
-              xhr.send(formData);
-            });
-          } catch (error: any) {
-            cleanup();
-
-            // Don't report as error if it was aborted
-            if (
-              error.status === 'aborted' ||
-              error.status === 'cancelled' ||
-              controller.signal.aborted
-            ) {
-              console.log('Upload aborted/cancelled:', fileInfo.id);
-              return {
-                error: {
-                  status: 499, // Client Closed Request
-                  data: {
-                    success: false,
-                    statusCode: 499,
-                    message: ['Upload cancelled by user'],
-                  },
-                },
-              };
+              return errorObj;
             }
+          });
 
-            return {
-              error: {
-                status: error.status || 'error',
-                data: error.data || 'Unknown error occurred',
-              },
-            };
+          return result;
+        } catch (finalError: unknown) {
+          cleanup();
+          const errorObj = finalError as any;
+
+          // Always use numeric status codes for RTK Query compatibility
+          let statusCode = 500; // Default to 500 Internal Server Error
+          if (typeof errorObj.error?.status === 'number') {
+            statusCode = errorObj.error.status;
+          } else if (
+            typeof errorObj.error?.status === 'string' &&
+            !isNaN(Number(errorObj.error.status))
+          ) {
+            statusCode = Number(errorObj.error.status);
           }
-        });
+
+          return {
+            error: {
+              status: statusCode,
+              data: errorObj.error?.data || 'Unknown error occurred',
+            },
+          };
+        }
       },
       invalidatesTags: ['Files'],
     }),
@@ -484,7 +543,10 @@ const filesApi = baseApi.injectEndpoints({
       BaseResponse<UploadFileResponse>,
       { bucket: string; files: Array<FileUploadInfo & { file: File }> }
     >({
-      queryFn: async ({ bucket, files }, { dispatch }) => {
+      queryFn: async (
+        { bucket, files },
+        { dispatch },
+      ): Promise<QueryReturnValue<BaseResponse<UploadFileResponse>>> => {
         try {
           const results: FileMetadata[] = [];
           const errors: any[] = [];
@@ -522,24 +584,29 @@ const filesApi = baseApi.injectEndpoints({
 
                 results.push(...processedFiles);
               }
-            } catch (error) {
-              // TODO: fix error type error for commented section bellow
-              console.log('eroooooooooooor: ', error);
-              // Check if this was a cancellation
-              // const isCancelled =
-              //   error?.status === 'cancelled' ||
-              //   error?.status === 499 ||
-              //   (error?.data?.message &&
-              //     Array.isArray(error.data.message) &&
-              //     error.data.message.some((msg: string) => msg.includes('cancel')));
+            } catch (error: unknown) {
+              // Type-safe error handling
+              const errorObj = error as ErrorWithStatus;
+              let isCancelled = false;
 
-              // if (isCancelled) {
-              //   // For cancellations, don't treat as a regular error
-              //   console.log(`Upload cancelled for file ${fileInfo.fileData.name}`);
-              // } else {
-              //   errors.push(error);
-              //   console.error(`Failed to upload file ${fileInfo.fileData.name}:`, error);
-              // }
+              // Check if this was a cancellation using appropriate type guards
+              if (errorObj.status === 'cancelled' || errorObj.status === 499) {
+                isCancelled = true;
+              } else if (errorObj.data?.message) {
+                const errorMessages = Array.isArray(errorObj.data.message)
+                  ? errorObj.data.message
+                  : [errorObj.data.message as string];
+
+                isCancelled = errorMessages.some((msg: string) => msg.includes('cancel'));
+              }
+
+              if (isCancelled) {
+                // For cancellations, don't treat as a regular error
+                console.log(`Upload cancelled for file ${fileInfo.fileData.name}`);
+              } else {
+                errors.push(error);
+                console.error(`Failed to upload file ${fileInfo.fileData.name}:`, error);
+              }
             }
           }
 
@@ -556,11 +623,27 @@ const filesApi = baseApi.injectEndpoints({
               data: { message: 'Files uploaded successfully', files: results },
             },
           };
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const errorObj = error as ErrorWithStatus;
+
+          // Always use numeric status codes for RTK Query compatibility
+          // Default to 500 if no valid numeric status is found
+          let statusCode = 500; // Internal Server Error as default
+
+          if (typeof errorObj.status === 'number') {
+            statusCode = errorObj.status;
+          } else if (typeof errorObj.status === 'string' && !isNaN(Number(errorObj.status))) {
+            // Convert string status to number if it's a numeric string
+            statusCode = Number(errorObj.status);
+          } else if (errorObj.status === 'cancelled') {
+            // Use 499 for client closed requests (cancelled)
+            statusCode = 499;
+          }
+
           return {
             error: {
-              status: error.status || 500,
-              data: error.data || 'Failed to upload files',
+              status: statusCode,
+              data: errorObj.data || 'Failed to upload files',
             },
           };
         }

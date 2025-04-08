@@ -115,6 +115,9 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
   // Track the current uploading file ID to prevent infinite loops
   const currentUploadingFileId = useRef<string | null>(null);
 
+  // Track if any uploads were cancelled
+  const [cancelledUploads, setCancelledUploads] = useState<Set<string>>(new Set());
+
   // Add files to the upload queue
   const addFilesToQueue = useCallback(
     (files: File[]) => {
@@ -145,6 +148,7 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
         setUploadCompleteCalled(false);
         setAllUploadsCompleteCalled(false);
         allFilesHandledProcessed.current = false;
+        setCancelledUploads(new Set()); // Reset cancelled uploads tracking
       }
     },
     [dispatch],
@@ -155,6 +159,15 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     (fileId: string) => {
       // Also cancel any in-progress upload
       cancelUploadRequest(fileId);
+
+      // Track if this was a cancelled upload
+      if (currentUploadingFileId.current === fileId) {
+        setCancelledUploads((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(fileId);
+          return newSet;
+        });
+      }
 
       // Remove from our Map
       fileObjectsMap.delete(fileId);
@@ -182,6 +195,7 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     setUploadCompleteCalled(false);
     setAllUploadsCompleteCalled(false);
     allFilesHandledProcessed.current = false;
+    setCancelledUploads(new Set());
   }, [dispatch, queue]);
 
   // Start uploading all files in the queue
@@ -192,11 +206,19 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     setUploadCompleteCalled(false);
     setAllUploadsCompleteCalled(false);
     allFilesHandledProcessed.current = false;
+    setCancelledUploads(new Set());
   }, [dispatch]);
 
   // Cancel a specific file upload
   const cancelSingleUpload = useCallback(
     (fileId: string) => {
+      // Track the cancellation
+      setCancelledUploads((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(fileId);
+        return newSet;
+      });
+
       dispatch(cancelFileUpload(fileId));
 
       // Reset callback flags
@@ -209,6 +231,17 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
 
   // Cancel all uploads
   const cancelAllFileUploads = useCallback(() => {
+    // Track all uploading or waiting files as cancelled
+    queue.forEach((fileInfo) => {
+      if (fileInfo.status === 'uploading' || fileInfo.status === 'waiting') {
+        setCancelledUploads((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(fileInfo.id);
+          return newSet;
+        });
+      }
+    });
+
     // Cancel all in-progress uploads for this component
     queue.forEach((fileInfo) => {
       if (fileInfo.status === 'uploading' || fileInfo.status === 'waiting') {
@@ -227,6 +260,13 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
   // Retry a failed file upload
   const retryFailedUpload = useCallback(
     (fileId: string) => {
+      // Remove this file from the cancelled tracking if it was cancelled before
+      setCancelledUploads((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(fileId);
+        return newSet;
+      });
+
       dispatch(retryFileUpload(fileId));
 
       // Reset callback flags
@@ -239,6 +279,9 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
 
   // Retry all failed uploads
   const retryAllFailed = useCallback(() => {
+    // Remove all cancelled files from tracking since we're retrying
+    setCancelledUploads(new Set());
+
     dispatch(retryComponentFailedUploads(componentIdRef.current));
 
     // Reset callback flags
@@ -250,6 +293,7 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
   // Reset UI to allow selecting more files
   const resetForMoreFiles = useCallback(() => {
     dispatch(resetUploadUI(componentIdRef.current));
+    setCancelledUploads(new Set());
 
     // Reset callback flags
     setAllUploadsCompleteCalled(false);
@@ -261,6 +305,14 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
       return queue.find((item) => item.id === fileId);
     },
     [queue],
+  );
+
+  // Check if a file was cancelled
+  const wasFileCancelled = useCallback(
+    (fileId: string) => {
+      return cancelledUploads.has(fileId);
+    },
+    [cancelledUploads],
   );
 
   // Effect to monitor and upload current file
@@ -287,6 +339,21 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
             file: fileObject,
           },
         }).catch((error) => {
+          // Handle upload failure and check if it was a cancellation
+          const isCancelled =
+            error?.message?.includes('cancelled') ||
+            error?.status === 'cancelled' ||
+            error?.status === 499;
+
+          if (isCancelled) {
+            // Track the cancellation
+            setCancelledUploads((prev) => {
+              const newSet = new Set(prev);
+              newSet.add(currentUploadingFile.id);
+              return newSet;
+            });
+          }
+
           if (onError) {
             onError(error);
           }
@@ -337,7 +404,18 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
           return file as FileUploadInfo;
         });
 
-        onAllUploadsComplete(processedUploadedFiles, failedFiles);
+        // Filtered failed files - exclude cancelled ones
+        const actualFailedFiles = failedFiles.filter((file) => !cancelledUploads.has(file.id));
+
+        // Report cancelled files separately with custom objects, not as failed
+        const cancelledFiles = queue.filter((file) => cancelledUploads.has(file.id));
+
+        // Log for debugging
+        console.log(
+          `All uploads complete: ${uploadedFiles.length} succeeded, ${actualFailedFiles.length} failed, ${cancelledFiles.length} cancelled`,
+        );
+
+        onAllUploadsComplete(processedUploadedFiles, actualFailedFiles);
         setAllUploadsCompleteCalled(true);
       }
     }
@@ -348,6 +426,8 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     onAllUploadsComplete,
     queue.length,
     allUploadsCompleteCalled,
+    cancelledUploads,
+    queue,
   ]);
 
   // Effect to call onUploadComplete when files are uploaded
@@ -422,6 +502,8 @@ export const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}) => {
     uploadedFiles,
     failedFiles,
     isUploading: !!currentUploadingFile,
+    cancelledUploads: Array.from(cancelledUploads),
+    wasCancelled: wasFileCancelled,
 
     // Actions
     addFilesToQueue,
