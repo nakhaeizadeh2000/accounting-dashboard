@@ -6,6 +6,7 @@ import { Client } from 'minio';
 export class MinioConfigService implements OnModuleInit {
   private minioClient: Client;
   private readonly logger = new Logger(MinioConfigService.name);
+  private readonly publicEndpoint: string;
 
   constructor(private configService: ConfigService) {
     const endpoint = this.configService.get<string>('MINIO_ENDPOINT');
@@ -15,6 +16,11 @@ export class MinioConfigService implements OnModuleInit {
     const secretKey = this.configService.get<string>('MINIO_ROOT_PASSWORD');
     const region = this.configService.get<string>('MINIO_REGION', 'us-east-1');
 
+    // Save the public-facing endpoint separately
+    this.publicEndpoint =
+      this.configService.get<string>('MINIO_PUBLIC_ENDPOINT') ||
+      'localhost/minio';
+
     if (!endpoint || !accessKey || !secretKey) {
       this.logger.error(
         'Missing required MinIO configuration. Please check your environment variables.',
@@ -23,7 +29,7 @@ export class MinioConfigService implements OnModuleInit {
     }
 
     this.logger.log(
-      `Initializing MinIO client for endpoint: ${endpoint}:${port}, SSL: ${useSSL}`,
+      `Initializing MinIO client for endpoint: ${endpoint}:${port}, SSL: ${useSSL}, Public Endpoint: ${this.publicEndpoint}`,
     );
 
     // Create the MinIO client with only the officially supported options
@@ -65,6 +71,15 @@ export class MinioConfigService implements OnModuleInit {
   }
 
   /**
+   * Get the public endpoint for MinIO.
+   *
+   * @returns The public endpoint
+   */
+  getPublicEndpoint(): string {
+    return this.publicEndpoint;
+  }
+
+  /**
    * Check if the MinIO server is accessible.
    *
    * @returns Promise resolving to true if the server is accessible
@@ -95,6 +110,7 @@ export class MinioConfigService implements OnModuleInit {
       useSSL: this.configService.get<string>('MINIO_USE_SSL') === 'true',
       accessKey: this.configService.get<string>('MINIO_ROOT_USER'),
       region: this.configService.get<string>('MINIO_REGION', 'us-east-1'),
+      publicEndpoint: this.publicEndpoint,
     };
   }
 }

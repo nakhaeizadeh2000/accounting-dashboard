@@ -327,11 +327,33 @@ export class MinioFilesService {
     expirySeconds?: number,
   ): Promise<string> {
     try {
-      return await this.minioClient.presignedGetObject(
+      // Get the MinIO-generated URL first
+      const minioUrl = await this.minioClient.presignedGetObject(
         bucket,
         objectName,
         expirySeconds || this.config.presignedUrlExpiry,
       );
+
+      // Replace the internal service hostname with the public endpoint
+      const publicEndpoint = this.minioConfigService.getPublicEndpoint();
+      const internalEndpoint = `${this.minioConfigService.getConfig().endpoint}:${this.minioConfigService.getConfig().port}`;
+
+      // Use proper protocol based on SSL config
+      const protocol = this.minioConfigService.getConfig().useSSL
+        ? 'https://'
+        : 'http://';
+
+      // Replace the internal URL parts with the public endpoint
+      const publicUrl = minioUrl.replace(
+        `${protocol}${internalEndpoint}`,
+        `${protocol}${publicEndpoint}`,
+      );
+
+      this.logger.debug(
+        `Generated public URL: ${publicUrl} from internal URL: ${minioUrl}`,
+      );
+
+      return publicUrl;
     } catch (error) {
       this.logger.error(
         `Error generating presigned URL for ${objectName}: ${error.message}`,
