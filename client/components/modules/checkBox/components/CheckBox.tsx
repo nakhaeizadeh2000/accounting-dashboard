@@ -10,13 +10,13 @@ import {
   getLabelPlacementClasses,
   getLabelSpacingClasses,
   getEdgeClasses,
-} from './checkboxUtils';
+} from '../utils/checkBoxUtils';
 import { CheckboxProps } from '../types/CheckBoxTypes';
 
 /**
  * Enhanced Checkbox component integrating MUI Checkbox with Tailwind styling
  */
-const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref) => {
+const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>((props, ref) => {
   const {
     name,
     value,
