@@ -8,7 +8,10 @@ import { StaticDatePicker } from '@mui/x-date-pickers-pro';
 import { BsMailbox } from 'react-icons/bs';
 import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
 import Badge, { BadgeProps } from '@mui/material/Badge';
-import BadgesComponents from '@/components/modules/badges/BadgesComponents';
+import AdvancedBadgeExample from '@/components/modules/badge-new/examples/AdvancedBadgeExample';
+import SimpleBadgeExample from '@/components/modules/badge-new/examples/SimpleBadgeExample';
+import AnimatedBadge from '@/components/modules/badge-new/components/AnimatedBadge';
+import AnimatedBadgeExample from '@/components/modules/badge-new/examples/AnimatedBadgeExample';
 
 const StyledBadge = styled(Badge)<BadgeProps>(({ theme }) => ({
   '& .MuiBadge-badge': {
@@ -65,18 +68,11 @@ const ErfanTestForm = () => {
       <Editor onChange={(data) => console.log(data)} />
       <hr className="m-4" />
       <span className="text-lg">Badge</span>
-      <BadgesComponents
-        content={100}
-        options={{
-          colorTypeBadge: 'bg-red-600',
-          showZero: false,
-          anchorOriginBadge: { vertical: 'top', horizontal: 'left' },
-          contentClass: 'text-white',
-          max: 99,
-          animateEnabled: false,
-        }}
-        Icon={BsMailbox}
-      />
+      <AdvancedBadgeExample />
+      <SimpleBadgeExample />
+      <AnimatedBadgeExample />
+      <hr className="m-4" />
+      <span className="text-lg">CheckBox</span>
     </div>
   );
 };
