@@ -64,8 +64,8 @@ export {
 } from './file-operations';
 
 // Export the custom upload hooks for components
-export { default as useSingleFileUpload } from '@/components/modules/upload-files/hook/useSingleFileUpload';
-export { default as useMultiFileUpload } from '@/components/modules/upload-files/hook/useMultiFileUpload';
+export { default as useSingleFileUpload } from '@/components/modules/upload-files-legacy/hook/useSingleFileUpload';
+export { default as useMultiFileUpload } from '@/components/modules/upload-files-legacy/hook/useMultiFileUpload';
 
 // Export from upload-utils
 export {

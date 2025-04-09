@@ -4,8 +4,8 @@
  * Example component showing how to use the updated file upload system
  */
 import React, { useState, useCallback } from 'react';
-import SingleFileUpload from '@/components/modules/upload-files/SingleFileUpload';
-import MultiFileUpload from '@/components/modules/upload-files/MultiFileUpload';
+import SingleFileUpload from '@/components/modules/upload-files-legacy/SingleFileUpload';
+import MultiFileUpload from '@/components/modules/upload-files-legacy/MultiFileUpload';
 import {
   useFileUpload,
   useBatchFileUpload,

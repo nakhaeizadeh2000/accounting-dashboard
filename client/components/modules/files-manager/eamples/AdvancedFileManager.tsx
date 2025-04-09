@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import FileManager from '../FileManager';
 import { FileData, FileTag } from '../types';
-import SingleFileUpload from '@/components/modules/upload-files/SingleFileUpload';
-import MultiFileUpload from '@/components/modules/upload-files/MultiFileUpload';
+import SingleFileUpload from '@/components/modules/upload-files-legacy/SingleFileUpload';
+import MultiFileUpload from '@/components/modules/upload-files-legacy/MultiFileUpload';
 import {
   useFilesList,
   useBucketsList,

@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import SingleFileUpload from '@/components/modules/upload-files/SingleFileUpload';
+import SingleFileUpload from '../components/SingleFileUpload';
 
-const ExampleSingleFileUpload = () => {
+/**
+ * Example component demonstrating how to use SingleFileUpload
+ */
+const ExampleSingleUploadFile = () => {
   const [uploadResults, setUploadResults] = useState<Record<string, any>>({});
   const [selectedFileNames, setSelectedFileNames] = useState<Record<string, string | null>>({});
   const [uploadStatus, setUploadStatus] = useState<
@@ -184,4 +187,4 @@ const ExampleSingleFileUpload = () => {
   );
 };
 
-export default ExampleSingleFileUpload;
+export default ExampleSingleUploadFile;

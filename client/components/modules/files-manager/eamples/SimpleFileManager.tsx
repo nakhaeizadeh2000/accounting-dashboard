@@ -3,8 +3,8 @@
 import React, { useState, useCallback, useRef } from 'react';
 import FileManager from '../FileManager';
 import { FileData, FileTag } from '../types';
-import SingleFileUpload from '@/components/modules/upload-files/SingleFileUpload';
-import MultiFileUpload from '@/components/modules/upload-files/MultiFileUpload';
+import SingleFileUpload from '@/components/modules/upload-files-legacy/SingleFileUpload';
+import MultiFileUpload from '@/components/modules/upload-files-legacy/MultiFileUpload';
 import { useBucketsList } from '@/store/features/files';
 
 const SimpleFileManager: React.FC = () => {
