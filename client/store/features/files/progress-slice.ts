@@ -11,7 +11,7 @@ export type FileUploadStatus =
   | 'failed';
 export type QueueStatus = 'idle' | 'selected' | 'uploading' | 'completed' | 'failed';
 
-// File metadata from the API response - Updated to match server response
+// File metadata from the API response
 export interface FileMetadata {
   originalName: string;
   uniqueName: string;

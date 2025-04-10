@@ -327,36 +327,19 @@ export class MinioFilesService {
     expirySeconds?: number,
   ): Promise<string> {
     try {
-      // Get the MinIO-generated URL first
-      const minioUrl = await this.minioClient.presignedGetObject(
-        bucket,
-        objectName,
-        expirySeconds || this.config.presignedUrlExpiry,
-      );
-
-      // Replace the internal service hostname with the public endpoint
+      // Instead of using the complex presigned URL logic, let's use a simple
+      // direct API URL that will work more reliably through NGINX
       const publicEndpoint = this.minioConfigService.getPublicEndpoint();
-      const internalEndpoint = `${this.minioConfigService.getConfig().endpoint}:${this.minioConfigService.getConfig().port}`;
-
-      // Use proper protocol based on SSL config
-      const protocol = this.minioConfigService.getConfig().useSSL
-        ? 'https://'
-        : 'http://';
-
-      // Replace the internal URL parts with the public endpoint
-      const publicUrl = minioUrl.replace(
-        `${protocol}${internalEndpoint}`,
-        `${protocol}${publicEndpoint}`,
-      );
+      const directUrl = `http://${publicEndpoint}/api/files/download/${bucket}/${objectName}`;
 
       this.logger.debug(
-        `Generated public URL: ${publicUrl} from internal URL: ${minioUrl}`,
+        `Generated API URL instead of presigned URL: ${directUrl}`,
       );
 
-      return publicUrl;
+      return directUrl;
     } catch (error) {
       this.logger.error(
-        `Error generating presigned URL for ${objectName}: ${error.message}`,
+        `Error generating URL for ${objectName}: ${error.message}`,
         error.stack,
       );
       throw error;

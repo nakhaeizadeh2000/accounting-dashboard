@@ -227,3 +227,69 @@ export function getDownloadOptionsForFileType(fileType: string): {
     expiry: 86400, // 24 hours
   };
 }
+
+/**
+ * Get file type based on extension (add this to your fileHelpers.ts)
+ * Useful when mimetype is not correctly determined (e.g., application/octet-stream)
+ *
+ * @param filename The filename to get the type for
+ * @returns The proper mimetype based on file extension
+ */
+export function getFileTypeFromExtension(filename: string): string {
+  const extension = getFileExtension(filename).toLowerCase();
+
+  // Image files
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff', 'tif'].includes(extension)) {
+    return extension === 'svg'
+      ? 'image/svg+xml'
+      : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+  }
+
+  // Video files
+  if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'wmv', 'flv', 'mkv', '3gp'].includes(extension)) {
+    return `video/${extension === 'mov' ? 'quicktime' : extension}`;
+  }
+
+  // Audio files
+  if (['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a', 'wma'].includes(extension)) {
+    return `audio/${extension}`;
+  }
+
+  // Document files
+  const documentTypes: Record<string, string> = {
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    txt: 'text/plain',
+    rtf: 'application/rtf',
+    csv: 'text/csv',
+    html: 'text/html',
+    htm: 'text/html',
+    xml: 'application/xml',
+    json: 'application/json',
+  };
+
+  if (extension in documentTypes) {
+    return documentTypes[extension];
+  }
+
+  // Compressed files
+  const archiveTypes: Record<string, string> = {
+    zip: 'application/zip',
+    rar: 'application/x-rar-compressed',
+    '7z': 'application/x-7z-compressed',
+    tar: 'application/x-tar',
+    gz: 'application/gzip',
+  };
+
+  if (extension in archiveTypes) {
+    return archiveTypes[extension];
+  }
+
+  // Default to the original type if we can't determine it
+  return 'application/octet-stream';
+}

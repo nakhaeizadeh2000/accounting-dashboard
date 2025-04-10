@@ -22,21 +22,39 @@ const nextConfig = {
     },
   },
   images: {
+    domains: ['localhost'],
     remotePatterns: [
       {
         protocol: 'http',
         hostname: 'localhost',
         port: '',
-        pathname: '/api/files/**',
+        pathname: '/**',
       },
     ],
+    // This is critical to prevent Next.js from trying to optimize local API-served images
+    unoptimized: true,
   },
   webpack: (config, { buildId, dev, isServer, defaultLoaders, nextRuntime, webpack }) => {
-    // if (config.cache && !dev) {
-    //   config.cache = Object.freeze({
-    //     type: 'memory',
-    //   });
-    // }
+    // Add cache-control headers for images
+    if (!isServer) {
+      config.module = config.module || {};
+      config.module.rules = config.module.rules || [];
+
+      // Add a rule to handle image requests with proper caching
+      config.module.rules.push({
+        test: /\.(png|jpe?g|gif|svg|webp)$/i,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              outputPath: 'static/images/',
+              name: '[name].[hash].[ext]',
+            },
+          },
+        ],
+      });
+    }
+
     // Important: return the modified config
     return config;
   },
@@ -57,6 +75,20 @@ const nextConfig = {
       //   destination: '/news/:slug',
       //   permanent: true,
       // },
+    ];
+  },
+  // Add headers to improve caching for images
+  async headers() {
+    return [
+      {
+        source: '/api/files/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, must-revalidate',
+          },
+        ],
+      },
     ];
   },
 };

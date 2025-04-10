@@ -231,20 +231,85 @@ export class MinioFilesController {
     @Res() response?: FastifyReply,
   ): Promise<DownloadUrlResponseDto | void> {
     try {
-      // If direct=true is specified or the file type is in the direct download list, stream the file directly
-      if (direct === 'true' && response) {
-        // Get file metadata to determine content type
-        const metadata = await this.minioService.getFileMetadata(
-          bucket,
-          filename,
-        );
+      // Get file metadata to determine content type and original filename
+      const metadata = await this.minioService.getFileMetadata(
+        bucket,
+        filename,
+      );
 
-        // Set appropriate headers
-        response.header(
-          'Content-Disposition',
-          `attachment; filename="${metadata.originalName}"`,
-        );
+      // Fix for application/octet-stream files - detect MIME type from extension
+      if (metadata.mimetype === 'application/octet-stream') {
+        const extension = metadata.originalName.split('.').pop()?.toLowerCase();
+
+        // Image extensions
+        if (
+          extension &&
+          ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(
+            extension,
+          )
+        ) {
+          metadata.mimetype =
+            extension === 'svg'
+              ? 'image/svg+xml'
+              : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+        }
+        // Video extensions
+        else if (
+          extension &&
+          ['mp4', 'webm', 'ogg', 'mov', 'avi', 'wmv', 'mkv'].includes(extension)
+        ) {
+          metadata.mimetype = `video/${extension === 'mov' ? 'quicktime' : extension}`;
+        }
+        // Audio extensions
+        else if (
+          extension &&
+          ['mp3', 'wav', 'ogg', 'aac', 'flac'].includes(extension)
+        ) {
+          metadata.mimetype = `audio/${extension}`;
+        }
+        // PDF
+        else if (extension === 'pdf') {
+          metadata.mimetype = 'application/pdf';
+        }
+      }
+
+      // If direct=true is specified or the file type is in the direct download list, stream the file directly
+      if (
+        direct === 'true' ||
+        this.minioService.isDirectDownloadType(metadata.mimetype)
+      ) {
+        // Set appropriate headers for download/viewing
+        const isAttachment =
+          direct === 'true' && !metadata.mimetype.startsWith('image/');
+        const disposition = isAttachment
+          ? `attachment; filename="${encodeURIComponent(metadata.originalName)}"`
+          : `inline; filename="${encodeURIComponent(metadata.originalName)}"`;
+
+        response.header('Content-Disposition', disposition);
         response.header('Content-Type', metadata.mimetype);
+        response.header('Content-Length', metadata.size.toString());
+
+        // Add strong cache headers for better performance
+        // Use ETag for cache validation
+        const etag = `"${metadata.uniqueName}"`;
+        response.header('ETag', etag);
+        response.header('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+
+        // Handle conditional requests to support browser caching
+        const ifNoneMatch = response.request.headers['if-none-match'];
+        if (ifNoneMatch && ifNoneMatch === etag) {
+          // If ETag matches, return 304 Not Modified
+          response.status(304).send();
+          return;
+        }
+
+        // Add CORS headers for cross-origin requests
+        response.header('Access-Control-Allow-Origin', '*');
+        response.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        response.header(
+          'Access-Control-Allow-Headers',
+          'Content-Type, If-None-Match',
+        );
 
         // Start streaming the file directly to the response
         const fileStream = await this.minioService.getFileStream(
@@ -253,37 +318,9 @@ export class MinioFilesController {
         );
         return response.send(fileStream);
       } else {
-        // Check if this file type should use direct download by default
-        const metadata = await this.minioService.getFileMetadata(
-          bucket,
-          filename,
-        );
-
-        if (
-          this.minioService.isDirectDownloadType(metadata.mimetype) &&
-          response
-        ) {
-          // Set appropriate headers for streaming
-          response.header(
-            'Content-Disposition',
-            `attachment; filename="${metadata.originalName}"`,
-          );
-          response.header('Content-Type', metadata.mimetype);
-
-          // Start streaming the file directly to the response
-          const fileStream = await this.minioService.getFileStream(
-            bucket,
-            filename,
-          );
-          return response.send(fileStream);
-        } else {
-          // Regular presigned URL generation
-          const url = await this.minioService.generatePresignedUrl(
-            bucket,
-            filename,
-          );
-          return { url };
-        }
+        // For fallback, generate a direct API URL instead of a presigned URL
+        const directUrl = `/api/files/download/${bucket}/${filename}`;
+        return { url: directUrl };
       }
     } catch (error) {
       if (error.code === 'NotFound') {
@@ -291,8 +328,9 @@ export class MinioFilesController {
           `File "${filename}" not found in bucket "${bucket}"`,
         );
       }
+      console.error(`Error downloading file: ${error.message}`, error.stack);
       throw new InternalServerErrorException(
-        `Failed to generate download URL: ${error.message}`,
+        `Failed to download file: ${error.message}`,
       );
     }
   }

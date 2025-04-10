@@ -4,7 +4,6 @@ export interface FileTag {
   name: string;
   color?: string;
 }
-
 export interface FileData {
   id: string;
   name: string;
@@ -18,9 +17,19 @@ export interface FileData {
   metadata?: Record<string, any>;
   tags?: FileTag[];
   // Added for uploading files
-  status?: string;
+  status?: FileUploadStatus;
   progress?: number;
 }
+
+export type FileUploadStatus =
+  | 'idle'
+  | 'selected'
+  | 'waiting'
+  | 'uploading'
+  | 'completed'
+  | 'failed';
+
+export type QueueStatus = 'idle' | 'selected' | 'uploading' | 'completed' | 'failed';
 
 export interface FileManagerProps {
   ownerId: string; // Unique ID for this instance of the file manager
@@ -34,13 +43,13 @@ export interface FileManagerProps {
   onFileView?: (file: FileData) => void; // Callback when a file is viewed
   onTagsUpdate?: (file: FileData, tags: FileTag[]) => void; // Callback when tags are updated
   className?: string; // Additional CSS classes
-  defaultView?: 'grid' | 'list'; // Default view mode
+  defaultView?: ViewMode; // Default view mode
   itemsPerPage?: number; // Number of items to load per page/batch
   emptyText?: string; // Text to display when no files
   filterTypes?: string[]; // Filter files by these types
   availableTags?: FileTag[]; // Available tags to choose from
-  sortBy?: 'name' | 'date' | 'size' | 'type'; // Sort files by
-  sortDirection?: 'asc' | 'desc'; // Sort direction
+  sortBy?: SortOption; // Sort files by
+  sortDirection?: SortDirection; // Sort direction
   showUploadingFiles?: boolean; // Show files that are currently being uploaded
   refreshInterval?: number; // Auto-refresh interval in ms
 }
@@ -129,4 +138,15 @@ export interface EmptyStateProps {
 
 export interface LoadingStateProps {
   message?: string;
+}
+
+// Add type for FileViewer props
+export interface FileViewerProps {
+  fileUrl: string;
+  fileType: string;
+  fileName: string;
+  bucket: string;
+  fileId: string;
+  className?: string;
+  fallbackSize?: number;
 }
