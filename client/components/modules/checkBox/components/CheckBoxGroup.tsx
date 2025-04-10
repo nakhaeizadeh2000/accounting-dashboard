@@ -1,10 +1,11 @@
+// CheckboxGroup.tsx - Improved implementation
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { FormGroup, FormLabel } from '@mui/material';
 
 import { CheckboxGroupProps } from '../types/CheckBoxTypes';
-import Checkbox from './CheckBox';
+import Checkbox from '../components/CheckBox';
 
 /**
  * CheckboxGroup component for handling multiple related checkboxes
@@ -31,21 +32,23 @@ const CheckboxGroup: React.FC<CheckboxGroupProps> = ({
   }, [value]);
 
   // Handle individual checkbox changes
-  const handleCheckboxChange = (checkboxValue: string | number, checked: boolean) => {
-    const newSelectedValues = checked
-      ? [...selectedValues, checkboxValue]
-      : selectedValues.filter((val) => val !== checkboxValue);
+  const handleCheckboxChange =
+    (checkboxValue: string | number) =>
+    (event: React.ChangeEvent<HTMLInputElement>, checked: boolean) => {
+      const newSelectedValues = checked
+        ? [...selectedValues, checkboxValue]
+        : selectedValues.filter((val) => val !== checkboxValue);
 
-    // Update internal state (for uncontrolled component)
-    if (value === undefined) {
-      setSelectedValues(newSelectedValues);
-    }
+      // Update internal state (for uncontrolled component)
+      if (value === undefined) {
+        setSelectedValues(newSelectedValues);
+      }
 
-    // Call external onChange handler
-    if (onChange) {
-      onChange(newSelectedValues);
-    }
-  };
+      // Call external onChange handler
+      if (onChange) {
+        onChange(newSelectedValues);
+      }
+    };
 
   // Determine orientation classes
   const orientationClasses =
@@ -54,7 +57,7 @@ const CheckboxGroup: React.FC<CheckboxGroupProps> = ({
       : 'flex flex-col gap-2';
 
   return (
-    <div className={rootOptions?.className || ''}>
+    <div className={rootOptions?.className || ''} data-testid="checkbox-group">
       {rootOptions?.title && (
         <FormLabel component="legend" className="mb-2 block font-medium">
           {rootOptions.title}
@@ -70,7 +73,7 @@ const CheckboxGroup: React.FC<CheckboxGroupProps> = ({
             label={option.label}
             checked={selectedValues.includes(option.value)}
             disabled={option.disabled}
-            onChange={(e, checked) => handleCheckboxChange(option.value, checked)}
+            onChange={handleCheckboxChange(option.value)}
             {...checkboxOptions}
           />
         ))}
@@ -78,5 +81,7 @@ const CheckboxGroup: React.FC<CheckboxGroupProps> = ({
     </div>
   );
 };
+
+CheckboxGroup.displayName = 'CheckboxGroup';
 
 export default CheckboxGroup;

@@ -1,54 +1,10 @@
+// IndeterminateCheckbox.tsx - Improved implementation
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { CheckboxGroupProps, CheckboxProps } from '../types/CheckBoxTypes';
-import Checkbox from './CheckBox';
-import CheckboxGroup from './CheckBoxGroup';
-
-/**
- * Props for the IndeterminateCheckbox component
- */
-interface IndeterminateCheckboxProps extends Omit<CheckboxProps, 'onChange'> {
-  /**
-   * Array of child checkbox options
-   */
-  childOptions: Array<{
-    id: string;
-    label: React.ReactNode;
-    value: string | number;
-    disabled?: boolean;
-  }>;
-
-  /**
-   * Selected values from child checkboxes
-   */
-  selectedValues?: Array<string | number>;
-
-  /**
-   * Default selected values (for uncontrolled component)
-   */
-  defaultSelectedValues?: Array<string | number>;
-
-  /**
-   * Callback fired when parent or child checkboxes change
-   */
-  onChange?: (values: Array<string | number>) => void;
-
-  /**
-   * Name for the checkbox group (for form submission)
-   */
-  groupName?: string;
-
-  /**
-   * Options for the checkbox group
-   */
-  groupOptions?: Omit<CheckboxGroupProps['rootOptions'], 'title'>;
-
-  /**
-   * Options for the child checkboxes
-   */
-  childCheckboxOptions?: Omit<CheckboxProps, 'label' | 'value' | 'checked' | 'onChange'>;
-}
+import React, { useState, useEffect, useMemo } from 'react';
+import { IndeterminateCheckboxProps } from '../types/CheckBoxTypes';
+import Checkbox from '../components/CheckBox';
+import CheckboxGroup from '../components/CheckBoxGroup';
 
 /**
  * IndeterminateCheckbox component with parent-child relationship
@@ -77,7 +33,7 @@ const IndeterminateCheckbox: React.FC<IndeterminateCheckboxProps> = ({
   }, [selectedValues]);
 
   // Get all possible child values
-  const allChildValues = childOptions.map((option) => option.value);
+  const allChildValues = useMemo(() => childOptions.map((option) => option.value), [childOptions]);
 
   // Determine if the parent checkbox should be checked or indeterminate
   const hasSelected = selected.length > 0;
@@ -115,7 +71,7 @@ const IndeterminateCheckbox: React.FC<IndeterminateCheckboxProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid="indeterminate-checkbox">
       {/* Parent checkbox (indeterminate when some children are selected) */}
       <Checkbox
         indeterminate={isIndeterminate}
@@ -140,5 +96,7 @@ const IndeterminateCheckbox: React.FC<IndeterminateCheckboxProps> = ({
     </div>
   );
 };
+
+IndeterminateCheckbox.displayName = 'IndeterminateCheckbox';
 
 export default IndeterminateCheckbox;

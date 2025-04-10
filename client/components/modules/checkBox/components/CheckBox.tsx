@@ -1,6 +1,7 @@
+// Checkbox.tsx - Improved implementation
 'use client';
 
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState, useEffect } from 'react';
 import { Checkbox as MuiCheckbox, FormControlLabel, FormHelperText } from '@mui/material';
 
 import {
@@ -10,6 +11,7 @@ import {
   getLabelPlacementClasses,
   getLabelSpacingClasses,
   getEdgeClasses,
+  generateId,
 } from '../utils/checkBoxUtils';
 import { CheckboxProps } from '../types/CheckBoxTypes';
 
@@ -23,7 +25,7 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>((props, ref) => {
     checked,
     defaultChecked,
     onChange,
-    id,
+    id = generateId(),
     label,
     disabled,
     size,
@@ -48,6 +50,31 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>((props, ref) => {
     sx,
     ...restProps
   } = props;
+
+  // Local state for uncontrolled component
+  const [internalChecked, setInternalChecked] = useState(defaultChecked || false);
+
+  // Update local state if controlled prop changes
+  useEffect(() => {
+    if (checked !== undefined) {
+      setInternalChecked(checked);
+    }
+  }, [checked]);
+
+  // Handle checkbox change
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newChecked = event.target.checked;
+
+    // Update internal state if uncontrolled
+    if (checked === undefined) {
+      setInternalChecked(newChecked);
+    }
+
+    // Call external handler if provided
+    if (onChange) {
+      onChange(event, newChecked);
+    }
+  };
 
   // Merge with default options
   const options = mergeCheckboxOptions({
@@ -99,15 +126,17 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>((props, ref) => {
     options.error ? 'text-red-500' : 'text-gray-500'
   } ${options.helperTextClassName || ''}`;
 
+  // Determine the current checked state (controlled or uncontrolled)
+  const isChecked = checked !== undefined ? checked : internalChecked;
+
   // Render MUI Checkbox with our styling
   const checkbox = (
     <MuiCheckbox
       ref={ref}
       name={name}
       value={value}
-      checked={checked}
-      defaultChecked={defaultChecked}
-      onChange={onChange}
+      checked={isChecked}
+      onChange={handleChange}
       id={id}
       disabled={options.disabled}
       required={options.required}
@@ -133,7 +162,7 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>((props, ref) => {
   // If there's no label, just return the checkbox
   if (!options.label) {
     return (
-      <div className={rootClasses}>
+      <div className={rootClasses} data-testid={`checkbox-${id}`}>
         {checkbox}
         {options.helperText && (
           <FormHelperText error={options.error} className={helperTextClasses}>
@@ -146,7 +175,7 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>((props, ref) => {
 
   // Otherwise, return the checkbox with a label
   return (
-    <div className={rootClasses}>
+    <div className={rootClasses} data-testid={`checkbox-${id}`}>
       <FormControlLabel
         control={checkbox}
         label={options.label}

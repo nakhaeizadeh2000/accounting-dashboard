@@ -1,59 +1,11 @@
+// AdvancedCheckbox.tsx - Improved implementation
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Transition } from '@headlessui/react';
 import { Checkbox as MuiCheckbox } from '@mui/material';
-import { CheckboxProps } from '../types/CheckBoxTypes';
-import { mergeCheckboxOptions } from '../utils/checkBoxUtils';
-
-/**
- * Props for the AdvancedCheckbox component
- */
-interface AdvancedCheckboxProps extends Omit<CheckboxProps, 'onChange'> {
-  /**
-   * Additional CSS classes for the ripple effect
-   */
-  rippleClassName?: string;
-
-  /**
-   * Whether to show ripple effect on interaction
-   * @default true
-   */
-  enableRipple?: boolean;
-
-  /**
-   * Custom animation duration for the ripple
-   * @default 550 (milliseconds)
-   */
-  rippleDuration?: number;
-
-  /**
-   * Custom content to show when checked (replaces default checkbox)
-   */
-  checkedContent?: React.ReactNode;
-
-  /**
-   * Custom content to show when unchecked (replaces default checkbox)
-   */
-  uncheckedContent?: React.ReactNode;
-
-  /**
-   * Whether to use custom animations for state changes
-   * @default true
-   */
-  animated?: boolean;
-
-  /**
-   * Whether to play a sound effect on state change
-   * @default false
-   */
-  soundEffect?: boolean | string;
-
-  /**
-   * Callback fired when the state changes
-   */
-  onChange?: (checked: boolean, event?: React.ChangeEvent<HTMLInputElement>) => void;
-}
+import { AdvancedCheckboxProps } from '../types/CheckBoxTypes';
+import { mergeCheckboxOptions, generateId } from '../utils/checkBoxUtils';
 
 /**
  * Advanced checkbox component with ripple effects, animations, and sound effects
@@ -69,6 +21,9 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
   onChange,
   ...props
 }) => {
+  // Generate ID if not provided
+  const id = props.id || generateId('advanced-checkbox');
+
   // Merge with default options
   const options = mergeCheckboxOptions(props);
 
@@ -106,14 +61,11 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
     }
 
     // Play sound effect if enabled
-    if (soundEffect) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {
-          // Handle play() promise rejection (e.g., autoplay policy)
-          console.warn('Could not play checkbox sound effect');
-        });
-      }
+    if (soundEffect && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {
+        console.warn('Could not play checkbox sound effect');
+      });
     }
 
     // Call external onChange handler
@@ -129,10 +81,13 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
 
   // Determine sound effect URL
   const soundEffectUrl =
-    typeof soundEffect === 'string' ? soundEffect : '/sounds/checkbox-click.mp3'; // Default sound effect
+    typeof soundEffect === 'string' ? soundEffect : '/sounds/checkbox-click.mp3';
 
   return (
-    <div className={`relative inline-flex ${options.className || ''}`}>
+    <div
+      className={`relative inline-flex ${options.className || ''}`}
+      data-testid={`adv-checkbox-${id}`}
+    >
       {/* Sound effect audio element (if enabled) */}
       {soundEffect && (
         <audio ref={audioRef} preload="auto" className="hidden">
@@ -200,7 +155,7 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
           indeterminateIcon={options.indeterminateIcon}
           name={props.name}
           value={props.value}
-          id={props.id}
+          id={id}
           inputProps={{
             'aria-label': options.ariaLabel,
             'aria-labelledby': options.ariaLabelledby,
@@ -218,7 +173,7 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
       {/* Label (if provided) */}
       {options.label && (
         <label
-          htmlFor={props.id}
+          htmlFor={id}
           className={`ml-2 select-none ${options.labelClassName || ''} ${
             options.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
           }`}
@@ -240,5 +195,7 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
     </div>
   );
 };
+
+AdvancedCheckbox.displayName = 'AdvancedCheckbox';
 
 export default AdvancedCheckbox;
