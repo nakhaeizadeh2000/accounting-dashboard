@@ -9,6 +9,7 @@ import AdvancedBadgeExample from '@/components/modules/badge/examples/AdvancedBa
 import SimpleBadgeExample from '@/components/modules/badge/examples/SimpleBadgeExample';
 import AnimatedBadgeExample from '@/components/modules/badge/examples/AnimatedBadgeExample';
 import CheckboxExample from '@/components/modules/checkBox/examples/CheckBoxExample';
+import SwitchButton from '@/components/modules/switch-button/SwitchButton';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -23,6 +24,10 @@ const ErfanTestForm = () => {
     if (time) {
       // console.log(time, 'parent time');
     }
+  };
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log(event.target.checked);
   };
 
   const persianDayFormatter = (date: Date) => {
@@ -62,6 +67,17 @@ const ErfanTestForm = () => {
       <hr className="m-4" />
       <span className="text-lg">CheckBox</span>
       <CheckboxExample />
+      <hr className="m-4" />
+      <span className="text-lg">Switch</span>
+      <SwitchButton
+        options={{
+          onChange: handleChange,
+          colorSwitchButton: 'primary',
+          label: 'erfan',
+          formControlLabel: { LabelPlacement: 'start' },
+          disabled: false,
+        }}
+      />
     </div>
   );
 };
