@@ -74,8 +74,8 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
     }
 
     // Call original onChange handler
-    if (props.onChange) {
-      props.onChange(event, newChecked);
+    if (onChange) {
+      onChange(newChecked, event);
     }
   };
 
@@ -98,6 +98,7 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
       {/* Ripple effect */}
       {enableRipple && (
         <Transition
+          as={React.Fragment}
           show={showRipple}
           enter="transition-opacity duration-75"
           enterFrom="opacity-0"
@@ -105,7 +106,6 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
           leave={`transition-all duration-${rippleDuration}`}
           leaveFrom="opacity-100 scale-0"
           leaveTo="opacity-0 scale-200"
-          className={`absolute inset-0 z-0 rounded-full bg-current opacity-20 ${rippleClassName || ''}`}
         />
       )}
 
@@ -113,6 +113,7 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
       {(checkedContent || uncheckedContent) && (
         <div className="relative z-10">
           <Transition
+            as={React.Fragment}
             show={checked}
             enter="transition-all duration-200"
             enterFrom="opacity-0 scale-75"
@@ -120,12 +121,12 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
             leave="transition-all duration-200"
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-75"
-            className="absolute inset-0"
           >
             <div>{checkedContent}</div>
           </Transition>
 
           <Transition
+            as={React.Fragment}
             show={!checked}
             enter="transition-all duration-200"
             enterFrom="opacity-0 scale-75"
@@ -133,7 +134,6 @@ const AdvancedCheckbox: React.FC<AdvancedCheckboxProps> = ({
             leave="transition-all duration-200"
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-75"
-            className="absolute inset-0"
           >
             <div>{uncheckedContent}</div>
           </Transition>

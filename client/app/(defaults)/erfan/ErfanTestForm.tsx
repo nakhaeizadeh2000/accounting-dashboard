@@ -9,17 +9,7 @@ import { BsMailbox } from 'react-icons/bs';
 import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
 import Badge, { BadgeProps } from '@mui/material/Badge';
 import BadgesComponents from '@/components/modules/badges/BadgesComponents';
-import CheckBox from '@/components/modules/checkBox/components/CheckBox';
-import AdvancedCheckBoxExample from '@/components/modules/checkBox/examples/AdvancedCheckBoxExample';
-
-const StyledBadge = styled(Badge)<BadgeProps>(({ theme }) => ({
-  '& .MuiBadge-badge': {
-    right: -3,
-    top: 13,
-    border: '2px solid',
-    padding: '0 4px',
-  },
-}));
+import CheckboxExample from '@/components/modules/checkBox/examples/CheckBoxExample';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -81,7 +71,7 @@ const ErfanTestForm = () => {
       />
       <hr className="m-4" />
       <span className="text-lg">CheckBox</span>
-      <AdvancedCheckBoxExample />
+      <CheckboxExample />
     </div>
   );
 };
