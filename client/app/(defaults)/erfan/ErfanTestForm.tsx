@@ -5,9 +5,9 @@ import Editor from '@/components/modules/editor/TinyMceComponent';
 import { IconButton, styled, TextField } from '@mui/material';
 import { StaticDatePicker } from '@mui/x-date-pickers-pro';
 import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
-import AdvancedBadgeExample from '@/components/modules/badge-new/examples/AdvancedBadgeExample';
-import SimpleBadgeExample from '@/components/modules/badge-new/examples/SimpleBadgeExample';
-import AnimatedBadgeExample from '@/components/modules/badge-new/examples/AnimatedBadgeExample';
+import AdvancedBadgeExample from '@/components/modules/badge/examples/AdvancedBadgeExample';
+import SimpleBadgeExample from '@/components/modules/badge/examples/SimpleBadgeExample';
+import AnimatedBadgeExample from '@/components/modules/badge/examples/AnimatedBadgeExample';
 import CheckboxExample from '@/components/modules/checkBox/examples/CheckBoxExample';
 
 const ErfanTestForm = () => {
