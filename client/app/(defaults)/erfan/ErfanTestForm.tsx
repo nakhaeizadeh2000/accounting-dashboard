@@ -12,6 +12,8 @@ import CheckboxExample from '@/components/modules/checkBox/examples/CheckBoxExam
 import { AdvancedSwitchButtonExample } from '@/components/modules/switch-button/examples/AdvancedSwitchButtonExample';
 import { SimpleSwitchButtonExample } from '@/components/modules/switch-button/examples/SimpleSwitchButtonExample';
 import { SwitchButtonIconExample } from '@/components/modules/switch-button/examples/IconSwitchButtonExample';
+import ButtonComponent from '@/components/modules/Button/Button';
+import { BsSend } from 'react-icons/bs';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -76,6 +78,20 @@ const ErfanTestForm = () => {
         <SimpleSwitchButtonExample />
         <SwitchButtonIconExample />
       </div>
+      <hr className="m-4" />
+      <span className="text-lg">Button</span>
+      <ButtonComponent
+        options={{
+          variant: 'outlined',
+          labelBtn: 'hello',
+          color: 'info',
+          onClick: () => console.log('hi'),
+          disabled: false,
+          // href: 'www.w3schools.com',
+          sizeBtn: 'large',
+          startIconBtn: <BsSend />,
+        }}
+      />
     </div>
   );
 };
