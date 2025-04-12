@@ -66,12 +66,16 @@ const FileCardComponent: React.FC<FileCardProps> = ({
   const isUploading = file.status === 'uploading';
   const isFailed = file.status === 'failed';
 
-  // Use direct download URL for previews with cache parameter
-  const directUrl = useMemo(
-    () =>
-      `/api/files/download/${file.bucket}/${encodeURIComponent(file.id)}?direct=true&cache=${cacheKey}`,
-    [file.bucket, file.id, cacheKey],
-  );
+  // Use thumbnail URL for grid view if available, otherwise fallback to direct URL
+  const imageUrl = useMemo(() => {
+    // Use thumbnail URL for grid display if available
+    if (file.thumbnailUrl) {
+      return file.thumbnailUrl;
+    }
+
+    // Fall back to direct URL if no thumbnail
+    return `/api/files/download/${file.bucket}/${encodeURIComponent(file.id)}?direct=true&cache=${cacheKey}`;
+  }, [file.thumbnailUrl, file.bucket, file.id, cacheKey]);
 
   const handleImageError = useCallback(() => {
     if (!attemptedLoadRef.current) {
@@ -98,7 +102,7 @@ const FileCardComponent: React.FC<FileCardProps> = ({
       return (
         <div className="relative h-full w-full">
           <Image
-            src={directUrl}
+            src={imageUrl}
             alt={file.name}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -111,9 +115,9 @@ const FileCardComponent: React.FC<FileCardProps> = ({
         </div>
       );
     } else {
-      return <FileTypeIcon fileType={actualFileType} className="h-16 w-16" />;
+      return <FileTypeIcon fileType={actualFileType} className="h-52 w-52" />;
     }
-  }, [isImage, imageError, directUrl, file.name, actualFileType, handleImageError]);
+  }, [isImage, imageError, imageUrl, file.name, actualFileType, handleImageError]);
 
   return (
     <div className="group relative">

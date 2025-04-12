@@ -46,7 +46,7 @@ export function useFileActions(
         file.type === 'application/octet-stream' ? getFileTypeFromExtension(file.name) : file.type;
 
       // Create a direct download URL through the API (more reliable)
-      const directUrl = `/api/files/download/${file.bucket}/${file.id}?direct=true`;
+      const directUrl = `/api/files/download/${file.bucket}/${encodeURIComponent(file.id)}?direct=true`;
 
       // For images and some document types, try to show in the browser
       if (
@@ -79,7 +79,9 @@ export function useFileActions(
       toggleOptionsMenu(null);
 
       try {
-        // First try using the downloadFileApi function which uses presigned URLs
+        // For download, we always want to force download behavior regardless of file type
+
+        // Method 1: Using downloadFileApi function but with download flag
         if (file.url) {
           // Convert FileData to FileMetadata format for the API
           const fileMetadata: FileMetadata = {
@@ -96,10 +98,19 @@ export function useFileActions(
             fileMetadata.thumbnailUrl = file.thumbnailUrl;
           }
 
-          downloadFileApi(fileMetadata);
+          // Use API's download function with download option
+          downloadFileApi(fileMetadata, { direct: true });
         } else {
-          // Fall back to direct download
-          window.location.href = `/api/files/download/${file.bucket}/${file.id}?direct=true`;
+          // Method 2: Direct download using anchor element - most reliable way for forcing downloads
+          const downloadUrl = `/api/files/download/${file.bucket}/${file.id}?direct=true&download=true`;
+
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.setAttribute('download', file.name); // This attribute is key for forcing download
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         }
 
         if (onFileDownloadCallback) {
@@ -108,7 +119,14 @@ export function useFileActions(
       } catch (error) {
         console.error('Error downloading file:', error);
         // Fall back to direct download if anything fails
-        window.location.href = `/api/files/download/${file.bucket}/${file.id}?direct=true`;
+        const downloadUrl = `/api/files/download/${file.bucket}/${file.id}?direct=true&download=true`;
+
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.setAttribute('download', file.name);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     },
     [toggleOptionsMenu, onFileDownloadCallback],

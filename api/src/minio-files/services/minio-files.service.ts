@@ -110,6 +110,86 @@ export class MinioFilesService {
   }
 
   /**
+   * Detect proper MIME type from file content and name
+   */
+  private detectProperMimeType(
+    filename: string,
+    providedMimetype: string,
+  ): string {
+    // If it's not the generic octet-stream, trust the provided MIME type
+    if (providedMimetype && providedMimetype !== 'application/octet-stream') {
+      return providedMimetype;
+    }
+
+    // Otherwise detect from extension
+    return this.getMimeTypeFromFilename(filename);
+  }
+
+  /**
+   * Helper method to determine MIME type from filename
+   */
+  private getMimeTypeFromFilename(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (!ext) return 'application/octet-stream';
+
+    // Image types
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) {
+      return `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    }
+
+    // SVG special case
+    if (ext === 'svg') return 'image/svg+xml';
+
+    // Video types
+    if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(ext)) {
+      return `video/${ext === 'mov' ? 'quicktime' : ext}`;
+    }
+
+    // Audio types
+    if (['mp3', 'wav', 'ogg', 'aac', 'flac'].includes(ext)) {
+      return `audio/${ext}`;
+    }
+
+    // Document types
+    const docTypes = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      txt: 'text/plain',
+      csv: 'text/csv',
+      html: 'text/html',
+      htm: 'text/html',
+    };
+
+    return docTypes[ext] || 'application/octet-stream';
+  }
+
+  /**
+   * Helper method to determine if a file might have a thumbnail
+   */
+  private mightHaveThumbnail(filename: string, mimetype: string): boolean {
+    // If it's already detected as an image, then yes
+    if (mimetype.startsWith('image/')) {
+      return true;
+    }
+
+    // Check extension for image files that might have wrong mimetype
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (
+      ext &&
+      ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Upload a file to MinIO using optimized streaming approach
    *
    * @param bucket - The bucket to upload to
@@ -124,25 +204,29 @@ export class MinioFilesService {
     fileStream: BusboyFileStream,
     mimetype: string,
   ): Promise<FileMetadata> {
+    // Detect proper MIME type
+    const detectedMimetype = this.detectProperMimeType(filename, mimetype);
+
     // Validate MIME type if restrictions are specified
     if (this.config.allowedMimeTypes.length > 0) {
       const isAllowed = this.config.allowedMimeTypes.some((allowedType) => {
         if (allowedType.endsWith('/')) {
-          return mimetype.startsWith(allowedType);
+          return detectedMimetype.startsWith(allowedType);
         }
         if (allowedType.endsWith('/*')) {
           const prefix = allowedType.slice(0, -2);
-          return mimetype.startsWith(prefix);
+          return detectedMimetype.startsWith(prefix);
         }
-        return mimetype === allowedType;
+        return detectedMimetype === allowedType;
       });
 
       if (!isAllowed) {
         throw new BadRequestException(
-          `mimetype : File type ${mimetype} is not allowed`,
+          `mimetype : File type ${detectedMimetype} is not allowed`,
         );
       }
     }
+
     // Basic validation
     if (!fileStream) {
       this.logger.error(`Missing file stream for file: ${filename}`);
@@ -225,7 +309,7 @@ export class MinioFilesService {
 
       // Create metadata for the file - ENSURE ORIGINAL FILENAME IS PRESERVED
       const metadata = {
-        'Content-Type': mimetype,
+        'Content-Type': detectedMimetype, // Use detected MIME type
         'Original-Name': filename, // Store the ACTUAL original filename
         'Upload-Date': new Date().toISOString(),
       };
@@ -246,20 +330,20 @@ export class MinioFilesService {
         originalName: filename, // Use the ACTUAL original filename here, not uniqueName
         uniqueName,
         size: fileSize,
-        mimetype,
+        mimetype: detectedMimetype, // Use detected MIME type
         bucket,
         uploadedAt: new Date(),
       };
 
       // Generate thumbnail ONLY for images
-      if (mimetype.startsWith('image/')) {
+      if (detectedMimetype.startsWith('image/')) {
         this.logger.debug(`Generating thumbnail for image: ${filename}`);
 
         thumbnailName = await this.generateThumbnail(
           bucket,
           uniqueName,
           tempFilePath,
-          mimetype,
+          detectedMimetype,
         );
 
         if (thumbnailName) {
@@ -310,6 +394,219 @@ export class MinioFilesService {
           this.logger.warn(`Failed to clean up temp directory: ${err.message}`);
         }
       }
+    }
+  }
+  /**
+   * Get a list of files in a bucket with improved MIME type detection
+   *
+   * @param bucket - The bucket to list files from
+   * @param prefix - Optional prefix to filter files
+   * @param recursive - Whether to recursively list files in subdirectories
+   * @returns Array of file metadata
+   */
+  async listFiles(
+    bucket: string,
+    prefix = '',
+    recursive = true,
+  ): Promise<FileMetadata[]> {
+    try {
+      // Check if bucket exists
+      const bucketExists = await this.bucketExists(bucket);
+      if (!bucketExists) {
+        throw new NotFoundException(`Bucket "${bucket}" not found`);
+      }
+
+      // Step 1: Get a complete, reliable list of all objects in the bucket
+      this.logger.debug(
+        `Listing objects in bucket: ${bucket}, prefix: ${prefix}`,
+      );
+      const allObjects: string[] = await this.listAllObjectsInBucket(
+        bucket,
+        prefix,
+        recursive,
+      );
+      this.logger.debug(
+        `Found ${allObjects.length} objects in bucket ${bucket}`,
+      );
+
+      // Early return if no objects found
+      if (allObjects.length === 0) {
+        return [];
+      }
+
+      // Step 2: Collect all thumbnails to avoid duplicate work
+      const thumbnailPrefix = this.config.thumbnailPrefix;
+      const thumbnails = new Set(
+        allObjects.filter((name) => name.startsWith(thumbnailPrefix)),
+      );
+
+      // Step 3: Filter out thumbnails and process remaining files
+      const mainObjects = allObjects.filter(
+        (name) => !name.startsWith(thumbnailPrefix),
+      );
+      this.logger.debug(
+        `Processing ${mainObjects.length} main files (excluding thumbnails)`,
+      );
+
+      // Step 4: Get metadata for each object in batches
+      // Using batches controls memory usage and prevents overloading the MinIO server
+      const batchSize = 20;
+      const results: FileMetadata[] = [];
+
+      // Process files in sequential batches
+      for (let i = 0; i < mainObjects.length; i += batchSize) {
+        const batch = mainObjects.slice(i, i + batchSize);
+        this.logger.debug(
+          `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(mainObjects.length / batchSize)}`,
+        );
+
+        // Process batch concurrently
+        const batchResults = await Promise.all(
+          batch.map((objectName) =>
+            this.getFileMetadataWithThumbnails(
+              bucket,
+              objectName,
+              thumbnails.has(`${thumbnailPrefix}${objectName}`),
+            ),
+          ),
+        );
+
+        // Add successful results to our array
+        results.push(...batchResults.filter(Boolean));
+      }
+
+      this.logger.debug(
+        `Successfully processed ${results.length} files with metadata`,
+      );
+      return results;
+    } catch (error) {
+      this.logger.error(`Error listing files: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * List all objects in a bucket reliably, handling pagination
+   *
+   * @param bucket - The bucket name
+   * @param prefix - Optional prefix filter
+   * @param recursive - Whether to list recursively
+   * @returns Complete array of all object names
+   */
+  private async listAllObjectsInBucket(
+    bucket: string,
+    prefix = '',
+    recursive = true,
+  ): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      const objects: string[] = [];
+      let streamError = null;
+
+      // Create stream for object listing
+      const objectsStream = this.minioClient.listObjects(
+        bucket,
+        prefix,
+        recursive,
+      );
+
+      // Handle data events
+      objectsStream.on('data', (obj) => {
+        if (obj.name) {
+          objects.push(obj.name);
+        }
+      });
+
+      // Handle errors during streaming
+      objectsStream.on('error', (err) => {
+        streamError = err;
+        this.logger.error(
+          `Error listing objects in bucket ${bucket}: ${err.message}`,
+        );
+        reject(err);
+      });
+
+      // Handle stream completion
+      objectsStream.on('end', () => {
+        // Only resolve if no error occurred
+        if (!streamError) {
+          this.logger.debug(
+            `Listed ${objects.length} objects from bucket ${bucket}`,
+          );
+          resolve(objects);
+        }
+      });
+    });
+  }
+
+  /**
+   * Get file metadata with optimized thumbnail handling
+   *
+   * @param bucket - The bucket name
+   * @param objectName - The object name
+   * @param hasThumbnail - Whether we already know a thumbnail exists
+   * @returns File metadata or null if retrieval fails
+   */
+  private async getFileMetadataWithThumbnails(
+    bucket: string,
+    objectName: string,
+    hasThumbnail: boolean,
+  ): Promise<FileMetadata | null> {
+    try {
+      // Get object stats
+      const stat = await this.minioClient.statObject(bucket, objectName);
+
+      // Get proper MIME type
+      let mimetype =
+        stat.metaData['Content-Type'] || 'application/octet-stream';
+
+      // Better detect MIME type if it's the generic octet-stream
+      if (mimetype === 'application/octet-stream') {
+        mimetype = this.getMimeTypeFromFilename(objectName);
+      }
+
+      // Create base metadata
+      const metadata: FileMetadata = {
+        originalName: stat.metaData['Original-Name'] || objectName,
+        uniqueName: objectName,
+        size: stat.size,
+        mimetype: mimetype,
+        bucket,
+        uploadedAt: stat.lastModified,
+      };
+
+      // Generate main file URL
+      metadata.url = await this.generatePresignedUrl(bucket, objectName);
+
+      // If we know a thumbnail exists, add it
+      if (hasThumbnail) {
+        const thumbnailName = `${this.config.thumbnailPrefix}${objectName}`;
+        metadata.thumbnailName = thumbnailName;
+        metadata.thumbnailUrl = await this.generatePresignedUrl(
+          bucket,
+          thumbnailName,
+        );
+      }
+      // Otherwise check if we should look for a thumbnail based on detected MIME type
+      else if (this.mightHaveThumbnail(objectName, mimetype)) {
+        try {
+          const thumbnailName = `${this.config.thumbnailPrefix}${objectName}`;
+          await this.minioClient.statObject(bucket, thumbnailName);
+          metadata.thumbnailName = thumbnailName;
+          metadata.thumbnailUrl = await this.generatePresignedUrl(
+            bucket,
+            thumbnailName,
+          );
+        } catch (thumbnailError) {
+          // Thumbnail doesn't exist, ignore
+        }
+      }
+
+      return metadata;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to get metadata for ${objectName}: ${error.message}`,
+      );
+      return null; // Skip this file if we can't get metadata
     }
   }
 
@@ -396,17 +693,26 @@ export class MinioFilesService {
     try {
       const stat = await this.minioClient.statObject(bucket, objectName);
 
+      // Better detect MIME type
+      let mimetype =
+        stat.metaData['Content-Type'] || 'application/octet-stream';
+
+      // Improve type detection for generic types
+      if (mimetype === 'application/octet-stream') {
+        mimetype = this.getMimeTypeFromFilename(objectName);
+      }
+
       const metadata: FileMetadata = {
         originalName: stat.metaData['Original-Name'] || objectName, // Use stored original name
         uniqueName: objectName,
         size: stat.size,
-        mimetype: stat.metaData['Content-Type'] || 'application/octet-stream',
+        mimetype: mimetype,
         bucket,
         uploadedAt: stat.lastModified,
       };
 
-      // Only check for thumbnail if the file is an image
-      if (metadata.mimetype.startsWith('image/')) {
+      // Check for thumbnail based on improved logic
+      if (this.mightHaveThumbnail(objectName, mimetype)) {
         const thumbnailName = `${this.config.thumbnailPrefix}${objectName}`;
         try {
           await this.minioClient.statObject(bucket, thumbnailName);
@@ -434,112 +740,6 @@ export class MinioFilesService {
         `Error getting file metadata: ${error.message}`,
         error.stack,
       );
-      throw error;
-    }
-  }
-
-  /**
-   * Get a list of files in a bucket
-   *
-   * @param bucket - The bucket to list files from
-   * @param prefix - Optional prefix to filter files
-   * @param recursive - Whether to recursively list files in subdirectories
-   * @returns Array of file metadata
-   */
-  async listFiles(
-    bucket: string,
-    prefix = '',
-    recursive = true,
-  ): Promise<FileMetadata[]> {
-    try {
-      // Check if bucket exists
-      const bucketExists = await this.bucketExists(bucket);
-      if (!bucketExists) {
-        throw new NotFoundException(`Bucket "${bucket}" not found`);
-      }
-
-      // Create a more memory-efficient implementation
-      return new Promise((resolve, reject) => {
-        const objects: FileMetadata[] = [];
-        const objectsStream = this.minioClient.listObjects(
-          bucket,
-          prefix,
-          recursive,
-        );
-
-        // Limit concurrency - process only N metadata requests at once
-        const MAX_CONCURRENT = 5;
-        let pendingOperations = 0;
-        let streamEnded = false;
-        let queue: string[] = [];
-
-        // Process the next item in the queue
-        const processNext = () => {
-          // If we've reached our concurrency limit, wait
-          if (pendingOperations >= MAX_CONCURRENT) return;
-
-          // If queue is empty but stream is still going, wait for more items
-          if (queue.length === 0) {
-            if (streamEnded) {
-              // If no more items coming, we're done
-              if (pendingOperations === 0) resolve(objects);
-            }
-            return;
-          }
-
-          // Take the next item from queue
-          const objectName = queue.shift();
-          pendingOperations++;
-
-          // Process it
-          this.getFileMetadata(bucket, objectName)
-            .then((metadata) => {
-              objects.push(metadata);
-            })
-            .catch((error) => {
-              this.logger.warn(
-                `Error getting metadata for ${objectName}: ${error.message}`,
-              );
-            })
-            .finally(() => {
-              pendingOperations--;
-              // Process next item
-              processNext();
-
-              // Check if we're done
-              if (
-                streamEnded &&
-                pendingOperations === 0 &&
-                queue.length === 0
-              ) {
-                resolve(objects);
-              }
-            });
-
-          // Try to process more items if possible
-          processNext();
-        };
-
-        objectsStream.on('data', (obj) => {
-          // Skip thumbnails in the main listing
-          if (!obj.name.startsWith(this.config.thumbnailPrefix)) {
-            queue.push(obj.name);
-            processNext(); // Try to process this new item
-          }
-        });
-
-        objectsStream.on('end', () => {
-          streamEnded = true;
-          // If all processing is already done, resolve
-          if (pendingOperations === 0 && queue.length === 0) {
-            resolve(objects);
-          }
-        });
-
-        objectsStream.on('error', (err) => reject(err));
-      });
-    } catch (error) {
-      this.logger.error(`Error listing files: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -850,9 +1050,12 @@ export class MinioFilesService {
    * @returns True if the file should use direct download
    */
   isDirectDownloadType(mimetype: string): boolean {
-    return this.config.directDownloadMimeTypes.some((type) =>
-      mimetype.startsWith(type),
-    );
+    return this.config.directDownloadMimeTypes.some((type) => {
+      if (type.endsWith('*')) {
+        return mimetype.startsWith(type.slice(0, -1));
+      }
+      return mimetype === type;
+    });
   }
 
   /**

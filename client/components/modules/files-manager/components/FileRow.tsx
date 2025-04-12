@@ -51,7 +51,7 @@ const FileRow: React.FC<FileRowProps> = ({
 
       {/* File icon */}
       <td className="whitespace-nowrap px-4 py-3">
-        <FileTypeIcon fileType={file.type} className="h-8 w-8" />
+        <FileTypeIcon fileType={file.type} className="h-36 w-36" />
       </td>
 
       {/* Filename */}

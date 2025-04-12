@@ -148,15 +148,39 @@ export const downloadFile = async (metadata: FileMetadata, options?: { direct?: 
 
   if (useDirect) {
     // For direct download, navigate to the URL with direct=true
-    const downloadUrl = `/api/files/download/${metadata.bucket}/${metadata.uniqueName}?direct=true`;
-    window.location.href = downloadUrl;
+    const downloadUrl = `/api/files/download/${metadata.bucket}/${metadata.uniqueName}?direct=true&download=true`;
+
+    // Use HTML anchor element to properly trigger download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', metadata.originalName);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   } else {
     // Use the pre-signed URL if available, otherwise fetch one
     if (metadata.url) {
-      window.open(metadata.url, '_blank');
+      // For forced download using URL
+      const link = document.createElement('a');
+      link.href = metadata.url;
+      link.setAttribute('download', metadata.originalName);
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } else {
       // We would fetch here, but we should always have a URL in the metadata
       console.warn('No URL available in metadata - unexpected state');
+      // Fall back to direct download
+      const downloadUrl = `/api/files/download/${metadata.bucket}/${metadata.uniqueName}?direct=true&download=true`;
+
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', metadata.originalName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   }
 };
