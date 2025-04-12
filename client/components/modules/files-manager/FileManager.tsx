@@ -345,7 +345,7 @@ const FileManager: React.FC<FileManagerProps> = ({
       return <EmptyState message={emptyText} />;
     }
 
-    // Limit displayed files by the current page
+    // Limit displayed files by the current page.
     const paginatedFiles = filteredFiles.slice(0, itemsPerPage * page);
 
     return viewMode === 'grid' ? (
