@@ -13,6 +13,7 @@ type Props = {
     disabled?: boolean;
     href?: string;
     sizeBtn?: 'small' | 'medium' | 'large';
+    BtnType: 'iconBtn' | 'simpleBtn';
   };
 };
 
@@ -22,21 +23,24 @@ const ButtonComponent = ({ options }: Props) => {
       return options?.href;
     }
   };
+
   return (
     <>
       <div>
-        <Button
-          variant={options?.variant}
-          onClick={options?.onClick}
-          color={options?.color}
-          disabled={options?.disabled}
-          href={hrefBtn()}
-          size={options?.sizeBtn}
-          startIcon={options?.startIconBtn}
-          endIcon={options?.endIconBtn}
-        >
-          {options?.labelBtn}
-        </Button>
+        {options?.BtnType === 'simpleBtn' && (
+          <Button
+            variant={options?.variant}
+            onClick={options?.onClick}
+            color={options?.color}
+            disabled={options?.disabled}
+            href={hrefBtn()}
+            size={options?.sizeBtn}
+            startIcon={options?.startIconBtn}
+            endIcon={options?.endIconBtn}
+          >
+            {options?.labelBtn}
+          </Button>
+        )}
       </div>
     </>
   );
