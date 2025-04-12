@@ -753,46 +753,57 @@ export class MinioFilesService {
    */
   async deleteFile(bucket: string, objectName: string): Promise<boolean> {
     try {
-      // Check if the file exists first
-      await this.minioClient.statObject(bucket, objectName);
+      // First check if the file exists
+      let fileExists = true;
+      try {
+        await this.minioClient.statObject(bucket, objectName);
+      } catch (statError) {
+        if (statError.code === 'NotFound') {
+          fileExists = false;
+          // If the file doesn't exist, return true since the goal of deleting is already achieved
+          return true;
+        }
+        // For other errors, rethrow
+        throw statError;
+      }
 
-      // Delete the main file
-      await this.minioClient.removeObject(bucket, objectName);
+      // Only proceed with deletion if the file exists
+      if (fileExists) {
+        // Delete the main file
+        await this.minioClient.removeObject(bucket, objectName);
 
-      // Also try to delete the thumbnail if it exists
-      // Only attempt for image files to avoid unnecessary operations
-      const stat = await this.minioClient.statObject(bucket, objectName);
-      const mimetype = stat.metaData['Content-Type'] || '';
-
-      if (mimetype.startsWith('image/')) {
+        // Also try to delete the thumbnail if it exists
         try {
           const thumbnailName = `${this.config.thumbnailPrefix}${objectName}`;
 
           // Check if thumbnail exists before trying to delete
-          await this.minioClient.statObject(bucket, thumbnailName);
-          await this.minioClient.removeObject(bucket, thumbnailName);
+          let thumbnailExists = true;
+          try {
+            await this.minioClient.statObject(bucket, thumbnailName);
+          } catch (thumbnailStatError) {
+            if (thumbnailStatError.code === 'NotFound') {
+              thumbnailExists = false;
+            } else {
+              throw thumbnailStatError;
+            }
+          }
 
-          this.logger.log(
-            `Deleted thumbnail ${thumbnailName} from bucket ${bucket}`,
-          );
-        } catch (thumbnailError) {
-          // It's okay if the thumbnail doesn't exist
-          if (thumbnailError.code !== 'NotFound') {
-            this.logger.warn(
-              `Error checking/deleting thumbnail: ${thumbnailError.message}`,
+          if (thumbnailExists) {
+            await this.minioClient.removeObject(bucket, thumbnailName);
+            this.logger.log(
+              `Deleted thumbnail ${thumbnailName} from bucket ${bucket}`,
             );
           }
+        } catch (thumbnailError) {
+          // Log but don't fail the main operation for thumbnail-related issues
+          this.logger.warn(
+            `Error handling thumbnail during deletion: ${thumbnailError.message}`,
+          );
         }
       }
 
       return true;
     } catch (error) {
-      if (error.code === 'NotFound') {
-        throw new NotFoundException(
-          `File "${objectName}" not found in bucket "${bucket}"`,
-        );
-      }
-
       this.logger.error(`Error deleting file: ${error.message}`, error.stack);
       throw error;
     }

@@ -149,8 +149,22 @@ export function useFileActions(
         } else if (!response.success) {
           console.error('Error deleting file:', response.message);
         }
-      } catch (error) {
-        console.error('Error deleting file:', error);
+      } catch (error: unknown) {
+        // We need to properly type check the error
+        if (
+          typeof error === 'object' &&
+          error !== null &&
+          'status' in error &&
+          error.status === 404
+        ) {
+          console.log('File already deleted or does not exist:', file.name);
+          // Still call the callback since the end goal (file not existing) is achieved
+          if (onFileDeleteCallback) {
+            onFileDeleteCallback(file);
+          }
+        } else {
+          console.error('Error deleting file:', error);
+        }
       }
     },
     [toggleOptionsMenu, deleteFileMutation, onFileDeleteCallback],

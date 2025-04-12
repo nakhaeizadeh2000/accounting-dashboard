@@ -9,6 +9,7 @@ import {
   HttpException,
   Res,
   Body,
+  Logger,
 } from '@nestjs/common';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import {
@@ -44,6 +45,7 @@ import { ValidationException } from 'common/exceptions/validation.exception';
 
 @filesControllerDecorators()
 export class MinioFilesController {
+  private readonly logger = new Logger(MinioFilesService.name);
   constructor(private readonly minioService: MinioFilesService) {}
 
   @filesUploadEndpointDecorators()
@@ -82,19 +84,19 @@ export class MinioFilesController {
 
         // Basic validations
         if (!fileStream) {
-          console.warn(`Skipping file with missing stream: ${filename}`);
+          this.logger.warn(`Skipping file with missing stream: ${filename}`);
           currentFile = await files.next();
           continue;
         }
 
         if (!filename) {
-          console.warn('Skipping file with missing filename');
+          this.logger.warn('Skipping file with missing filename');
           currentFile = await files.next();
           continue;
         }
 
         // Log the incoming file for debugging
-        console.log(
+        this.logger.log(
           `Processing file: ${filename}, mimetype: ${mimetype || 'unknown'}`,
         );
 
@@ -140,7 +142,7 @@ export class MinioFilesController {
         throw error;
       }
 
-      console.error(`Upload failed: ${error.message}`, error.stack);
+      this.logger.error(`Upload failed: ${error.message}`, error.stack);
       throw new InternalServerErrorException(
         `file : Upload failed - ${error.message}`,
       );
@@ -181,9 +183,9 @@ export class MinioFilesController {
 
       // Add to results array
       results.push(fileDto);
-      console.log(`Successfully uploaded: ${filename}`);
+      this.logger.log(`Successfully uploaded: ${filename}`);
     } catch (error) {
-      console.error(`Error processing file ${filename}: ${error.message}`);
+      this.logger.error(`Error processing file ${filename}: ${error.message}`);
 
       // Create an error result to include in the response
       results.push({
@@ -216,7 +218,7 @@ export class MinioFilesController {
         }
       } catch (streamError) {
         // Just log if there's any issue with stream handling
-        console.warn(
+        this.logger.warn(
           `Error handling stream for ${filename}: ${streamError.message}`,
         );
       }
@@ -328,7 +330,10 @@ export class MinioFilesController {
           `File "${filename}" not found in bucket "${bucket}"`,
         );
       }
-      console.error(`Error downloading file: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error downloading file: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException(
         `Failed to download file: ${error.message}`,
       );
@@ -452,14 +457,19 @@ export class MinioFilesController {
         message: `File "${filename}" deleted successfully from bucket "${bucket}"`,
       };
     } catch (error) {
-      if (error.code === 'NotFound' || error instanceof NotFoundException) {
-        throw new NotFoundException(
-          `File "${filename}" not found in bucket "${bucket}"`,
+      // Only rethrow if it's not a NotFound error, since that means the file is already gone
+      if (error.code !== 'NotFound' && !(error instanceof NotFoundException)) {
+        this.logger.error(`Error deleting file: ${error.message}`, error.stack);
+        throw new InternalServerErrorException(
+          `Failed to delete file: ${error.message}`,
         );
       }
-      throw new InternalServerErrorException(
-        `Failed to delete file: ${error.message}`,
-      );
+
+      // If it's a NotFound error, still return a success message
+      // since the end goal (file not existing) is achieved
+      return {
+        message: `File "${filename}" no longer exists in bucket "${bucket}"`,
+      };
     }
   }
 
