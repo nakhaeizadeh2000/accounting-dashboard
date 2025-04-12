@@ -9,7 +9,9 @@ import AdvancedBadgeExample from '@/components/modules/badge/examples/AdvancedBa
 import SimpleBadgeExample from '@/components/modules/badge/examples/SimpleBadgeExample';
 import AnimatedBadgeExample from '@/components/modules/badge/examples/AnimatedBadgeExample';
 import CheckboxExample from '@/components/modules/checkBox/examples/CheckBoxExample';
-import SwitchButton from '@/components/modules/switch-button/SwitchButton';
+import { AdvancedSwitchButtonExample } from '@/components/modules/switch-button/examples/AdvancedSwitchButtonExample';
+import { SimpleSwitchButtonExample } from '@/components/modules/switch-button/examples/SimpleSwitchButtonExample';
+import { SwitchButtonIconExample } from '@/components/modules/switch-button/examples/IconSwitchButtonExample';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -69,15 +71,11 @@ const ErfanTestForm = () => {
       <CheckboxExample />
       <hr className="m-4" />
       <span className="text-lg">Switch</span>
-      <SwitchButton
-        options={{
-          onChange: handleChange,
-          colorSwitchButton: 'primary',
-          label: 'erfan',
-          formControlLabel: { LabelPlacement: 'start' },
-          disabled: false,
-        }}
-      />
+      <div className="flex items-center justify-center gap-4">
+        <AdvancedSwitchButtonExample />
+        <SimpleSwitchButtonExample />
+        <SwitchButtonIconExample />
+      </div>
     </div>
   );
 };
