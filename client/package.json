@@ -23,6 +23,7 @@
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@headlessui/react": "^2.1.5",
+    "@mui/lab": "^6.0.1-beta.34",
     "@mui/material": "^6.1.2",
     "@mui/material-nextjs": "^6.1.3",
     "@mui/styled-engine-sc": "^6.1.2",

@@ -90,6 +90,35 @@ const ErfanTestForm = () => {
           // href: 'www.w3schools.com',
           sizeBtn: 'large',
           startIconBtn: <BsSend />,
+          BtnType: 'simpleBtn',
+        }}
+      />
+      <ButtonComponent
+        options={{
+          variant: 'contained',
+          labelBtn: 'hello',
+          color: 'error',
+          onClick: () => console.log('hi'),
+          disabled: false,
+          // href: 'www.w3schools.com',
+          sizeBtn: 'medium',
+          startIconBtn: <BsSend />,
+          BtnType: 'iconBtn',
+        }}
+      />
+      <ButtonComponent
+        options={{
+          variant: 'contained',
+          labelBtn: 'hello',
+          color: 'error',
+          onClick: () => console.log('hi'),
+          disabled: false,
+          // href: 'www.w3schools.com',
+          sizeBtn: 'large',
+          startIconBtn: <BsSend />,
+          BtnType: 'loadingBtn',
+          loading: false,
+          loadingPosition: 'start',
         }}
       />
     </div>

@@ -1,6 +1,8 @@
+import { IconButton } from '@mui/material';
 import Button from '@mui/material/Button';
+import LoadingButton from '@mui/lab/LoadingButton';
 import React from 'react';
-import { IconType } from 'react-icons';
+import { BsMailbox } from 'react-icons/bs';
 
 type Props = {
   options: {
@@ -13,7 +15,9 @@ type Props = {
     disabled?: boolean;
     href?: string;
     sizeBtn?: 'small' | 'medium' | 'large';
-    BtnType: 'iconBtn' | 'simpleBtn';
+    BtnType: 'iconBtn' | 'simpleBtn' | 'loadingBtn';
+    loading?: boolean;
+    loadingPosition?: 'start' | 'end';
   };
 };
 
@@ -40,6 +44,27 @@ const ButtonComponent = ({ options }: Props) => {
           >
             {options?.labelBtn}
           </Button>
+        )}
+        {options?.BtnType === 'iconBtn' && (
+          <IconButton aria-label={options?.labelBtn} size={options?.sizeBtn} color={options?.color}>
+            <BsMailbox />
+          </IconButton>
+        )}
+        {options?.BtnType === 'loadingBtn' && (
+          <LoadingButton
+            loading={options?.loading}
+            loadingPosition={options?.loadingPosition}
+            variant={options?.variant}
+            onClick={options?.onClick}
+            color={options?.color}
+            disabled={options?.disabled}
+            href={hrefBtn()}
+            size={options?.sizeBtn}
+            startIcon={options?.startIconBtn}
+            endIcon={options?.endIconBtn}
+          >
+            heloo
+          </LoadingButton>
         )}
       </div>
     </>
