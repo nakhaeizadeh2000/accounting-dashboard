@@ -238,6 +238,9 @@ export class MinioFilesService {
       throw new BadRequestException('Filename is required');
     }
 
+    // Store the original filename before any modifications
+    const originalFilename = filename;
+
     // Create the bucket if it doesn't exist
     await this.ensureBucketExists(bucket);
 
@@ -307,12 +310,22 @@ export class MinioFilesService {
         `File saved to temp path: ${tempFilePath}, size: ${stats.size} bytes`,
       );
 
-      // Create metadata for the file - ENSURE ORIGINAL FILENAME IS PRESERVED
+      // FIX: Encode the filename for storage in metadata
+      // Store the original filename but base64 encode it to prevent header value issues
+      const encodedOriginalName =
+        Buffer.from(originalFilename).toString('base64');
+
+      // Create metadata for the file with encoded filename
       const metadata = {
         'Content-Type': detectedMimetype, // Use detected MIME type
-        'Original-Name': filename, // Store the ACTUAL original filename
+        'Original-Name-Encoded': encodedOriginalName, // Store encoded original filename
         'Upload-Date': new Date().toISOString(),
       };
+
+      // Log for debugging
+      this.logger.debug(
+        `Storing original filename "${originalFilename}" encoded as "${encodedOriginalName}"`,
+      );
 
       // Upload the file to MinIO using a read stream from the temp file
       // This ensures we have the complete file and know its size
@@ -327,7 +340,7 @@ export class MinioFilesService {
       );
 
       const result: FileMetadata = {
-        originalName: filename, // Use the ACTUAL original filename here, not uniqueName
+        originalName: originalFilename, // Use the ACTUAL original filename here
         uniqueName,
         size: fileSize,
         mimetype: detectedMimetype, // Use detected MIME type
@@ -356,6 +369,12 @@ export class MinioFilesService {
       }
 
       result.url = await this.generatePresignedUrl(bucket, uniqueName);
+
+      // Final check to ensure original name is correct
+      this.logger.debug(
+        `Returning file metadata with originalName: ${result.originalName}, uniqueName: ${result.uniqueName}`,
+      );
+
       return result;
     } catch (error) {
       this.logger.error(`Error uploading file: ${error.message}`, error.stack);
@@ -396,6 +415,7 @@ export class MinioFilesService {
       }
     }
   }
+
   /**
    * Get a list of files in a bucket with improved MIME type detection
    *
@@ -564,9 +584,41 @@ export class MinioFilesService {
         mimetype = this.getMimeTypeFromFilename(objectName);
       }
 
+      // Get the original filename - handle both encoded and non-encoded versions for backward compatibility
+      let originalName = objectName;
+
+      if (stat.metaData['Original-Name-Encoded']) {
+        // If we have the encoded version, decode it
+        try {
+          originalName = Buffer.from(
+            stat.metaData['Original-Name-Encoded'],
+            'base64',
+          ).toString();
+          this.logger.debug(
+            `Decoded original filename from metadata: ${originalName}`,
+          );
+        } catch (decodeError) {
+          this.logger.warn(
+            `Failed to decode original filename: ${decodeError.message}`,
+          );
+          // Fall back to the object name if decoding fails
+          originalName = objectName;
+        }
+      } else if (stat.metaData['Original-Name']) {
+        // For backward compatibility with existing files
+        originalName = stat.metaData['Original-Name'];
+        this.logger.debug(
+          `Found non-encoded original filename in metadata: ${originalName}`,
+        );
+      } else {
+        this.logger.debug(
+          `No original filename found in metadata, using object name: ${objectName}`,
+        );
+      }
+
       // Create base metadata
       const metadata: FileMetadata = {
-        originalName: stat.metaData['Original-Name'] || objectName,
+        originalName: originalName,
         uniqueName: objectName,
         size: stat.size,
         mimetype: mimetype,
@@ -702,8 +754,35 @@ export class MinioFilesService {
         mimetype = this.getMimeTypeFromFilename(objectName);
       }
 
+      // Get the original filename - handle both encoded and non-encoded versions for backward compatibility
+      let originalName = objectName;
+
+      if (stat.metaData['Original-Name-Encoded']) {
+        // If we have the encoded version, decode it
+        try {
+          originalName = Buffer.from(
+            stat.metaData['Original-Name-Encoded'],
+            'base64',
+          ).toString();
+        } catch (decodeError) {
+          this.logger.warn(
+            `Failed to decode original filename: ${decodeError.message}`,
+          );
+          // Fall back to the object name if decoding fails
+          originalName = objectName;
+        }
+      } else if (stat.metaData['Original-Name']) {
+        // For backward compatibility with existing files
+        originalName = stat.metaData['Original-Name'];
+      }
+
+      // Make sure we're properly using the decoded original name, not the storage name with timestamp
+      this.logger.debug(
+        `Using original filename: ${originalName} instead of object name: ${objectName}`,
+      );
+
       const metadata: FileMetadata = {
-        originalName: stat.metaData['Original-Name'] || objectName, // Use stored original name
+        originalName: originalName,
         uniqueName: objectName,
         size: stat.size,
         mimetype: mimetype,
