@@ -1,6 +1,17 @@
+// src/article/dto/response-article.dto.ts
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsDate, IsNumber, IsString, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsArray,
+  IsDate,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ResponseFileDto } from 'src/minio-files/dto/response-file.dto';
+
 export class ResponseArticleDto {
   @Expose()
   @IsNumber()
@@ -15,7 +26,7 @@ export class ResponseArticleDto {
   @Length(1, 255)
   @ApiProperty({
     description: 'The title of the article',
-    example: 'Introduction to NestJS',
+    example: 'Understanding TypeORM Relationships',
     minLength: 1,
     maxLength: 255,
   })
@@ -25,15 +36,16 @@ export class ResponseArticleDto {
   @IsString()
   @ApiProperty({
     description: 'The main content of the article',
-    example: 'NestJS is a progressive Node.js framework...',
+    example:
+      'TypeORM provides several types of relationships including one-to-one, one-to-many, and many-to-many...',
   })
   content: string;
 
   @Expose()
-  @IsNumber()
+  @IsUUID()
   @ApiProperty({
     description: 'The ID of the author who wrote the article',
-    example: 1,
+    example: 'a1b2c3d4-e5f6-7890-abcd-1234567890ab',
   })
   authorId: string;
 
@@ -54,6 +66,16 @@ export class ResponseArticleDto {
     example: '2024-08-16T14:30:00Z',
   })
   updatedAt: Date;
+
+  @Expose()
+  @IsOptional()
+  @IsArray()
+  @Type(() => ResponseFileDto)
+  @ApiPropertyOptional({
+    description: 'Files associated with this article',
+    type: [ResponseFileDto],
+  })
+  files?: ResponseFileDto[];
 
   constructor(partial: Partial<ResponseArticleDto>) {
     Object.assign(this, partial);

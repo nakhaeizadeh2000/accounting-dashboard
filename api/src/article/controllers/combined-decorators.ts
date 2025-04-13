@@ -22,6 +22,7 @@ import { AppAbility } from 'src/casl/casl-ability.factory/casl-ability.factory';
 import { ResponseArticleDto } from '../dto/response-article.dto';
 import { Article } from '../entities/article.entity';
 import { PaginationApiQuery } from 'common/decorators/pagination-api-query.decorator';
+import { ArticlePaginatedResponseDto } from '../dto/article-paginated-response.dto';
 
 // controller
 export function articleControllerDecorators() {
@@ -60,7 +61,7 @@ export function articleFindAllEndpointDecorators() {
     ApiResponse({
       status: 200,
       description: 'Return all articles.',
-      type: [ResponseArticleDto],
+      type: [ArticlePaginatedResponseDto],
     }),
     PaginationApiQuery(),
     CheckPolicies((ability: AppAbility) => {

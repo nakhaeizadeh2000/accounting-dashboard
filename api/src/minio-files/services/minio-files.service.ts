@@ -17,6 +17,7 @@ import { promises as fsPromises } from 'fs';
 import * as os from 'os';
 import { PassThrough, Readable, Writable, pipeline } from 'stream';
 import { promisify } from 'util';
+import { FileRepositoryService } from './file.repository.service';
 
 const pipelineAsync = promisify(pipeline);
 const mkdtemp = promisify(fs.mkdtemp);
@@ -24,6 +25,7 @@ const unlink = promisify(fs.unlink);
 const rmdir = promisify(fs.rmdir);
 
 export interface FileMetadata {
+  id?: string; // Add this
   originalName: string;
   uniqueName: string;
   size: number;
@@ -59,6 +61,7 @@ export class MinioFilesService {
   constructor(
     private minioConfigService: MinioConfigService,
     private configService: ConfigService,
+    private fileRepositoryService: FileRepositoryService,
   ) {
     this.minioClient = this.minioConfigService.getClient();
 
@@ -375,7 +378,26 @@ export class MinioFilesService {
         `Returning file metadata with originalName: ${result.originalName}, uniqueName: ${result.uniqueName}`,
       );
 
-      return result;
+      // Save file metadata to the database
+      const createFileDto = {
+        originalName: result.originalName,
+        uniqueName: result.uniqueName,
+        size: result.size,
+        mimetype: result.mimetype,
+        thumbnailName: result.thumbnailName,
+        url: result.url,
+        thumbnailUrl: result.thumbnailUrl,
+        bucket: result.bucket,
+      };
+
+      const savedFile =
+        await this.fileRepositoryService.createFile(createFileDto);
+
+      // Add the database ID to the result
+      return {
+        ...result,
+        id: savedFile.id,
+      };
     } catch (error) {
       this.logger.error(`Error uploading file: ${error.message}`, error.stack);
 

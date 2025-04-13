@@ -1,28 +1,38 @@
-import { User } from 'src/users/entities/user.entity';
+// src/article/entities/article.entity.ts
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
+import { File } from 'src/minio-files/entities/file.entity';
 
-@Entity({
-  name: 'articles',
-})
+@Entity('articles')
 export class Article {
   kind: 'Article';
 
+  @Column({ default: 'Article' })
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
   title: string;
 
-  @Column('text')
+  @Column({ type: 'text' })
   content: string;
+
+  @Column()
+  authorId: string;
+
+  @ManyToOne(() => User, (user) => user.articles)
+  @JoinColumn({ name: 'authorId' })
+  author: User;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -30,10 +40,18 @@ export class Article {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => User, (user) => user.articles)
-  @JoinColumn({ name: 'authorId' })
-  author: User;
-
-  @Column({ type: 'uuid' })
-  authorId: string;
+  // Relationship with File (many articles can have many files)
+  @ManyToMany(() => File, (file) => file.articles)
+  @JoinTable({
+    name: 'article_files',
+    joinColumn: {
+      name: 'article_id',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'file_id',
+      referencedColumnName: 'id',
+    },
+  })
+  files: File[];
 }
