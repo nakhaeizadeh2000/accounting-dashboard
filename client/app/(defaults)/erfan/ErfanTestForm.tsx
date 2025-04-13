@@ -2,7 +2,7 @@
 import DatePickerSimpleComponent from '@/components/modules/date-pickers/DatePickerSimpleComponent';
 import TimePickersSimpleComponent from '@/components/modules/date-pickers/TimePickersSimpleComponent';
 import Editor from '@/components/modules/editor/TinyMceComponent';
-import { IconButton, styled, TextField } from '@mui/material';
+import { TextField } from '@mui/material';
 import { StaticDatePicker } from '@mui/x-date-pickers-pro';
 import { PiAirplaneTakeoffDuotone } from 'react-icons/pi';
 import AdvancedBadgeExample from '@/components/modules/badge/examples/AdvancedBadgeExample';
@@ -12,8 +12,8 @@ import CheckboxExample from '@/components/modules/checkBox/examples/CheckBoxExam
 import { AdvancedSwitchButtonExample } from '@/components/modules/switch-button/examples/AdvancedSwitchButtonExample';
 import { SimpleSwitchButtonExample } from '@/components/modules/switch-button/examples/SimpleSwitchButtonExample';
 import { SwitchButtonIconExample } from '@/components/modules/switch-button/examples/IconSwitchButtonExample';
-import ButtonComponent from '@/components/modules/Button/Button';
-import { BsSend } from 'react-icons/bs';
+import AdvancedButtonExample from '@/components/modules/Button/examples/AdvancedButtonExample';
+import SimpleButtonExample from '@/components/modules/Button/examples/SimpleButtonExample';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -80,47 +80,8 @@ const ErfanTestForm = () => {
       </div>
       <hr className="m-4" />
       <span className="text-lg">Button</span>
-      <ButtonComponent
-        options={{
-          variant: 'outlined',
-          labelBtn: 'hello',
-          color: 'info',
-          onClick: () => console.log('hi'),
-          disabled: false,
-          // href: 'www.w3schools.com',
-          sizeBtn: 'large',
-          startIconBtn: <BsSend />,
-          BtnType: 'simpleBtn',
-        }}
-      />
-      <ButtonComponent
-        options={{
-          variant: 'contained',
-          labelBtn: 'hello',
-          color: 'error',
-          onClick: () => console.log('hi'),
-          disabled: false,
-          // href: 'www.w3schools.com',
-          sizeBtn: 'medium',
-          startIconBtn: <BsSend />,
-          BtnType: 'iconBtn',
-        }}
-      />
-      <ButtonComponent
-        options={{
-          variant: 'contained',
-          labelBtn: 'hello',
-          color: 'error',
-          onClick: () => console.log('hi'),
-          disabled: false,
-          // href: 'www.w3schools.com',
-          sizeBtn: 'large',
-          startIconBtn: <BsSend />,
-          BtnType: 'loadingBtn',
-          loading: false,
-          loadingPosition: 'start',
-        }}
-      />
+      <AdvancedButtonExample />
+      <SimpleButtonExample/>
     </div>
   );
 };
