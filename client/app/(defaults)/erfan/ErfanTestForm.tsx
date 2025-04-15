@@ -12,8 +12,11 @@ import CheckboxExample from '@/components/modules/checkBox/examples/CheckBoxExam
 import { AdvancedSwitchButtonExample } from '@/components/modules/switch-button/examples/AdvancedSwitchButtonExample';
 import { SimpleSwitchButtonExample } from '@/components/modules/switch-button/examples/SimpleSwitchButtonExample';
 import { SwitchButtonIconExample } from '@/components/modules/switch-button/examples/IconSwitchButtonExample';
-import AdvancedButtonExample from '@/components/modules/Button/examples/AdvancedButtonExample';
-import SimpleButtonExample from '@/components/modules/Button/examples/SimpleButtonExample';
+import AdvancedButtonExample from '@/components/modules/button/examples/AdvancedButtonExample';
+import SimpleButtonExample from '@/components/modules/button/examples/SimpleButtonExample';
+import FactoryExample from '@/components/modules/button-advanced/examples/ButtonFactoryExample';
+import ButtonUsageExamples from '@/components/modules/button-advanced/examples/ButtonUsageExample';
+import HooksExample from '@/components/modules/button-advanced/examples/HooksExample';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -81,7 +84,12 @@ const ErfanTestForm = () => {
       <hr className="m-4" />
       <span className="text-lg">Button</span>
       <AdvancedButtonExample />
-      <SimpleButtonExample/>
+      <SimpleButtonExample />
+      <hr className="m-4" />
+      <span className="text-lg">advanced-Button</span>
+      <FactoryExample />
+      <ButtonUsageExamples />
+      <HooksExample />
     </div>
   );
 };

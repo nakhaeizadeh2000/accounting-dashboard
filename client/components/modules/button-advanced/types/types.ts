@@ -8,12 +8,12 @@ export interface BaseButtonProps {
   color?: 'inherit' | 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning';
   label: string;
   disabled?: boolean;
-  
+
   // Event handlers
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   onMouseEnter?: (event: MouseEvent<HTMLButtonElement>) => void;
   onMouseLeave?: (event: MouseEvent<HTMLButtonElement>) => void;
-  
+
   // Styling
   size?: 'small' | 'medium' | 'large';
   fullWidth?: boolean;
@@ -24,23 +24,23 @@ export interface BaseButtonProps {
   // Icons
   endIcon?: ReactNode;
   startIcon?: ReactNode;
-  
+
   // Links
   href?: string;
   target?: '_blank' | '_self' | '_parent' | '_top';
   rel?: string;
-  
+
   // Form related
   type?: 'button' | 'submit' | 'reset';
   form?: string;
   name?: string;
   value?: string;
-  
+
   // Accessibility
   ariaLabel?: string;
   ariaDescribedBy?: string;
   tabIndex?: number;
-  
+
   // Advanced
   component?: React.ElementType;
   id?: string;
@@ -51,7 +51,8 @@ export interface BaseButtonProps {
 export type SimpleButtonProps = BaseButtonProps;
 
 // Icon button props
-export interface IconButtonProps extends Omit<BaseButtonProps, 'variant' | 'endIcon' | 'startIcon' | 'label'> {
+export interface IconButtonProps
+  extends Omit<BaseButtonProps, 'variant' | 'endIcon' | 'startIcon' | 'label'> {
   icon: ReactNode;
   label: string; // For aria-label
   edge?: 'start' | 'end' | false;

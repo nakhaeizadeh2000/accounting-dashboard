@@ -1,11 +1,11 @@
 import { ReactNode } from 'react';
-import { 
-  SimpleButtonProps, 
-  IconButtonProps, 
-  LoadingButtonProps, 
+import {
+  SimpleButtonProps,
+  IconButtonProps,
+  LoadingButtonProps,
   AdvancedButtonProps,
-  ButtonType
-} from './types';
+  ButtonType,
+} from '../types/types';
 
 /**
  * ButtonFactory provides shorthand methods to create button configurations
@@ -16,15 +16,15 @@ export class ButtonFactory {
    * Creates a simple button configuration
    */
   static createSimple(
-    label: string, 
-    options: Partial<SimpleButtonProps> = {}
+    label: string,
+    options: Partial<SimpleButtonProps> = {},
   ): { type: ButtonType; props: SimpleButtonProps } {
     return {
       type: 'simple',
       props: {
         label,
-        ...options
-      }
+        ...options,
+      },
     };
   }
 
@@ -32,17 +32,17 @@ export class ButtonFactory {
    * Creates an icon button configuration
    */
   static createIcon(
-    label: string, 
-    icon: ReactNode, 
-    options: Partial<Omit<IconButtonProps, 'icon'>> = {}
+    label: string,
+    icon: ReactNode,
+    options: Partial<Omit<IconButtonProps, 'icon'>> = {},
   ): { type: ButtonType; props: IconButtonProps } {
     return {
       type: 'icon',
       props: {
         label,
         icon,
-        ...options
-      }
+        ...options,
+      },
     };
   }
 
@@ -50,17 +50,17 @@ export class ButtonFactory {
    * Creates a loading button configuration
    */
   static createLoading(
-    label: string, 
-    loading: boolean, 
-    options: Partial<Omit<LoadingButtonProps, 'loading'>> = {}
+    label: string,
+    loading: boolean,
+    options: Partial<Omit<LoadingButtonProps, 'loading'>> = {},
   ): { type: ButtonType; props: LoadingButtonProps } {
     return {
       type: 'loading',
       props: {
         label,
         loading,
-        ...options
-      }
+        ...options,
+      },
     };
   }
 
@@ -68,17 +68,17 @@ export class ButtonFactory {
    * Creates an advanced button configuration with tooltip
    */
   static createAdvanced(
-    label: string, 
-    tooltip: string, 
-    options: Partial<Omit<AdvancedButtonProps, 'tooltip'>> = {}
+    label: string,
+    tooltip: string,
+    options: Partial<Omit<AdvancedButtonProps, 'tooltip'>> = {},
   ): { type: ButtonType; props: AdvancedButtonProps } {
     return {
       type: 'advanced',
       props: {
         label,
         tooltip,
-        ...options
-      }
+        ...options,
+      },
     };
   }
 
@@ -86,8 +86,8 @@ export class ButtonFactory {
    * Creates a submit button for forms
    */
   static createSubmit(
-    label: string = 'Submit', 
-    options: Partial<LoadingButtonProps> = {}
+    label: string = 'Submit',
+    options: Partial<LoadingButtonProps> = {},
   ): { type: ButtonType; props: LoadingButtonProps } {
     return {
       type: 'loading',
@@ -96,8 +96,8 @@ export class ButtonFactory {
         type: 'submit',
         variant: 'contained',
         color: 'primary',
-        ...options
-      }
+        ...options,
+      },
     };
   }
 
@@ -105,8 +105,8 @@ export class ButtonFactory {
    * Creates a reset button for forms
    */
   static createReset(
-    label: string = 'Reset', 
-    options: Partial<SimpleButtonProps> = {}
+    label: string = 'Reset',
+    options: Partial<SimpleButtonProps> = {},
   ): { type: ButtonType; props: SimpleButtonProps } {
     return {
       type: 'simple',
@@ -115,8 +115,8 @@ export class ButtonFactory {
         type: 'reset',
         variant: 'outlined',
         color: 'error',
-        ...options
-      }
+        ...options,
+      },
     };
   }
 
@@ -124,9 +124,9 @@ export class ButtonFactory {
    * Creates a button that links to a URL
    */
   static createLink(
-    label: string, 
-    href: string, 
-    options: Partial<SimpleButtonProps> = {}
+    label: string,
+    href: string,
+    options: Partial<SimpleButtonProps> = {},
   ): { type: ButtonType; props: SimpleButtonProps } {
     return {
       type: 'simple',
@@ -136,8 +136,8 @@ export class ButtonFactory {
         target: options.target || '_blank',
         rel: options.rel || 'noopener noreferrer',
         variant: 'text',
-        ...options
-      }
+        ...options,
+      },
     };
   }
 
@@ -145,8 +145,8 @@ export class ButtonFactory {
    * Creates a delete/danger button
    */
   static createDanger(
-    label: string = 'Delete', 
-    options: Partial<AdvancedButtonProps> = {}
+    label: string = 'Delete',
+    options: Partial<AdvancedButtonProps> = {},
   ): { type: ButtonType; props: AdvancedButtonProps } {
     return {
       type: 'advanced',
@@ -155,8 +155,8 @@ export class ButtonFactory {
         color: 'error',
         variant: 'contained',
         tooltip: options.tooltip || 'This action cannot be undone',
-        ...options
-      }
+        ...options,
+      },
     };
   }
 
@@ -164,9 +164,9 @@ export class ButtonFactory {
    * Creates a button with confirmation dialog via tooltip
    */
   static createConfirm(
-    label: string, 
+    label: string,
     confirmMessage: string,
-    options: Partial<AdvancedButtonProps> = {}
+    options: Partial<AdvancedButtonProps> = {},
   ): { type: ButtonType; props: AdvancedButtonProps } {
     return {
       type: 'advanced',
@@ -174,8 +174,8 @@ export class ButtonFactory {
         label,
         tooltip: confirmMessage,
         tooltipPlacement: 'top',
-        ...options
-      }
+        ...options,
+      },
     };
   }
 }

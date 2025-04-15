@@ -1,6 +1,6 @@
-export { default as SimpleButton } from './SimpleButton';
-export { default as IconButton } from './IconButton';
-export { default as LoadingButton } from './LoadingButton';
-export { default as AdvancedButton } from './AdvancedButton';
-export { default as ButtonBridge } from './ButtonBridge';
-export * from './types';
+export { default as SimpleButton } from './components/SimpleButton';
+export { default as IconButton } from './components/IconButton';
+export { default as LoadingButton } from './components/LoadingButton';
+export { default as AdvancedButton } from './components/AdvancedButton';
+export { default as ButtonBridge } from './components/ButtonBridge';
+export * from './types/types';

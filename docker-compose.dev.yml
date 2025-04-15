@@ -5,7 +5,7 @@ services:
     container_name: nginx
     image: nginx:alpine
     ports:
-      - "80:80" # HTTP
+      - "81:80" # HTTP
       - "443:443" # HTTPS (if needed)
     volumes:
       - ./:/app
