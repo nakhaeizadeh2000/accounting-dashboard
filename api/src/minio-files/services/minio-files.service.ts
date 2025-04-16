@@ -18,14 +18,14 @@ import * as os from 'os';
 import { PassThrough, Readable, Writable, pipeline } from 'stream';
 import { promisify } from 'util';
 import { FileRepositoryService } from './file.repository.service';
+import { DataSource } from 'typeorm';
 
 const pipelineAsync = promisify(pipeline);
 const mkdtemp = promisify(fs.mkdtemp);
 const unlink = promisify(fs.unlink);
 const rmdir = promisify(fs.rmdir);
-
 export interface FileMetadata {
-  id?: string; // Add this
+  id?: string; // Make sure ID is included
   originalName: string;
   uniqueName: string;
   size: number;
@@ -56,12 +56,13 @@ export interface EnvConfig {
 export class MinioFilesService {
   private minioClient: Client;
   private readonly logger = new Logger(MinioFilesService.name);
-  private readonly config: EnvConfig;
+  public readonly config: EnvConfig;
 
   constructor(
     private minioConfigService: MinioConfigService,
     private configService: ConfigService,
     private fileRepositoryService: FileRepositoryService,
+    private dataSource: DataSource, // Add this for transaction support
   ) {
     this.minioClient = this.minioConfigService.getClient();
 
@@ -131,7 +132,7 @@ export class MinioFilesService {
   /**
    * Helper method to determine MIME type from filename
    */
-  private getMimeTypeFromFilename(filename: string): string {
+  public getMimeTypeFromFilename(filename: string): string {
     const ext = filename.split('.').pop()?.toLowerCase();
     if (!ext) return 'application/octet-stream';
 
@@ -256,6 +257,11 @@ export class MinioFilesService {
     let fileSize = 0;
     let thumbnailName: string | null = null;
 
+    // Start a transaction
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       // Create a temporary directory
       tempDir = await mkdtemp(
@@ -313,45 +319,41 @@ export class MinioFilesService {
         `File saved to temp path: ${tempFilePath}, size: ${stats.size} bytes`,
       );
 
-      // FIX: Encode the filename for storage in metadata
+      // Encode the filename for storage in metadata
       // Store the original filename but base64 encode it to prevent header value issues
       const encodedOriginalName =
         Buffer.from(originalFilename).toString('base64');
 
       // Create metadata for the file with encoded filename
-      const metadata = {
-        'Content-Type': detectedMimetype, // Use detected MIME type
-        'Original-Name-Encoded': encodedOriginalName, // Store encoded original filename
+      const minioMetadata = {
+        'Content-Type': detectedMimetype,
+        'Original-Name-Encoded': encodedOriginalName,
         'Upload-Date': new Date().toISOString(),
       };
 
-      // Log for debugging
       this.logger.debug(
         `Storing original filename "${originalFilename}" encoded as "${encodedOriginalName}"`,
       );
 
-      // Upload the file to MinIO using a read stream from the temp file
-      // This ensures we have the complete file and know its size
-      const fileReadStream = fs.createReadStream(tempFilePath);
-
-      // Use fPutObject instead of putObject for more reliable uploads of the complete file
+      // Upload the file to MinIO using the temp file
       await this.minioClient.fPutObject(
         bucket,
         uniqueName,
         tempFilePath,
-        metadata,
+        minioMetadata,
       );
 
-      const result: FileMetadata = {
-        originalName: originalFilename, // Use the ACTUAL original filename here
+      // Prepare file metadata for database
+      const fileData: FileMetadata = {
+        originalName: originalFilename,
         uniqueName,
         size: fileSize,
-        mimetype: detectedMimetype, // Use detected MIME type
+        mimetype: detectedMimetype,
         bucket,
         uploadedAt: new Date(),
       };
 
-      // Generate thumbnail ONLY for images
+      // Generate thumbnail for images
       if (detectedMimetype.startsWith('image/')) {
         this.logger.debug(`Generating thumbnail for image: ${filename}`);
 
@@ -363,47 +365,57 @@ export class MinioFilesService {
         );
 
         if (thumbnailName) {
-          result.thumbnailName = thumbnailName;
-          result.thumbnailUrl = await this.generatePresignedUrl(
-            bucket,
-            thumbnailName,
-          );
+          fileData.thumbnailName = thumbnailName;
+          fileData.thumbnailUrl = `/api/files/download/${bucket}/${encodeURIComponent(thumbnailName)}`;
         }
       }
 
-      result.url = await this.generatePresignedUrl(bucket, uniqueName);
+      // Generate URL for the file
+      fileData.url = `/api/files/download/${bucket}/${encodeURIComponent(uniqueName)}`;
 
-      // Final check to ensure original name is correct
       this.logger.debug(
-        `Returning file metadata with originalName: ${result.originalName}, uniqueName: ${result.uniqueName}`,
+        `Returning file metadata with originalName: ${fileData.originalName}, uniqueName: ${fileData.uniqueName}`,
       );
 
-      // Save file metadata to the database
+      // Save file metadata to the database using the repository service
       const createFileDto = {
-        originalName: result.originalName,
-        uniqueName: result.uniqueName,
-        size: result.size,
-        mimetype: result.mimetype,
-        thumbnailName: result.thumbnailName,
-        url: result.url,
-        thumbnailUrl: result.thumbnailUrl,
-        bucket: result.bucket,
+        originalName: fileData.originalName,
+        uniqueName: fileData.uniqueName,
+        size: fileData.size,
+        mimetype: fileData.mimetype,
+        thumbnailName: fileData.thumbnailName,
+        url: fileData.url,
+        thumbnailUrl: fileData.thumbnailUrl,
+        bucket: fileData.bucket,
       };
 
+      // Use the repository service with transaction
       const savedFile =
-        await this.fileRepositoryService.createFile(createFileDto);
+        await this.fileRepositoryService.createFileWithTransaction(
+          createFileDto,
+          queryRunner.manager,
+        );
+
+      // Commit the transaction
+      await queryRunner.commitTransaction();
 
       // Add the database ID to the result
       return {
-        ...result,
+        ...fileData,
         id: savedFile.id,
       };
     } catch (error) {
+      // Rollback the transaction
+      await queryRunner.rollbackTransaction();
+
       this.logger.error(`Error uploading file: ${error.message}`, error.stack);
 
       // Try to clean up the partially uploaded file from MinIO
       try {
         await this.minioClient.removeObject(bucket, uniqueName);
+        if (thumbnailName) {
+          await this.minioClient.removeObject(bucket, thumbnailName);
+        }
       } catch (cleanupError) {
         this.logger.warn(
           `Failed to clean up partial upload: ${cleanupError.message}`,
@@ -419,6 +431,9 @@ export class MinioFilesService {
         );
       }
     } finally {
+      // Release the query runner
+      await queryRunner.release();
+
       // Clean up temporary files
       if (tempFilePath && fs.existsSync(tempFilePath)) {
         try {
@@ -435,95 +450,6 @@ export class MinioFilesService {
           this.logger.warn(`Failed to clean up temp directory: ${err.message}`);
         }
       }
-    }
-  }
-
-  /**
-   * Get a list of files in a bucket with improved MIME type detection
-   *
-   * @param bucket - The bucket to list files from
-   * @param prefix - Optional prefix to filter files
-   * @param recursive - Whether to recursively list files in subdirectories
-   * @returns Array of file metadata
-   */
-  async listFiles(
-    bucket: string,
-    prefix = '',
-    recursive = true,
-  ): Promise<FileMetadata[]> {
-    try {
-      // Check if bucket exists
-      const bucketExists = await this.bucketExists(bucket);
-      if (!bucketExists) {
-        throw new NotFoundException(`Bucket "${bucket}" not found`);
-      }
-
-      // Step 1: Get a complete, reliable list of all objects in the bucket
-      this.logger.debug(
-        `Listing objects in bucket: ${bucket}, prefix: ${prefix}`,
-      );
-      const allObjects: string[] = await this.listAllObjectsInBucket(
-        bucket,
-        prefix,
-        recursive,
-      );
-      this.logger.debug(
-        `Found ${allObjects.length} objects in bucket ${bucket}`,
-      );
-
-      // Early return if no objects found
-      if (allObjects.length === 0) {
-        return [];
-      }
-
-      // Step 2: Collect all thumbnails to avoid duplicate work
-      const thumbnailPrefix = this.config.thumbnailPrefix;
-      const thumbnails = new Set(
-        allObjects.filter((name) => name.startsWith(thumbnailPrefix)),
-      );
-
-      // Step 3: Filter out thumbnails and process remaining files
-      const mainObjects = allObjects.filter(
-        (name) => !name.startsWith(thumbnailPrefix),
-      );
-      this.logger.debug(
-        `Processing ${mainObjects.length} main files (excluding thumbnails)`,
-      );
-
-      // Step 4: Get metadata for each object in batches
-      // Using batches controls memory usage and prevents overloading the MinIO server
-      const batchSize = 20;
-      const results: FileMetadata[] = [];
-
-      // Process files in sequential batches
-      for (let i = 0; i < mainObjects.length; i += batchSize) {
-        const batch = mainObjects.slice(i, i + batchSize);
-        this.logger.debug(
-          `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(mainObjects.length / batchSize)}`,
-        );
-
-        // Process batch concurrently
-        const batchResults = await Promise.all(
-          batch.map((objectName) =>
-            this.getFileMetadataWithThumbnails(
-              bucket,
-              objectName,
-              thumbnails.has(`${thumbnailPrefix}${objectName}`),
-            ),
-          ),
-        );
-
-        // Add successful results to our array
-        results.push(...batchResults.filter(Boolean));
-      }
-
-      this.logger.debug(
-        `Successfully processed ${results.length} files with metadata`,
-      );
-      return results;
-    } catch (error) {
-      this.logger.error(`Error listing files: ${error.message}`, error.stack);
-      throw error;
     }
   }
 
@@ -698,14 +624,17 @@ export class MinioFilesService {
     expirySeconds?: number,
   ): Promise<string> {
     try {
-      // Instead of using the complex presigned URL logic, let's use a simple
-      // direct API URL that will work more reliably through NGINX
-      const publicEndpoint = this.minioConfigService.getPublicEndpoint();
-      const directUrl = `http://${publicEndpoint}/api/files/download/${bucket}/${objectName}`;
+      // Create a direct API URL that will work through NGINX
+      const publicEndpoint =
+        this.minioConfigService.getPublicEndpoint() || 'localhost';
 
-      this.logger.debug(
-        `Generated API URL instead of presigned URL: ${directUrl}`,
-      );
+      // Ensure objectName is properly encoded in the URL
+      const encodedObjectName = encodeURIComponent(objectName);
+
+      // Build the direct API URL
+      const directUrl = `http://${publicEndpoint}/api/files/download/${bucket}/${encodedObjectName}`;
+
+      this.logger.debug(`Generated API URL: ${directUrl}`);
 
       return directUrl;
     } catch (error) {
@@ -765,82 +694,161 @@ export class MinioFilesService {
     objectName: string,
   ): Promise<FileMetadata> {
     try {
-      const stat = await this.minioClient.statObject(bucket, objectName);
+      // Check if this is a thumbnail request (filename starts with thumbnail prefix)
+      const isThumbnail = objectName.startsWith(this.config.thumbnailPrefix);
 
-      // Better detect MIME type
-      let mimetype =
-        stat.metaData['Content-Type'] || 'application/octet-stream';
-
-      // Improve type detection for generic types
-      if (mimetype === 'application/octet-stream') {
-        mimetype = this.getMimeTypeFromFilename(objectName);
-      }
-
-      // Get the original filename - handle both encoded and non-encoded versions for backward compatibility
-      let originalName = objectName;
-
-      if (stat.metaData['Original-Name-Encoded']) {
-        // If we have the encoded version, decode it
-        try {
-          originalName = Buffer.from(
-            stat.metaData['Original-Name-Encoded'],
-            'base64',
-          ).toString();
-        } catch (decodeError) {
-          this.logger.warn(
-            `Failed to decode original filename: ${decodeError.message}`,
-          );
-          // Fall back to the object name if decoding fails
-          originalName = objectName;
-        }
-      } else if (stat.metaData['Original-Name']) {
-        // For backward compatibility with existing files
-        originalName = stat.metaData['Original-Name'];
-      }
-
-      // Make sure we're properly using the decoded original name, not the storage name with timestamp
-      this.logger.debug(
-        `Using original filename: ${originalName} instead of object name: ${objectName}`,
-      );
-
-      const metadata: FileMetadata = {
-        originalName: originalName,
-        uniqueName: objectName,
-        size: stat.size,
-        mimetype: mimetype,
-        bucket,
-        uploadedAt: stat.lastModified,
-      };
-
-      // Check for thumbnail based on improved logic
-      if (this.mightHaveThumbnail(objectName, mimetype)) {
-        const thumbnailName = `${this.config.thumbnailPrefix}${objectName}`;
-        try {
-          await this.minioClient.statObject(bucket, thumbnailName);
-          metadata.thumbnailName = thumbnailName;
-          metadata.thumbnailUrl = await this.generatePresignedUrl(
-            bucket,
-            thumbnailName,
-          );
-        } catch (thumbnailError) {
-          // Thumbnail doesn't exist, which is fine
-          this.logger.debug(`No thumbnail found for ${objectName}`);
-        }
-      }
-
-      metadata.url = await this.generatePresignedUrl(bucket, objectName);
-
-      return metadata;
-    } catch (error) {
-      if (error.code === 'NotFound') {
-        throw new NotFoundException(
-          `File "${objectName}" not found in bucket "${bucket}"`,
+      // If it's a thumbnail, try to find the original file first
+      if (isThumbnail) {
+        // Extract the original filename from the thumbnail name
+        const originalFileName = objectName.substring(
+          this.config.thumbnailPrefix.length,
         );
+
+        // Find the original file in the database
+        const originalFile =
+          await this.fileRepositoryService.findByUniqueName(originalFileName);
+
+        if (originalFile && originalFile.thumbnailName === objectName) {
+          // Return thumbnail metadata from the original file's record
+          return {
+            id: `thumb_${originalFile.id}`, // Generate a pseudo-ID for the thumbnail
+            originalName: `thumb_${originalFile.originalName}`,
+            uniqueName: objectName,
+            size: 0, // We don't know the exact size of the thumbnail
+            mimetype: originalFile.mimetype,
+            thumbnailName: objectName,
+            url: `/api/files/download/${bucket}/${encodeURIComponent(objectName)}`,
+            thumbnailUrl: `/api/files/download/${bucket}/${encodeURIComponent(objectName)}`,
+            bucket: bucket,
+            uploadedAt: originalFile.createdAt,
+          };
+        }
       }
+
+      // First, attempt to find the file in the database by uniqueName
+      const dbFile =
+        await this.fileRepositoryService.findByUniqueName(objectName);
+
+      if (dbFile) {
+        // If found in the database, return the database metadata
+        return {
+          id: dbFile.id,
+          originalName: dbFile.originalName,
+          uniqueName: dbFile.uniqueName,
+          size: dbFile.size,
+          mimetype: dbFile.mimetype,
+          thumbnailName: dbFile.thumbnailName,
+          url:
+            dbFile.url ||
+            `/api/files/download/${bucket}/${encodeURIComponent(dbFile.uniqueName)}`,
+          thumbnailUrl:
+            dbFile.thumbnailUrl ||
+            (dbFile.thumbnailName
+              ? `/api/files/download/${bucket}/${encodeURIComponent(dbFile.thumbnailName)}`
+              : undefined),
+          bucket: dbFile.bucket,
+          uploadedAt: dbFile.createdAt,
+        };
+      }
+
+      // If not found in the database, fall back to MinIO for thumbnails or special files
+      if (isThumbnail) {
+        try {
+          // For thumbnails, check directly in MinIO
+          const stat = await this.minioClient.statObject(bucket, objectName);
+
+          // If it exists in MinIO, construct metadata
+          return {
+            originalName: objectName,
+            uniqueName: objectName,
+            size: stat.size,
+            mimetype:
+              stat.metaData['Content-Type'] ||
+              this.getMimeTypeFromFilename(objectName),
+            bucket: bucket,
+            uploadedAt: stat.lastModified,
+            url: `/api/files/download/${bucket}/${encodeURIComponent(objectName)}`,
+          };
+        } catch (minioError) {
+          this.logger.error(
+            `File ${objectName} not found in MinIO: ${minioError.message}`,
+          );
+          throw new NotFoundException(`File "${objectName}" not found`);
+        }
+      }
+
+      // For non-thumbnails that aren't in the database, throw not found
+      this.logger.error(
+        `File metadata for ${objectName} not found in database`,
+      );
+      throw new NotFoundException(`File "${objectName}" metadata not found`);
+    } catch (error) {
       this.logger.error(
         `Error getting file metadata: ${error.message}`,
         error.stack,
       );
+      throw error;
+    }
+  }
+
+  /**
+   * Get a list of files in a bucket with improved MIME type detection
+   *
+   * @param bucket - The bucket to list files from
+   * @param prefix - Optional prefix to filter files
+   * @param recursive - Whether to recursively list files in subdirectories
+   * @returns Array of file metadata
+   */
+  async listFiles(
+    bucket: string,
+    prefix = '',
+    recursive = true,
+  ): Promise<FileMetadata[]> {
+    try {
+      // Check if bucket exists
+      const bucketExists = await this.bucketExists(bucket);
+      if (!bucketExists) {
+        throw new NotFoundException(`Bucket "${bucket}" not found`);
+      }
+
+      // Get all files from the database for this bucket
+      const dbFiles = await this.fileRepositoryService.findByBucket(bucket);
+
+      // Filter by prefix if needed
+      let filteredFiles = dbFiles;
+      if (prefix) {
+        filteredFiles = dbFiles.filter((file) =>
+          file.uniqueName.startsWith(prefix),
+        );
+      }
+
+      // Transform to FileMetadata
+      const results = await Promise.all(
+        filteredFiles.map(async (dbFile) => {
+          return {
+            id: dbFile.id,
+            originalName: dbFile.originalName,
+            uniqueName: dbFile.uniqueName,
+            size: dbFile.size,
+            mimetype: dbFile.mimetype,
+            thumbnailName: dbFile.thumbnailName,
+            url:
+              dbFile.url ||
+              (await this.generatePresignedUrl(bucket, dbFile.uniqueName)),
+            thumbnailUrl:
+              dbFile.thumbnailUrl ||
+              (dbFile.thumbnailName
+                ? await this.generatePresignedUrl(bucket, dbFile.thumbnailName)
+                : undefined),
+            bucket: dbFile.bucket,
+            uploadedAt: dbFile.createdAt,
+          };
+        }),
+      );
+
+      return results;
+    } catch (error) {
+      this.logger.error(`Error listing files: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -854,53 +862,51 @@ export class MinioFilesService {
    */
   async deleteFile(bucket: string, objectName: string): Promise<boolean> {
     try {
-      // First check if the file exists
+      // First check if the file exists in MinIO
       let fileExists = true;
       try {
         await this.minioClient.statObject(bucket, objectName);
       } catch (statError) {
         if (statError.code === 'NotFound') {
           fileExists = false;
-          // If the file doesn't exist, return true since the goal of deleting is already achieved
-          return true;
+        } else {
+          throw statError;
         }
-        // For other errors, rethrow
-        throw statError;
       }
 
-      // Only proceed with deletion if the file exists
-      if (fileExists) {
-        // Delete the main file
-        await this.minioClient.removeObject(bucket, objectName);
+      // Find file in database
+      const dbFile =
+        await this.fileRepositoryService.findByUniqueName(objectName);
 
-        // Also try to delete the thumbnail if it exists
+      // Delete file from MinIO if it exists
+      if (fileExists) {
+        await this.minioClient.removeObject(bucket, objectName);
+        this.logger.log(
+          `Deleted file ${objectName} from MinIO bucket ${bucket}`,
+        );
+
+        // Also delete thumbnail if it exists
         try {
           const thumbnailName = `${this.config.thumbnailPrefix}${objectName}`;
-
-          // Check if thumbnail exists before trying to delete
-          let thumbnailExists = true;
-          try {
-            await this.minioClient.statObject(bucket, thumbnailName);
-          } catch (thumbnailStatError) {
-            if (thumbnailStatError.code === 'NotFound') {
-              thumbnailExists = false;
-            } else {
-              throw thumbnailStatError;
-            }
-          }
-
-          if (thumbnailExists) {
-            await this.minioClient.removeObject(bucket, thumbnailName);
-            this.logger.log(
-              `Deleted thumbnail ${thumbnailName} from bucket ${bucket}`,
-            );
-          }
+          await this.minioClient.removeObject(bucket, thumbnailName);
+          this.logger.log(
+            `Deleted thumbnail ${thumbnailName} from bucket ${bucket}`,
+          );
         } catch (thumbnailError) {
-          // Log but don't fail the main operation for thumbnail-related issues
           this.logger.warn(
-            `Error handling thumbnail during deletion: ${thumbnailError.message}`,
+            `Error deleting thumbnail: ${thumbnailError.message}`,
           );
         }
+      }
+
+      // Delete from database if record exists
+      if (dbFile) {
+        await this.fileRepositoryService.remove(dbFile.id);
+        this.logger.log(
+          `Deleted file record with ID ${dbFile.id} from database`,
+        );
+      } else {
+        this.logger.warn(`No database record found for file ${objectName}`);
       }
 
       return true;
@@ -1135,12 +1141,13 @@ export class MinioFilesService {
     objectName: string,
     outputStream: Writable,
   ): Promise<void> {
+    let objectStream: Readable;
     try {
       // Get the object stream from MinIO
-      const objectStream = await this.minioClient.getObject(bucket, objectName);
+      objectStream = await this.minioClient.getObject(bucket, objectName);
 
       // Pipe the stream to the output, with error handling
-      return pipelineAsync(objectStream, outputStream);
+      return await pipelineAsync(objectStream, outputStream);
     } catch (error) {
       if (error.code === 'NotFound') {
         throw new NotFoundException(
@@ -1152,6 +1159,11 @@ export class MinioFilesService {
       throw new InternalServerErrorException(
         `Failed to stream file: ${error.message}`,
       );
+    } finally {
+      // Ensure we clean up if needed
+      if (objectStream && typeof objectStream.destroy === 'function') {
+        objectStream.destroy();
+      }
     }
   }
 

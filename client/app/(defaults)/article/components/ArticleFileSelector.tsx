@@ -1,11 +1,9 @@
-'use client';
-
+// ArticleFileSelector.tsx
 import React, { useState, useEffect } from 'react';
 import { FileData } from '@/components/modules/files-manager/types';
-import FileManager from '@/components/modules/files-manager/FileManager';
-import { Tabs, Tab, Paper, Chip, Box, Typography, Button, IconButton } from '@mui/material';
-import { FiFileText, FiUpload, FiX, FiPlus } from 'react-icons/fi';
-import { MultiFileUpload, SingleFileUpload } from '@/components/modules/upload-files';
+import { Chip, Typography, Box, Alert } from '@mui/material';
+import { FiX } from 'react-icons/fi';
+import { MultiFileUpload } from '@/components/modules/upload-files';
 
 interface ArticleFileSelectorProps {
   selectedFileIds: string[];
@@ -18,46 +16,57 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
   onSelectedFilesChange,
   errors,
 }) => {
-  const [tabValue, setTabValue] = useState(0);
-  const [selectedFiles, setSelectedFiles] = useState<FileData[]>([]);
-  const [uploadCompleted, setUploadCompleted] = useState(false);
-
-  // Update selected files when IDs change
-  useEffect(() => {
-    // This would be used when editing an article to show the already selected files
-    // In a real implementation, you'd fetch file metadata for these IDs
-    // For now, we'll just keep track of selected files from the FileManager
-  }, [selectedFileIds]);
-
-  // Handle tab change
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
-
-  // Handle file selection from FileManager
-  const handleFileSelect = (files: FileData[]) => {
-    setSelectedFiles(files);
-    onSelectedFilesChange(files.map((file) => file.id));
-  };
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<{ id: string; name: string }[]>([]);
 
   // Handle file upload success
-  const handleUploadSuccess = (result: any) => {
-    setUploadCompleted(true);
+  const handleUploadComplete = (uploadedFiles: any[]) => {
+    // Extract IDs from uploaded files and add to selectedFileIds
+    const newFileIds = uploadedFiles
+      .map((file) => {
+        // Extract ID from the file metadata or response
+        const fileId = file.metadata?.id || file.response?.data?.files?.[0]?.id;
+        const fileName = file.fileData?.name || file.metadata?.originalName;
 
-    // After a successful upload, we might want to switch to the file selector tab
-    // to let the user select the newly uploaded file
-    setTimeout(() => {
-      setTabValue(0);
-      setUploadCompleted(false);
-    }, 1500);
+        if (fileId) {
+          // Add to selected files for display
+          setSelectedFiles((prev) => [...prev, { id: fileId, name: fileName }]);
+          return fileId;
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    // Update parent component with new file IDs
+    if (newFileIds.length > 0) {
+      onSelectedFilesChange([...selectedFileIds, ...newFileIds]);
+      setUploadSuccess(true);
+
+      // Hide success message after 3 seconds
+      setTimeout(() => setUploadSuccess(false), 3000);
+    }
   };
 
   // Remove a selected file
   const handleRemoveFile = (fileId: string) => {
-    const updatedFiles = selectedFiles.filter((file) => file.id !== fileId);
-    setSelectedFiles(updatedFiles);
-    onSelectedFilesChange(updatedFiles.map((file) => file.id));
+    onSelectedFilesChange(selectedFileIds.filter((id) => id !== fileId));
+    setSelectedFiles((prev) => prev.filter((file) => file.id !== fileId));
   };
+
+  // Load initial file data if IDs are provided
+  useEffect(() => {
+    // This would ideally fetch file metadata for existing IDs
+    // For simplicity, we'll just update the display if we don't have the file names
+    if (selectedFileIds.length > 0 && selectedFiles.length === 0) {
+      // You could fetch file metadata here if needed
+      // For now, just use IDs as names if we don't have the actual files
+      const initialFiles = selectedFileIds.map((id) => ({
+        id,
+        name: `File ${id.substring(0, 8)}...`,
+      }));
+      setSelectedFiles(initialFiles);
+    }
+  }, [selectedFileIds, selectedFiles.length]);
 
   return (
     <div className="w-full">
@@ -81,68 +90,23 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
         </div>
       )}
 
-      <Paper className="overflow-hidden">
-        {/* Tabs */}
-        <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
-          <Tab icon={<FiFileText />} label="انتخاب فایل" />
-          <Tab icon={<FiUpload />} label="آپلود فایل جدید" />
-        </Tabs>
+      {/* Success message */}
+      {uploadSuccess && (
+        <Alert severity="success" className="mb-3">
+          فایل با موفقیت آپلود و به مقاله اضافه شد
+        </Alert>
+      )}
 
-        {/* Tab panels */}
-        <div className="px-4 pb-4 pt-2">
-          {/* File selector tab */}
-          <div role="tabpanel" hidden={tabValue !== 0}>
-            {tabValue === 0 && (
-              <div className="h-96">
-                <FileManager
-                  ownerId="article-file-selector"
-                  bucket="default"
-                  allowMultiSelect={true}
-                  onFileSelect={handleFileSelect}
-                  defaultView="grid"
-                  maxHeight="350px"
-                  title="انتخاب فایل‌ها"
-                  emptyText="هیچ فایلی موجود نیست. لطفا به تب آپلود فایل بروید و فایل‌های خود را آپلود کنید."
-                />
-              </div>
-            )}
-          </div>
-
-          {/* File upload tab */}
-          <div role="tabpanel" hidden={tabValue !== 1}>
-            {tabValue === 1 && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <Typography variant="subtitle2" className="mb-2">
-                    آپلود تکی
-                  </Typography>
-                  <SingleFileUpload
-                    id="article-single-upload"
-                    bucket="default"
-                    acceptedFileTypes="image/*,application/pdf,video/*,audio/*"
-                    maxSizeMB={50}
-                    onUploadSuccess={handleUploadSuccess}
-                    uploadingDependsToForm={true}
-                  />
-                </div>
-
-                <div>
-                  <Typography variant="subtitle2" className="mb-2">
-                    آپلود چندتایی
-                  </Typography>
-                  <MultiFileUpload
-                    id="article-multi-upload"
-                    bucket="default"
-                    acceptedFileTypes="image/*,application/pdf,video/*,audio/*"
-                    maxSizeMB={100}
-                    onUploadComplete={handleUploadSuccess}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </Paper>
+      {/* Upload component */}
+      <Box className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+        <MultiFileUpload
+          id="article-multi-upload"
+          bucket="default"
+          acceptedFileTypes="image/*,application/pdf,video/*,audio/*"
+          maxSizeMB={100}
+          onUploadComplete={handleUploadComplete}
+        />
+      </Box>
 
       {/* Error display */}
       {errors && errors.length > 0 && (
@@ -150,13 +114,6 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
           {errors.map((error, index) => (
             <div key={index}>{error}</div>
           ))}
-        </div>
-      )}
-
-      {/* Upload success message */}
-      {uploadCompleted && (
-        <div className="mt-3 rounded-md bg-green-50 p-3 text-green-700 dark:bg-green-900 dark:text-green-100">
-          <p>فایل با موفقیت آپلود شد. می‌توانید به تب انتخاب فایل بروید و آن را انتخاب کنید.</p>
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { ResponseArticleDto } from '@/store/features/article/article.model';
 import { useArticleEditor } from '../hooks/useArticleEditor';
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
@@ -33,6 +33,13 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
     initialArticle,
     isEditMode,
   });
+
+  const handleFileIdsChange = useCallback(
+    (fileIds: string[]) => {
+      handleInputChange('fileIds', fileIds);
+    },
+    [handleInputChange],
+  );
 
   // Handle direct input change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,8 +133,8 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
         {/* File selection */}
         <div>
           <ArticleFileSelector
-            selectedFileIds={formState.fileIds}
-            onSelectedFilesChange={(fileIds) => handleInputChange('fileIds', fileIds)}
+            selectedFileIds={formState.fileIds || []}
+            onSelectedFilesChange={handleFileIdsChange}
             errors={errors.fileIds}
           />
         </div>

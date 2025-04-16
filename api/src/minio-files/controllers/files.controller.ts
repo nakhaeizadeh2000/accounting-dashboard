@@ -39,7 +39,7 @@ export class FilesController {
     (ability: AppAbility) =>
       ability.can('read', 'Files') || ability.can('super-modify', 'Files'),
   )
-  findAll() {
+  async findAll() {
     return this.fileService.findAll();
   }
 

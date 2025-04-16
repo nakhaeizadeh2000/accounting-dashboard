@@ -10,7 +10,7 @@ import {
 import { Expose } from 'class-transformer';
 
 export class ResponseFileDto {
-  @ApiProperty({ description: 'File ID' })
+  @ApiProperty({ description: 'File ID (from database)' })
   @IsUUID()
   @Expose()
   id: string;

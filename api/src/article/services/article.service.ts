@@ -200,16 +200,15 @@ export class ArticleService {
       .leftJoinAndSelect('article.files', 'files') // Include files
       .where('article.id = :id', { id });
 
-    // Add the permission conditions correctly based on the type returned
+    // Add permission conditions correctly based on the type returned
     if (Array.isArray(permissionConditions)) {
       // If it's a tuple [string, object], apply it correctly
       queryBuilder.andWhere(permissionConditions[0], permissionConditions[1]);
     } else {
-      // It's a FindOptionsWhere object - convert it to a query builder condition
-      // Use explicit type casting to help TypeScript
-      const conditions = permissionConditions as FindOptionsWhere<Article>;
+      // If it's a conditions object, apply the authorId condition
+      // Cast to the correct type for TypeScript
+      const conditions = permissionConditions as any;
 
-      // If it's a conditions object, apply it to the query builder
       for (const key in conditions) {
         if (Object.prototype.hasOwnProperty.call(permissionConditions, key)) {
           queryBuilder.andWhere(`article.${key} = :${key}`, {

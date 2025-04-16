@@ -130,7 +130,6 @@ export class MinioFilesController {
 
         throw new ValidationException(errorMessages);
       }
-
       return {
         message: 'Files uploaded successfully',
         files: successfulUploads,
@@ -170,6 +169,7 @@ export class MinioFilesController {
 
       // Convert FileMetadata to FileMetadataDto
       const fileDto: FileMetadataDto = {
+        id: result.id,
         originalName: filename, // Ensure we use the original filename passed to the method
         uniqueName: result.uniqueName,
         size: result.size,
@@ -183,12 +183,15 @@ export class MinioFilesController {
 
       // Add to results array
       results.push(fileDto);
-      this.logger.log(`Successfully uploaded: ${filename}`);
+      this.logger.log(
+        `Successfully uploaded: ${filename} with ID ${result.id}`,
+      );
     } catch (error) {
       this.logger.error(`Error processing file ${filename}: ${error.message}`);
 
       // Create an error result to include in the response
       results.push({
+        id: '', // No ID for failed uploads
         originalName: filename, // Again, preserve the original filename
         uniqueName: '',
         size: 0,
@@ -233,99 +236,82 @@ export class MinioFilesController {
     @Res() response?: FastifyReply,
   ): Promise<DownloadUrlResponseDto | void> {
     try {
-      // Get file metadata to determine content type and original filename
-      const metadata = await this.minioService.getFileMetadata(
-        bucket,
-        filename,
+      // Check if this is a thumbnail request
+      const isThumbnail = filename.startsWith(
+        this.minioService.config.thumbnailPrefix,
       );
 
-      // Fix for application/octet-stream files - detect MIME type from extension
-      if (metadata.mimetype === 'application/octet-stream') {
-        const extension = metadata.originalName.split('.').pop()?.toLowerCase();
-
-        // Image extensions
-        if (
-          extension &&
-          ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(
-            extension,
-          )
-        ) {
-          metadata.mimetype =
-            extension === 'svg'
-              ? 'image/svg+xml'
-              : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
-        }
-        // Video extensions
-        else if (
-          extension &&
-          ['mp4', 'webm', 'ogg', 'mov', 'avi', 'wmv', 'mkv'].includes(extension)
-        ) {
-          metadata.mimetype = `video/${extension === 'mov' ? 'quicktime' : extension}`;
-        }
-        // Audio extensions
-        else if (
-          extension &&
-          ['mp3', 'wav', 'ogg', 'aac', 'flac'].includes(extension)
-        ) {
-          metadata.mimetype = `audio/${extension}`;
-        }
-        // PDF
-        else if (extension === 'pdf') {
-          metadata.mimetype = 'application/pdf';
-        }
-      }
-
-      // If direct=true is specified or the file type is in the direct download list, stream the file directly
-      if (
-        direct === 'true' ||
-        this.minioService.isDirectDownloadType(metadata.mimetype)
-      ) {
-        // Set appropriate headers for download/viewing
-        const isAttachment =
-          direct === 'true' && !metadata.mimetype.startsWith('image/');
-        const disposition = isAttachment
-          ? `attachment; filename="${encodeURIComponent(metadata.originalName)}"`
-          : `inline; filename="${encodeURIComponent(metadata.originalName)}"`;
-
-        response.header('Content-Disposition', disposition);
-        response.header('Content-Type', metadata.mimetype);
-        response.header('Content-Length', metadata.size.toString());
-
-        // Add strong cache headers for better performance
-        // Use ETag for cache validation
-        const etag = `"${metadata.uniqueName}"`;
-        response.header('ETag', etag);
-        response.header('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-
-        // Handle conditional requests to support browser caching
-        const ifNoneMatch = response.request.headers['if-none-match'];
-        if (ifNoneMatch && ifNoneMatch === etag) {
-          // If ETag matches, return 304 Not Modified
-          response.status(304).send();
-          return;
-        }
-
-        // Add CORS headers for cross-origin requests
-        response.header('Access-Control-Allow-Origin', '*');
-        response.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        response.header(
-          'Access-Control-Allow-Headers',
-          'Content-Type, If-None-Match',
-        );
-
-        // Start streaming the file directly to the response
-        const fileStream = await this.minioService.getFileStream(
+      try {
+        // Get metadata - this will now handle thumbnails
+        const metadata = await this.minioService.getFileMetadata(
           bucket,
           filename,
         );
-        return response.send(fileStream);
-      } else {
-        // For fallback, generate a direct API URL instead of a presigned URL
-        const directUrl = `/api/files/download/${bucket}/${filename}`;
-        return { url: directUrl };
+
+        // Stream file directly from MinIO to client (for direct=true)
+        if (
+          direct === 'true' ||
+          this.minioService.isDirectDownloadType(metadata.mimetype)
+        ) {
+          // Set appropriate headers using metadata
+          const isAttachment =
+            direct === 'true' && !metadata.mimetype.startsWith('image/');
+          const disposition = isAttachment
+            ? `attachment; filename="${encodeURIComponent(metadata.originalName)}"`
+            : `inline; filename="${encodeURIComponent(metadata.originalName)}"`;
+
+          response.header('Content-Disposition', disposition);
+          response.header('Content-Type', metadata.mimetype);
+          if (metadata.size > 0) {
+            response.header('Content-Length', metadata.size.toString());
+          }
+
+          // Stream directly from MinIO to client
+          const fileStream = await this.minioService.getFileStream(
+            bucket,
+            filename,
+          );
+          return response.send(fileStream);
+        } else {
+          // Return URL for indirect download
+          const directUrl = `/api/files/download/${bucket}/${filename}`;
+          return { url: directUrl };
+        }
+      } catch (metadataError) {
+        // If it's a not found error for thumbnails, we can try to stream directly from MinIO
+        if (isThumbnail && metadataError instanceof NotFoundException) {
+          try {
+            // Try to check if the file exists directly in MinIO
+            const fileStream = await this.minioService.getFileStream(
+              bucket,
+              filename,
+            );
+
+            // Set headers for the thumbnail
+            response.header(
+              'Content-Disposition',
+              `inline; filename="${encodeURIComponent(filename)}"`,
+            );
+            response.header(
+              'Content-Type',
+              this.minioService.getMimeTypeFromFilename(filename),
+            );
+
+            // Stream directly
+            return response.send(fileStream);
+          } catch (minioError) {
+            throw new NotFoundException(
+              `File "${filename}" not found in bucket "${bucket}"`,
+            );
+          }
+        } else {
+          // Re-throw the original error
+          throw metadataError;
+        }
       }
     } catch (error) {
-      if (error.code === 'NotFound') {
+      // Error handling
+      if (error.code === 'NotFound' || error instanceof NotFoundException) {
         throw new NotFoundException(
           `File "${filename}" not found in bucket "${bucket}"`,
         );
@@ -387,6 +373,7 @@ export class MinioFilesController {
       );
       // Convert FileMetadata to FileMetadataDto
       const metadataDto: FileMetadataDto = {
+        id: metadata.id,
         originalName: metadata.originalName,
         uniqueName: metadata.uniqueName,
         size: metadata.size,
@@ -424,6 +411,7 @@ export class MinioFilesController {
 
       // Convert FileMetadata[] to FileMetadataDto[]
       const filesDtos: FileMetadataDto[] = serviceFiles.map((file) => ({
+        id: file.id,
         originalName: file.originalName,
         uniqueName: file.uniqueName,
         size: file.size,

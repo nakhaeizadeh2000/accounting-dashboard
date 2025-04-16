@@ -9,9 +9,14 @@ import {
   Min,
   Max,
   ValidateIf,
+  IsUUID,
 } from 'class-validator';
 
 export class FileMetadataDto {
+  @ApiProperty({ description: 'File ID (from database)' })
+  @IsUUID()
+  id: string;
+
   @ApiProperty({ description: 'Original file name' })
   @IsString()
   originalName: string;
