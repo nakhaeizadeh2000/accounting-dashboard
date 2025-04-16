@@ -1,6 +1,6 @@
 // src/article/services/article.service.ts
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { DataSource, Repository, In } from 'typeorm';
+import { DataSource, Repository, In, FindOptionsWhere } from 'typeorm';
 import { Article } from '../entities/article.entity';
 import { CreateArticleDto } from '../dto/create-article.dto';
 import { UpdateArticleDto } from '../dto/update-article.dto';
@@ -194,12 +194,32 @@ export class ArticleService {
       'article',
     );
 
-    const article = await this.articleRepository
+    // Create the query builder
+    const queryBuilder = this.articleRepository
       .createQueryBuilder('article')
       .leftJoinAndSelect('article.files', 'files') // Include files
-      .where('article.id = :id', { id })
-      .andWhere(...permissionConditions)
-      .getOne();
+      .where('article.id = :id', { id });
+
+    // Add the permission conditions correctly based on the type returned
+    if (Array.isArray(permissionConditions)) {
+      // If it's a tuple [string, object], apply it correctly
+      queryBuilder.andWhere(permissionConditions[0], permissionConditions[1]);
+    } else {
+      // It's a FindOptionsWhere object - convert it to a query builder condition
+      // Use explicit type casting to help TypeScript
+      const conditions = permissionConditions as FindOptionsWhere<Article>;
+
+      // If it's a conditions object, apply it to the query builder
+      for (const key in conditions) {
+        if (Object.prototype.hasOwnProperty.call(permissionConditions, key)) {
+          queryBuilder.andWhere(`article.${key} = :${key}`, {
+            [key]: permissionConditions[key],
+          });
+        }
+      }
+    }
+
+    const article = await queryBuilder.getOne();
 
     if (!article) {
       throw new NotFoundException(`Article with ID "${id}" not found`);

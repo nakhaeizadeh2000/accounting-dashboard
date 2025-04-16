@@ -27,6 +27,7 @@ import { FiEdit3, FiEye, FiTrash2, FiDownload, FiFilePlus } from 'react-icons/fi
 import ButtonLoading from '@/components/modules/loadings/ButtonLoading';
 import useDebounce from '@/shared/hooks/useDebounce.hook';
 import { ARTICLE_ROUTES } from '..';
+import { parseISO } from 'date-fns-jalali';
 
 const EnhancedArticleListComponent: React.FC = () => {
   const router = useRouter();
@@ -133,8 +134,21 @@ const EnhancedArticleListComponent: React.FC = () => {
 
   // Format date for display
   const formatDate = (dateString: string | Date): string => {
-    const date = new Date(dateString);
-    return format(date, 'yyyy/MM/dd HH:mm');
+    try {
+      // If already a Date object, use it directly
+      const date = dateString instanceof Date ? dateString : new Date(dateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date detected:', dateString);
+        return 'Invalid date';
+      }
+
+      return format(date, 'yyyy/MM/dd HH:mm');
+    } catch (err) {
+      console.error('Date formatting error:', err, 'for date string:', dateString);
+      return 'Invalid date';
+    }
   };
 
   // Navigate to create new article
@@ -144,25 +158,33 @@ const EnhancedArticleListComponent: React.FC = () => {
 
   // Define columns for the DataGrid
   const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 70 },
-    { field: 'title', headerName: 'عنوان', width: 230, flex: 1 },
-    { field: 'authorId', headerName: 'نویسنده', width: 180 },
+    // { field: 'id', headerName: 'ID', width: 70 },
+    { field: 'title', headerName: 'عنوان', width: 200 },
+    { field: 'authorId', headerName: 'نویسنده', width: 180, flex: 1 },
     {
       field: 'createdAt',
       headerName: 'تاریخ ایجاد',
       width: 150,
-      valueFormatter: (params: any) => formatDate(params.value),
+      valueFormatter: (params) => {
+        // Guard against undefined values
+        if (!params) return '-';
+        return formatDate(params);
+      },
     },
     {
       field: 'updatedAt',
       headerName: 'تاریخ بروزرسانی',
       width: 150,
-      valueFormatter: (params: any) => formatDate(params.value),
+      valueFormatter: (params) => {
+        // Guard against undefined values
+        if (!params) return '-';
+        return formatDate(params);
+      },
     },
     {
       field: 'actions',
       headerName: 'عملیات',
-      width: 200,
+      width: 120,
       sortable: false,
       filterable: false,
       renderCell: (params) => (

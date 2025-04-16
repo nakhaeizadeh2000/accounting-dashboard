@@ -34,6 +34,11 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
     isEditMode,
   });
 
+  // Handle direct input change
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleInputChange('title', e.target.value);
+  };
+
   return (
     <Paper className="p-6 dark:bg-gray-800">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -69,6 +74,7 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
               defaultValue: formState.title,
               fieldError: errors.title,
               containerClass: 'w-full',
+              onChange: handleTitleChange,
             }}
           />
         </div>
@@ -79,7 +85,9 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               نویسنده
             </label>
+            {/* Use key to force remount when selectedAuthor changes */}
             <UserSingleSelectWidget
+              key={selectedAuthor.map((a) => a.value).join(',')}
               options={{
                 onChange: handleAuthorSelect,
                 value: selectedAuthor,

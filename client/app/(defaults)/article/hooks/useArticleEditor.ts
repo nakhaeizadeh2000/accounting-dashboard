@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   CreateArticleDto,
   UpdateArticleDto,
@@ -28,6 +28,12 @@ interface ArticleFormErrors {
   formErrors?: string[];
 }
 
+interface ArticleFormTouched {
+  title: boolean;
+  content: boolean;
+  fileIds: boolean;
+}
+
 interface UseArticleEditorOptions {
   initialArticle?: ResponseArticleDto;
   isEditMode?: boolean;
@@ -44,10 +50,18 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
     fileIds: initialArticle?.files?.map((f) => f.id) || [],
   });
 
-  // Selected author
-  const [selectedAuthor, setSelectedAuthor] = useState<ItemType[]>(
+  // Track which fields have been touched (for validation)
+  const [touched, setTouched] = useState<ArticleFormTouched>({
+    title: false,
+    content: false,
+    fileIds: false,
+  });
+
+  // Selected author - use a ref to prevent re-renders that cause the dropdown error
+  const authorRef = useRef<ItemType[]>(
     initialArticle ? [{ value: initialArticle.authorId, label: initialArticle.authorId }] : [],
   );
+  const [selectedAuthor, setSelectedAuthor] = useState<ItemType[]>(authorRef.current);
 
   // Form errors
   const [errors, setErrors] = useState<ArticleFormErrors>({});
@@ -75,15 +89,29 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
           label: initialArticle.authorId,
         },
       ]);
+
+      authorRef.current = [
+        {
+          value: initialArticle.authorId,
+          label: initialArticle.authorId,
+        },
+      ];
     }
   }, [initialArticle, isEditMode]);
 
   // Handle input changes
   const handleInputChange = useCallback(
     (name: keyof ArticleFormState, value: any) => {
+      // Update form state
       setFormState((prev) => ({
         ...prev,
         [name]: value,
+      }));
+
+      // Mark field as touched
+      setTouched((prev) => ({
+        ...prev,
+        [name]: true,
       }));
 
       // Clear error for this field when user types
@@ -100,21 +128,77 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
   // Handle author selection
   const handleAuthorSelect = useCallback(
     (authors: ItemType[]) => {
-      setSelectedAuthor(authors);
+      // Update the ref first to avoid rendering issues
+      authorRef.current = authors;
 
-      // Clear form errors if there was an author-related error
-      if (errors.formErrors) {
-        setErrors((prev) => ({
-          ...prev,
-          formErrors: undefined,
-        }));
-      }
+      // Update state outside of render cycle
+      setTimeout(() => {
+        setSelectedAuthor(authors);
+
+        // Clear form errors if there was an author-related error
+        if (errors.formErrors) {
+          setErrors((prev) => ({
+            ...prev,
+            formErrors: undefined,
+          }));
+        }
+      }, 0);
     },
     [errors],
   );
 
-  // Validate form
+  // Validate a single field
+  const validateField = useCallback(
+    (name: keyof ArticleFormState): boolean => {
+      let isValid = true;
+      const fieldErrors: string[] = [];
+
+      switch (name) {
+        case 'title':
+          if (!formState.title.trim()) {
+            fieldErrors.push('عنوان مقاله الزامی است');
+            isValid = false;
+          } else if (formState.title.length < 3) {
+            fieldErrors.push('عنوان مقاله باید حداقل 3 کاراکتر باشد');
+            isValid = false;
+          }
+          break;
+
+        case 'content':
+          if (!formState.content.trim()) {
+            fieldErrors.push('محتوای مقاله الزامی است');
+            isValid = false;
+          } else if (formState.content.length < 10) {
+            fieldErrors.push('محتوای مقاله باید حداقل 10 کاراکتر باشد');
+            isValid = false;
+          }
+          break;
+
+        // Add validation for fileIds if needed
+      }
+
+      // Only update errors if field has been touched
+      if (touched[name] && fieldErrors.length > 0) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]: fieldErrors,
+        }));
+      }
+
+      return isValid;
+    },
+    [formState, touched],
+  );
+
+  // Validate the whole form
   const validateForm = useCallback((): boolean => {
+    // Mark all fields as touched
+    setTouched({
+      title: true,
+      content: true,
+      fileIds: true,
+    });
+
     const newErrors: ArticleFormErrors = {};
 
     if (!formState.title.trim()) {
@@ -129,13 +213,13 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
       newErrors.content = ['محتوای مقاله باید حداقل 10 کاراکتر باشد'];
     }
 
-    if (!isEditMode && !selectedAuthor.length) {
+    if (!isEditMode && !authorRef.current.length) {
       newErrors.formErrors = ['انتخاب نویسنده الزامی است'];
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formState, selectedAuthor, isEditMode]);
+  }, [formState, isEditMode]);
 
   // Submit form
   const handleSubmit = useCallback(
@@ -184,7 +268,7 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
           }
         } else {
           // Create new article
-          if (!selectedAuthor.length) {
+          if (!authorRef.current.length) {
             setErrors({
               formErrors: ['انتخاب نویسنده الزامی است'],
             });
@@ -195,7 +279,7 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
           const createData: CreateArticleDto = {
             title: formState.title,
             content: formState.content,
-            authorId: selectedAuthor[0].value.toString(),
+            authorId: authorRef.current[0].value.toString(),
             fileIds: formState.fileIds,
           };
 
@@ -229,16 +313,7 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
         setIsSubmitting(false);
       }
     },
-    [
-      validateForm,
-      isEditMode,
-      initialArticle,
-      formState,
-      selectedAuthor,
-      updateArticle,
-      createArticle,
-      router,
-    ],
+    [validateForm, isEditMode, initialArticle, formState, updateArticle, createArticle, router],
   );
 
   // Handle cancellation
@@ -254,10 +329,12 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
     formState,
     selectedAuthor,
     errors,
+    touched,
     isSubmitting: isSubmitting || isCreating || isUpdating,
     isSubmitSuccess,
     handleInputChange,
     handleAuthorSelect,
+    validateField,
     handleSubmit,
     handleCancel,
   };

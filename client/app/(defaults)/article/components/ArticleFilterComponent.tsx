@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { ArticleFilterFormData } from '@/schemas/validations/article/article.schema';
 import { Button, TextField, IconButton, Collapse } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers-pro';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+// import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 import { FiFilter, FiX, FiSearch, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import UserSingleSelectWidget from '../../UserSingleSelectWidget';
+import { AdapterDateFnsJalali } from '@mui/x-date-pickers/AdapterDateFnsJalaliV3';
 
 interface ArticleFilterComponentProps {
   onFilter: (filters: ArticleFilterFormData) => void;
@@ -166,7 +167,7 @@ const ArticleFilterComponent: React.FC<ArticleFilterComponentProps> = ({
           </div>
 
           {/* Date range */}
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <LocalizationProvider dateAdapter={AdapterDateFnsJalali}>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 از تاریخ
