@@ -17,6 +17,7 @@ import SimpleButtonExample from '@/components/modules/button/examples/SimpleButt
 import FactoryExample from '@/components/modules/button-advanced/examples/ButtonFactoryExample';
 import ButtonUsageExamples from '@/components/modules/button-advanced/examples/ButtonUsageExample';
 import HooksExample from '@/components/modules/button-advanced/examples/HooksExample';
+import Modal from '@/components/modules/modal/Modal';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -90,6 +91,15 @@ const ErfanTestForm = () => {
       <FactoryExample />
       <ButtonUsageExamples />
       <HooksExample />
+      <hr className="m-4" />
+      <span className="text-lg">modal</span>
+      <Modal
+        options={{
+          title: 'Modal Title',
+          text: 'This is a modal message.',
+          icon: 'success',
+        }}
+      />
     </div>
   );
 };
