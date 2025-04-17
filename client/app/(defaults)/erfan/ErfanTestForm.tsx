@@ -98,6 +98,9 @@ const ErfanTestForm = () => {
           title: 'Modal Title',
           text: 'This is a modal message.',
           icon: 'success',
+          showCloseButton: true,
+          showConfirmButton: true,
+          showClass: {},
         }}
       />
     </div>
