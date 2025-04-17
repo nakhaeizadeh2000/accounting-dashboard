@@ -1,3 +1,4 @@
+import BadgesComponents from '@/components/modules/badges/BadgesComponents';
 import { Metadata } from 'next';
 
 import SimpleFileManager from '@/components/modules/files-manager/eamples/SimpleFileManager';

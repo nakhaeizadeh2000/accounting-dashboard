@@ -3,6 +3,7 @@ import { RxAlignBaseline, RxCardStackPlus } from 'react-icons/rx';
 import { SideBarNavItems } from '@/shared/types/sidebar-nav.model';
 import { BsPersonVcard } from 'react-icons/bs';
 import { FiFileText } from 'react-icons/fi';
+import { FaUserGear } from 'react-icons/fa6';
 
 export const sideBarMenu: SideBarNavItems[] = [
   {
@@ -36,6 +37,12 @@ export const sideBarMenu: SideBarNavItems[] = [
           { name: 'لیست مقالات', link: '/article/main/list', IconComponent: CiBookmarkCheck },
           { name: 'افزودن مقاله جدید', link: '/article/main/add', IconComponent: CiBookmarkCheck },
         ],
+      },
+      {
+        name: 'عرفان',
+        type: 'link',
+        link: '/erfan',
+        IconComponent: FaUserGear,
       },
       //     {
       //       IconComponent: Fa42Group,
