@@ -41,7 +41,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   // Parse acceptedFileTypes string into an array if provided
   const allowedMimeTypes = acceptedFileTypes ? acceptedFileTypes.split(',') : undefined;
 
-  // Use the hook for multi-file upload functionality
+  // Use the hook for multi-file upload functionality - properly pass all props
   const {
     componentId,
     queue,
@@ -63,7 +63,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
     maxSizeMB,
     allowedMimeTypes,
     onUploadComplete,
-    onAllUploadsComplete,
+    onAllUploadsComplete, // Make sure this prop is passed through
     onError,
   });
 

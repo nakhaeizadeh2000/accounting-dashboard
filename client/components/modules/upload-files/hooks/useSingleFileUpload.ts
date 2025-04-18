@@ -44,7 +44,7 @@ const useSingleFileUpload = (
     onFileSelect: externalFileSelectHandler,
   } = options;
 
-  // Create a stable instance ID for this component
+  // Create a stable instance ID for this component, using provided ID or generating a unique one
   const componentIdRef = useRef<string>(providedId || `single-upload-${uuidv4()}`);
 
   // Store file locally in the hook instead of in a global Map
@@ -61,6 +61,9 @@ const useSingleFileUpload = (
 
   // Track if we've already called success callback for the current file
   const [successCallbackCalled, setSuccessCallbackCalled] = useState(false);
+
+  // Track processed files to prevent duplicate callbacks
+  const processedFilesRef = useRef<Set<string>>(new Set());
 
   // Get files from Redux for this component only
   const componentFiles = useSelector(selectFilesByOwnerId(componentIdRef.current));
@@ -100,10 +103,13 @@ const useSingleFileUpload = (
         currentFile.status === 'completed' &&
         onUploadSuccess &&
         (currentFile.response || currentFile.metadata) &&
-        !successCallbackCalled
+        !successCallbackCalled &&
+        !processedFilesRef.current.has(currentFile.id)
       ) {
-        // Pass metadata if available, otherwise pass the entire response
-        // Extract from the nested data structure if needed
+        // Mark this file as processed
+        processedFilesRef.current.add(currentFile.id);
+
+        // Extract data from the nested response structure if needed
         const responseData =
           currentFile.response?.data?.files?.[0] ||
           currentFile.response?.files?.[0] ||
@@ -145,6 +151,9 @@ const useSingleFileUpload = (
 
       // Reset success callback state
       setSuccessCallbackCalled(false);
+
+      // Reset processed files reference
+      processedFilesRef.current = new Set();
 
       if (newFile) {
         // Generate new ID for this file with component ID to ensure uniqueness
@@ -197,6 +206,28 @@ const useSingleFileUpload = (
     setErrorMessage(reason);
   }, []);
 
+  // Extract file ID from response in a robust way
+  const extractFileId = useCallback((response: any) => {
+    // Try multiple paths to find file ID
+    if (response?.data?.files?.[0]?.id) {
+      return response.data.files[0].id;
+    }
+
+    if (response?.files?.[0]?.id) {
+      return response.files[0].id;
+    }
+
+    if (response?.data?.id) {
+      return response.data.id;
+    }
+
+    if (response?.id) {
+      return response.id;
+    }
+
+    return null;
+  }, []);
+
   // Start the upload process using RTK Query
   const startUpload = useCallback(async () => {
     if (!fileId.current || !file) return null;
@@ -236,6 +267,12 @@ const useSingleFileUpload = (
       if (onUploadSuccess && !successCallbackCalled) {
         // Extract the file data from the nested response structure
         const fileData = result.data?.files?.[0] || {};
+
+        // Mark this file as processed to prevent duplicate callbacks
+        if (fileId.current) {
+          processedFilesRef.current.add(fileId.current);
+        }
+
         onUploadSuccess(fileData);
         setSuccessCallbackCalled(true);
       }
@@ -333,6 +370,9 @@ const useSingleFileUpload = (
     setErrorMessage('');
     setSuccessCallbackCalled(false);
     fileId.current = null;
+
+    // Reset processed files reference
+    processedFilesRef.current = new Set();
   }, [dispatch]);
 
   // Clean up on unmount

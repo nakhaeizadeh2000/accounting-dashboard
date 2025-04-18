@@ -11,11 +11,12 @@ type Props = {
     onChange: (item: ItemType[]) => void;
     value: ItemType[];
     containerClass: string;
+    title?: string;
   };
 };
 
 const UserSingleSelectWidget = ({
-  options: { onChange, containerClass = 'w-full', value },
+  options: { onChange, containerClass = 'w-full', value, title = 'کاربر' },
 }: Props) => {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Array<UserFormData & { id: string }>>([]);
@@ -78,7 +79,7 @@ const UserSingleSelectWidget = ({
         isLoading: isLoading || isLoadingMore,
         onFullScroll: handleFullScroll,
         isLTR: true,
-        label: 'کاریر',
+        label: title,
         selectedValue: value,
         containerClass: containerClass,
         items: dropdownItems,

@@ -69,6 +69,7 @@ export interface FileUploadResponse {
 export interface FileUploadInfo {
   id: string;
   ownerId: string;
+  isUploading: boolean;
   fileData: FileData;
   status: FileUploadStatus;
   progress: number;

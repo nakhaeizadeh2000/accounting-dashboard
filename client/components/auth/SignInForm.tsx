@@ -8,11 +8,11 @@ import { useSignInMutation } from '@/store/features/auth/sign-in/sign-in.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
-import FormButton from '../modules/buttons/FormButton';
 import { FiLogIn } from 'react-icons/fi';
 import { MdOutlineAlternateEmail } from 'react-icons/md';
 import { FaEyeLowVision } from 'react-icons/fa6';
 import AnimatedPasswordInputelement from '../modules/input-elements/AnimatedPasswordInputElement';
+import FormButton from '../modules/button/components/FormButton';
 
 type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 
@@ -45,7 +45,7 @@ export default function SignInForm() {
 
     try {
       const result = await signIn(data).unwrap();
-      if (result.success) {
+      if (result.success && result.data) {
         setAccessTokenCookie(result.data.access_token, result.data.cookie_expires_in);
         if (window.history.length > 1 && document.referrer.includes('SignUp')) {
           router.back();

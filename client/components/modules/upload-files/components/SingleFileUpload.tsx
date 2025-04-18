@@ -13,7 +13,6 @@ import {
   DEFAULT_SINGLE_ACCEPTED_FILE_TYPES,
 } from '../constants/file-constants';
 import useSingleFileUpload from '../hooks/useSingleFileUpload';
-import styles from '../styles/upload-file.module.scss';
 import AddFileIcon from '../icons/AddFileIcon';
 import FileInfo from './ui/FileInfo';
 import FileStatus from './ui/FileStatus';
@@ -50,7 +49,7 @@ const SingleFileUpload: React.FC<SingleFileUploadProps> = ({
   // Parse display constraints
   const displayConstraints = generateDisplayConstraints(acceptedFileTypes, maxSizeMB);
 
-  // Use our custom hook to handle file uploading
+  // Use our custom hook to handle file uploading - pass all props including id for isolation
   const {
     instanceId,
     selectedFile,
@@ -64,7 +63,7 @@ const SingleFileUpload: React.FC<SingleFileUploadProps> = ({
     cancelUpload,
     resetUpload,
   } = useSingleFileUpload({
-    id,
+    id, // Pass the provided ID to ensure component isolation
     bucket,
     acceptedFileTypes,
     maxSizeMB,

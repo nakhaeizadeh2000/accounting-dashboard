@@ -69,6 +69,11 @@ const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}): MultiFileU
   const storeUploadedFiles = useSelector(selectUploadedFilesByOwnerId(componentIdRef.current));
   const storeFailedFiles = useSelector(selectFailedFilesByOwnerId(componentIdRef.current));
 
+  // Track processed upload callbacks to prevent duplicate callback handling
+  const processedCallbacksRef = useRef<Set<string>>(new Set());
+  // Track previously uploaded files to avoid duplicate processing
+  const previouslyUploadedRef = useRef<Set<string>>(new Set());
+
   // Convert store types to our component types
   const convertStoreFileToComponentFile = (file: StoreFileUploadInfo): FileUploadInfo => {
     return {
@@ -124,6 +129,16 @@ const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}): MultiFileU
             type: file.type,
           };
         });
+
+        // Log files being added to the queue for debugging
+        console.log(
+          'Adding files to queue:',
+          fileDataArray.map((f) => ({
+            name: f.name,
+            size: f.size,
+            type: f.type,
+          })),
+        );
 
         dispatch(
           addFiles({
@@ -195,6 +210,9 @@ const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}): MultiFileU
     setAllUploadsCompleteCalled(false);
     allFilesHandledProcessed.current = false;
     setCancelledUploads(new Set());
+
+    // Also reset tracking of uploaded files
+    previouslyUploadedRef.current = new Set();
   }, [dispatch]);
 
   // Cancel a specific file upload
@@ -361,37 +379,48 @@ const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}): MultiFileU
     // Only call the callback once per set of uploads
     if (allFilesHandled && !allUploadsCompleteCalled && queue.length > 0) {
       if (onAllUploadsComplete) {
-        // Process the uploaded files to extract metadata from the standardized response structure if necessary
-        const processedUploadedFiles = uploadedFiles.map((file) => {
-          // If file has response with the new structure, extract the data
-          if (file.response?.data?.files) {
-            const fileData = file.response.data.files.find(
-              (resFile: FileResponseData) => resFile.originalName === file.fileData.name,
-            );
-
-            if (fileData && fileData.url) {
-              // Ensure url exists before applying
-              // Ensure compatibility with FileMetadata by creating a properly typed object
-              const compatibleMetadata: FileMetadata = {
-                originalName: fileData.originalName,
-                uniqueName: fileData.uniqueName,
-                size: fileData.size,
-                mimetype: fileData.mimetype,
-                thumbnailName: fileData.thumbnailName,
-                url: fileData.url,
-                thumbnailUrl: fileData.thumbnailUrl,
-                bucket: fileData.bucket,
-                uploadedAt: new Date(fileData.uploadedAt),
-              };
-
-              return {
-                ...file,
-                metadata: compatibleMetadata,
-              } as FileUploadInfo;
+        // Process the uploaded files to extract metadata from the standardized response structure
+        const processedUploadedFiles = uploadedFiles
+          .filter((file) => {
+            // Skip if we've already processed this file in a callback
+            if (previouslyUploadedRef.current.has(file.id)) {
+              return false;
             }
-          }
-          return file;
-        });
+
+            // Mark this file as processed
+            previouslyUploadedRef.current.add(file.id);
+            return true;
+          })
+          .map((file) => {
+            // If file has response with the new structure, extract the data
+            if (file.response?.data?.files) {
+              const fileData = file.response.data.files.find(
+                (resFile: FileResponseData) => resFile.originalName === file.fileData.name,
+              );
+
+              if (fileData && fileData.url) {
+                // Ensure url exists before applying
+                // Ensure compatibility with FileMetadata by creating a properly typed object
+                const compatibleMetadata: FileMetadata = {
+                  originalName: fileData.originalName,
+                  uniqueName: fileData.uniqueName,
+                  size: fileData.size,
+                  mimetype: fileData.mimetype,
+                  thumbnailName: fileData.thumbnailName,
+                  url: fileData.url,
+                  thumbnailUrl: fileData.thumbnailUrl,
+                  bucket: fileData.bucket,
+                  uploadedAt: new Date(fileData.uploadedAt),
+                };
+
+                return {
+                  ...file,
+                  metadata: compatibleMetadata,
+                } as FileUploadInfo;
+              }
+            }
+            return file;
+          });
 
         // Filtered failed files - exclude cancelled ones
         const actualFailedFiles = failedFiles.filter((file) => !cancelledUploads.has(file.id));
@@ -404,7 +433,11 @@ const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}): MultiFileU
           `All uploads complete: ${uploadedFiles.length} succeeded, ${actualFailedFiles.length} failed, ${cancelledFiles.length} cancelled`,
         );
 
-        onAllUploadsComplete(processedUploadedFiles, actualFailedFiles);
+        // Only trigger callback if there are new files processed
+        if (processedUploadedFiles.length > 0) {
+          onAllUploadsComplete(processedUploadedFiles, actualFailedFiles);
+        }
+
         setAllUploadsCompleteCalled(true);
       }
     }
@@ -421,10 +454,25 @@ const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}): MultiFileU
 
   // Effect to call onUploadComplete when files are uploaded
   useEffect(() => {
-    // Only call if we have completed files and haven't called the callback yet
-    if (uploadedFiles.length > 0 && !uploadCompleteCalled && onUploadComplete) {
-      // Process the uploaded files to extract metadata from the standardized response structure if necessary
-      const processedUploadedFiles = uploadedFiles.map((file) => {
+    // Only call for completed files that we haven't processed yet
+    const newlyCompletedFiles = uploadedFiles.filter((file) => {
+      // Skip if we've already processed this file
+      if (processedCallbacksRef.current.has(file.id)) {
+        return false;
+      }
+
+      // Only include completed files
+      return file.status === 'completed';
+    });
+
+    if (newlyCompletedFiles.length > 0 && onUploadComplete) {
+      // Mark these files as processed
+      newlyCompletedFiles.forEach((file) => {
+        processedCallbacksRef.current.add(file.id);
+      });
+
+      // Process the files to extract metadata
+      const processedUploadedFiles = newlyCompletedFiles.map((file) => {
         // If file has response with the new structure, extract the data
         if (file.response?.data?.files) {
           const fileData = file.response.data.files.find(
@@ -455,10 +503,10 @@ const useMultiFileUpload = (options: UseMultiFileUploadOptions = {}): MultiFileU
         return file;
       });
 
+      // Call the callback with newly processed files
       onUploadComplete(processedUploadedFiles);
-      setUploadCompleteCalled(true);
     }
-  }, [uploadedFiles, onUploadComplete, uploadCompleteCalled]);
+  }, [uploadedFiles, onUploadComplete]);
 
   // Clean up on unmount
   useEffect(() => {

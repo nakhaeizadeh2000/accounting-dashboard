@@ -6,7 +6,7 @@ services:
     restart: always
     image: nginx:alpine
     ports:
-      - "81:80" # HTTP
+      - "80:80" # HTTP
       - "443:443" # HTTPS (if needed)
     volumes:
       - ./:/app
