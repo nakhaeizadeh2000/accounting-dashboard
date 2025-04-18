@@ -18,6 +18,7 @@ import FactoryExample from '@/components/modules/button-advanced/examples/Button
 import ButtonUsageExamples from '@/components/modules/button-advanced/examples/ButtonUsageExample';
 import HooksExample from '@/components/modules/button-advanced/examples/HooksExample';
 import Modal from '@/components/modules/modal/Modal';
+import ComponentModalExample from '@/components/modules/modal/examples/ComponentModalExample';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -103,6 +104,7 @@ const ErfanTestForm = () => {
           showClass: {},
         }}
       />
+      <ComponentModalExample />
     </div>
   );
 };
