@@ -17,8 +17,8 @@ import SimpleButtonExample from '@/components/modules/button/examples/SimpleButt
 import FactoryExample from '@/components/modules/button-advanced/examples/ButtonFactoryExample';
 import ButtonUsageExamples from '@/components/modules/button-advanced/examples/ButtonUsageExample';
 import HooksExample from '@/components/modules/button-advanced/examples/HooksExample';
-import Modal from '@/components/modules/modal/Modal';
 import ComponentModalExample from '@/components/modules/modal/examples/ComponentModalExample';
+import BridgeExample from '@/components/modules/modal/examples/BridgeModalExample';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -46,7 +46,7 @@ const ErfanTestForm = () => {
   };
 
   return (
-    <div className="m-2 mt-3 flex w-full flex-col justify-center gap-2">
+    <div className="m-2 mt-3 flex w-full flex-1 flex-col justify-center gap-2 overflow-y-auto border-4 border-indigo-500/100">
       <TimePickersSimpleComponent
         options={{ label: 'ساعت', getValue: setTime, formatTime: 'HH:mm' }}
       />
@@ -94,17 +94,8 @@ const ErfanTestForm = () => {
       <HooksExample />
       <hr className="m-4" />
       <span className="text-lg">modal</span>
-      <Modal
-        options={{
-          title: 'Modal Title',
-          text: 'This is a modal message.',
-          icon: 'success',
-          showCloseButton: true,
-          showConfirmButton: true,
-          showClass: {},
-        }}
-      />
       <ComponentModalExample />
+      <BridgeExample />
     </div>
   );
 };
