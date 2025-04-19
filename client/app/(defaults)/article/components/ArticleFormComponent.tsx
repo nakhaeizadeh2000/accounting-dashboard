@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { ResponseArticleDto } from '@/store/features/article/article.model';
 import { useArticleEditor } from '../hooks/useArticleEditor';
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
@@ -9,7 +9,6 @@ import ArticleFileSelector from './ArticleFileSelector';
 import {
   Paper,
   Button,
-  Divider,
   Alert,
   CircularProgress,
   Dialog,
@@ -19,7 +18,6 @@ import {
   DialogActions,
   FormControl,
   FormHelperText,
-  Box,
   Typography,
   Stepper,
   Step,
@@ -45,8 +43,8 @@ import {
   FiHelpCircle,
   FiChevronUp,
   FiChevronDown,
+  FiAlertCircle,
 } from 'react-icons/fi';
-import { GetIndex } from '@/store/features/user/users.model';
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
 
 interface ArticleFormComponentProps {
@@ -60,12 +58,21 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
 }) => {
   const router = useRouter();
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [helpExpanded, setHelpExpanded] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
+  const [stepsValidation, setStepsValidation] = useState({
+    0: false, // Basic Information step
+    1: false, // Content step
+    2: true, // Files step (optional, so default to true)
+  });
 
-  // Track if we're in author selection mode to prevent form submission
-  const selectingAuthor = useRef(false);
+  // Track if a step has been visited/attempted
+  const [stepsVisited, setStepsVisited] = useState({
+    0: true, // First step is always visited
+    1: false,
+    2: false,
+  });
 
   const {
     formState,
@@ -83,46 +90,96 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
     isEditMode,
   });
 
-  // Custom author selection handler
-  const safeHandleAuthorSelect = useCallback(
-    (authors: ItemType[]) => {
-      selectingAuthor.current = true;
-      handleAuthorSelect(authors);
-      setTimeout(() => {
-        selectingAuthor.current = false;
-      }, 100);
-    },
-    [handleAuthorSelect],
-  );
+  // Validate current step
+  const validateStep = useCallback(
+    (step: number): boolean => {
+      let isValid = true;
 
-  // Wrapper for handleSubmit to show dialog on success
-  const handleSubmit = useCallback(
-    async (e?: React.FormEvent) => {
-      if (e) e.preventDefault();
+      if (step === 0) {
+        // Validate title
+        const isTitleValid = validateField('title');
 
-      // Don't submit if we're just selecting an author
-      if (selectingAuthor.current) {
-        return;
+        // Validate author (only for new articles)
+        const isAuthorValid = isEditMode || selectedAuthor.length > 0;
+
+        isValid = isTitleValid && isAuthorValid;
+
+        // Update the steps validation state
+        setStepsValidation((prev) => ({
+          ...prev,
+          0: isValid,
+        }));
+      } else if (step === 1) {
+        // Validate content
+        isValid = validateField('content');
+
+        // Update the steps validation state
+        setStepsValidation((prev) => ({
+          ...prev,
+          1: isValid,
+        }));
       }
 
-      await originalHandleSubmit(e);
-
-      // Check if submission was successful
-      setTimeout(() => {
-        if (!errors.formErrors && !errors.title && !errors.content) {
-          setSuccessDialogOpen(true);
-        }
-      }, 300);
+      return isValid;
     },
-    [originalHandleSubmit, errors],
+    [validateField, isEditMode, selectedAuthor.length],
   );
 
-  const handleCloseSuccessDialog = useCallback(() => {
-    setSuccessDialogOpen(false);
-    // Navigate to the article list page
-    router.push(ARTICLE_ROUTES.LIST);
-  }, [router]);
+  // Validate all previous steps
+  const validatePreviousSteps = useCallback((): boolean => {
+    let allValid = true;
 
+    for (let i = 0; i <= activeStep; i++) {
+      if (!stepsValidation[i as keyof typeof stepsValidation]) {
+        allValid = false;
+        break;
+      }
+    }
+
+    return allValid;
+  }, [activeStep, stepsValidation]);
+
+  // Mark a step as visited
+  const markStepVisited = useCallback((step: number) => {
+    setStepsVisited((prev) => ({
+      ...prev,
+      [step]: true,
+    }));
+  }, []);
+
+  // Check if we should show errors for a step
+  const shouldShowErrorsForStep = useCallback(
+    (step: number): boolean => {
+      return stepsVisited[step as keyof typeof stepsVisited];
+    },
+    [stepsVisited],
+  );
+
+  // Display success dialog when isSubmitSuccess changes to true
+  useEffect(() => {
+    if (isSubmitSuccess) {
+      setSuccessDialogOpen(true);
+    }
+  }, [isSubmitSuccess]);
+
+  // Mark a step as visited when it becomes active
+  useEffect(() => {
+    markStepVisited(activeStep);
+
+    // If editing an existing article, validate all steps immediately
+    if (isEditMode && initialArticle) {
+      validateStep(activeStep);
+    }
+  }, [activeStep, isEditMode, initialArticle]);
+
+  // Validate steps when form data changes
+  useEffect(() => {
+    // Validate any steps that have been visited
+    if (stepsVisited[0]) validateStep(0);
+    if (stepsVisited[1]) validateStep(1);
+  }, [formState, selectedAuthor, validateStep, stepsVisited]);
+
+  // Handle file changes
   const handleFileIdsChange = useCallback(
     (fileIds: string[]) => {
       handleInputChange('fileIds', fileIds);
@@ -130,7 +187,30 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
     [handleInputChange],
   );
 
-  // Handle direct input change
+  // Submit handler with validation
+  const handleSubmit = useCallback(async () => {
+    // Mark all steps as visited to show all errors
+    setStepsVisited({
+      0: true,
+      1: true,
+      2: true,
+    });
+
+    // Validate all required steps
+    const isStep0Valid = validateStep(0);
+    const isStep1Valid = validateStep(1);
+
+    // If any step is invalid, show error dialog
+    if (!isStep0Valid || !isStep1Valid) {
+      setErrorDialogOpen(true);
+      return;
+    }
+
+    // All validation passed, submit the form
+    await originalHandleSubmit();
+  }, [validateStep, originalHandleSubmit]);
+
+  // Handle title change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleInputChange('title', e.target.value);
   };
@@ -140,21 +220,31 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
     handleInputChange('content', content);
   };
 
+  // Handle author selection
+  const handleSelectAuthor = (authors: ItemType[]) => {
+    handleAuthorSelect(authors);
+
+    // Mark step as visited and validate it
+    if (activeStep === 0) {
+      markStepVisited(0);
+      validateStep(0);
+    }
+  };
+
   // Next step in form
   const handleNextStep = () => {
-    if (activeStep === 0) {
-      validateField('title');
-      if (!isEditMode && !selectedAuthor.length) {
-        // Set an error for author selection
-        return;
-      }
-      if (errors.title || errors.formErrors) return;
-    } else if (activeStep === 1) {
-      validateField('content');
-      if (errors.content) return;
-    }
+    // Mark current step as visited
+    markStepVisited(activeStep);
 
-    setActiveStep((prev) => Math.min(prev + 1, 2));
+    // Validate current step before proceeding
+    const isValid = validateStep(activeStep);
+
+    if (isValid) {
+      const nextStep = activeStep + 1;
+      setActiveStep(nextStep);
+      // Mark the next step as visited when entering it
+      markStepVisited(nextStep);
+    }
   };
 
   // Previous step in form
@@ -167,6 +257,16 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
     setHelpExpanded((prev) => !prev);
   };
 
+  const handleCloseSuccessDialog = useCallback(() => {
+    setSuccessDialogOpen(false);
+    // Navigate to the article list page
+    router.push(ARTICLE_ROUTES.LIST);
+  }, [router]);
+
+  const handleCloseErrorDialog = useCallback(() => {
+    setErrorDialogOpen(false);
+  }, []);
+
   // Word and character count calculation
   const wordCount = formState.content ? formState.content.split(/\s+/).filter(Boolean).length : 0;
   const charCount = formState.content ? formState.content.replace(/<[^>]*>/g, '').length : 0;
@@ -177,6 +277,25 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
     { label: 'محتوای مقاله', icon: <FiFileText /> },
     { label: 'فایل‌های پیوست', icon: <FiPaperclip /> },
   ];
+
+  // Determine if the next button should be disabled
+  const isNextButtonDisabled = useCallback(() => {
+    // Check the current step validation
+    if (activeStep === 0) {
+      // For first step, check if title is valid and author is selected (if required)
+      const isTitleValid = !!(formState.title && formState.title.length >= 3);
+      const isAuthorValid = isEditMode || selectedAuthor.length > 0;
+      return !(isTitleValid && isAuthorValid);
+    } else if (activeStep === 1) {
+      // For second step, check if content is valid
+      return !(formState.content && formState.content.length >= 10);
+    }
+
+    return false;
+  }, [activeStep, formState, selectedAuthor, isEditMode]);
+
+  // Disable submit button if any required step is invalid
+  const isSubmitButtonDisabled = !stepsValidation[0] || !stepsValidation[1];
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -231,17 +350,33 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
           {steps.map((step, index) => (
             <Step key={index}>
               <StepLabel
+                error={
+                  stepsVisited[index as keyof typeof stepsVisited] &&
+                  !stepsValidation[index as keyof typeof stepsValidation]
+                }
                 StepIconComponent={() => (
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded-full ${
                       activeStep === index
                         ? 'bg-blue-600 text-white'
-                        : activeStep > index
+                        : activeStep > index &&
+                            stepsValidation[index as keyof typeof stepsValidation]
                           ? 'bg-green-500 text-white'
-                          : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                          : stepsVisited[index as keyof typeof stepsVisited] &&
+                              !stepsValidation[index as keyof typeof stepsValidation]
+                            ? 'bg-red-500 text-white'
+                            : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                     }`}
                   >
-                    {activeStep > index ? <FiCheck /> : step.icon}
+                    {activeStep > index &&
+                    stepsValidation[index as keyof typeof stepsValidation] ? (
+                      <FiCheck />
+                    ) : stepsVisited[index as keyof typeof stepsVisited] &&
+                      !stepsValidation[index as keyof typeof stepsValidation] ? (
+                      <FiAlertCircle />
+                    ) : (
+                      step.icon
+                    )}
                   </div>
                 )}
               >
@@ -251,7 +386,8 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
           ))}
         </Stepper>
 
-        <form onSubmit={handleSubmit} ref={formRef} className="p-6">
+        {/* IMPORTANT: No form element to prevent accidental submissions */}
+        <div className="p-6">
           {/* Form errors */}
           {errors.formErrors && errors.formErrors.length > 0 && (
             <Alert severity="error" className="mb-6 text-sm">
@@ -278,33 +414,37 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
                       type: 'text',
                       label: 'عنوان مقاله',
                       defaultValue: formState.title,
-                      fieldError: errors.title,
+                      fieldError: shouldShowErrorsForStep(0) ? errors.title : undefined,
                       containerClass: 'w-full',
-                      onChange: handleTitleChange,
+                      onChange: (e) => {
+                        handleTitleChange(e);
+                        // Check validation when title changes
+                        if (stepsVisited[0]) {
+                          validateStep(0);
+                        }
+                      },
                     }}
                   />
                 </div>
 
                 {/* Author selection - only shown in create mode */}
                 {!isEditMode && (
-                  <div className="w-full" onClick={(e) => e.stopPropagation()}>
+                  <div className="w-full">
                     <FormControl
                       fullWidth
-                      error={!!errors.formErrors?.find((error) => error.includes('نویسنده'))}
+                      error={shouldShowErrorsForStep(0) && selectedAuthor.length === 0}
                     >
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        نویسنده <span className="text-red-500">*</span>
-                      </label>
-                      <div onClick={(e) => e.preventDefault()}>
+                      <div>
                         <UserSingleSelectWidget
                           options={{
-                            onChange: safeHandleAuthorSelect,
+                            title: 'نویسنده',
+                            onChange: handleSelectAuthor,
                             value: selectedAuthor,
                             containerClass: 'w-full',
                           }}
                         />
                       </div>
-                      {errors.formErrors?.find((error) => error.includes('نویسنده')) && (
+                      {shouldShowErrorsForStep(0) && selectedAuthor.length === 0 && (
                         <FormHelperText className="text-red-500">
                           انتخاب نویسنده الزامی است
                         </FormHelperText>
@@ -341,15 +481,25 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
                 </Typography>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    متن مقاله <span className="text-red-500">*</span>
-                  </label>
                   <div
-                    className={`overflow-hidden rounded-md border ${errors.content ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'}`}
+                    className={`overflow-hidden rounded-md border ${
+                      shouldShowErrorsForStep(1) && errors.content
+                        ? 'border-red-500'
+                        : 'border-gray-200 dark:border-gray-700'
+                    }`}
                   >
-                    <Editor initialValue={formState.content} onChange={handleContentChange} />
+                    <Editor
+                      initialValue={formState.content}
+                      onChange={(content) => {
+                        handleContentChange(content);
+                        // Check validation when content changes
+                        if (stepsVisited[1]) {
+                          validateStep(1);
+                        }
+                      }}
+                    />
                   </div>
-                  {errors.content && (
+                  {shouldShowErrorsForStep(1) && errors.content && (
                     <FormHelperText className="mt-1 text-red-500">
                       {errors.content[0]}
                     </FormHelperText>
@@ -384,6 +534,7 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
                   selectedFileIds={formState.fileIds || []}
                   onSelectedFilesChange={handleFileIdsChange}
                   errors={errors.fileIds}
+                  isEditMode={isEditMode}
                 />
               </CardContent>
             </Card>
@@ -394,10 +545,11 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
             <div>
               {activeStep > 0 && (
                 <Button
-                  variant="outlined"
+                  type="button"
+                  variant="contained"
                   color="primary"
                   onClick={handlePrevStep}
-                  className="ml-2"
+                  className="[&&]:ml-2 [&&]:bg-gray-300 [&&]:text-gray-700 [&&]:hover:bg-gray-400 [&&]:hover:text-white"
                 >
                   قبلی
                 </Button>
@@ -405,10 +557,14 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
 
               {activeStep < 2 && (
                 <Button
+                  type="button"
                   variant="contained"
                   color="primary"
                   onClick={handleNextStep}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isNextButtonDisabled()}
+                  className={`[&&]:bg-blue-600 [&&]:text-white [&&]:hover:bg-blue-700 ${
+                    isNextButtonDisabled() ? '[&&]:cursor-not-allowed [&&]:opacity-50' : ''
+                  }`}
                 >
                   بعدی
                 </Button>
@@ -417,6 +573,7 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
 
             <div>
               <Button
+                type="button"
                 variant="outlined"
                 color="secondary"
                 onClick={handleCancel}
@@ -431,20 +588,23 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
                 <Button
                   variant="contained"
                   color="primary"
-                  type="submit"
-                  disabled={isSubmitting}
+                  type="button"
+                  disabled={isSubmitting || isSubmitButtonDisabled}
                   startIcon={isSubmitting ? <CircularProgress size={20} /> : <FiSave />}
-                  className="bg-green-600 hover:bg-green-700"
+                  className={`[&&]:mr-2 [&&]:bg-green-600 [&&]:text-white [&&]:hover:bg-green-700 ${
+                    isSubmitButtonDisabled ? '[&&]:cursor-not-allowed [&&]:opacity-50' : ''
+                  }`}
+                  onClick={handleSubmit}
                 >
                   {isSubmitting ? 'در حال ذخیره...' : isEditMode ? 'ذخیره تغییرات' : 'ایجاد مقاله'}
                 </Button>
               )}
             </div>
           </div>
-        </form>
+        </div>
       </Paper>
 
-      {/* Success Dialog - Fixed structure to avoid nesting Typography issues */}
+      {/* Success Dialog */}
       <Dialog
         open={successDialogOpen}
         onClose={handleCloseSuccessDialog}
@@ -475,10 +635,60 @@ const ArticleFormComponent: React.FC<ArticleFormComponentProps> = ({
             onClick={handleCloseSuccessDialog}
             variant="contained"
             color="primary"
-            className="bg-blue-600 hover:bg-blue-700"
+            className="[&&]:bg-blue-600 [&&]:text-white [&&]:hover:bg-blue-700"
             autoFocus
           >
             بازگشت به لیست مقالات
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog
+        open={errorDialogOpen}
+        onClose={handleCloseErrorDialog}
+        aria-labelledby="error-dialog-title"
+        aria-describedby="error-dialog-description"
+        maxWidth="sm"
+        fullWidth
+      >
+        <div className="rounded-t-lg bg-red-50 p-4 dark:bg-red-900">
+          <div className="flex items-center">
+            <div className="mr-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-700 dark:text-red-300">
+              <FiAlertCircle size={24} />
+            </div>
+            <DialogTitle className="p-0">خطا در ذخیره اطلاعات</DialogTitle>
+          </div>
+        </div>
+
+        <DialogContent className="pt-4">
+          <DialogContentText id="error-dialog-description" className="mt-2">
+            لطفاً تمامی فیلدهای ضروری را به درستی تکمیل نمایید. موارد زیر نیاز به بررسی دارند:
+          </DialogContentText>
+          <ul className="mt-3 list-inside list-disc text-red-600 dark:text-red-400">
+            {!stepsValidation[0] && (
+              <li>
+                اطلاعات اصلی:{' '}
+                {errors.title ? errors.title[0] : 'عنوان و نویسنده مقاله را بررسی کنید'}
+              </li>
+            )}
+            {!stepsValidation[1] && (
+              <li>
+                محتوای مقاله: {errors.content ? errors.content[0] : 'محتوای مقاله نامعتبر است'}
+              </li>
+            )}
+          </ul>
+        </DialogContent>
+
+        <DialogActions className="p-4">
+          <Button
+            onClick={handleCloseErrorDialog}
+            variant="contained"
+            color="primary"
+            className="[&&]:bg-blue-600 [&&]:text-white [&&]:hover:bg-blue-700"
+            autoFocus
+          >
+            متوجه شدم
           </Button>
         </DialogActions>
       </Dialog>
