@@ -19,6 +19,7 @@ import ButtonUsageExamples from '@/components/modules/button-advanced/examples/B
 import HooksExample from '@/components/modules/button-advanced/examples/HooksExample';
 import ComponentModalExample from '@/components/modules/modal/examples/ComponentModalExample';
 import BridgeExample from '@/components/modules/modal/examples/BridgeModalExample';
+import TinyEditor from '@/components/modules/editor/TinyMceComponent';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -67,7 +68,7 @@ const ErfanTestForm = () => {
       <hr className="m-4" />
       <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
       <hr className="m-4" />
-      <Editor onChange={(data) => console.log(data)} />
+      <TinyEditor onChange={(data) => console.log(data)} initOptionsTinyMce={{ menubar: false }} />
       <hr className="m-4" />
       <span className="text-lg">Badge</span>
       <AdvancedBadgeExample />

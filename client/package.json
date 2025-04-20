@@ -63,7 +63,7 @@
     "stylis-plugin-rtl": "^2.1.1",
     "sweetalert2": "^11.6.13",
     "tailwind-scrollbar": "^3.1.0",
-    "tinymce": "^7.7.2",
+    "tinymce": "^7.8.0",
     "universal-cookie": "^7.2.0",
     "yup": "^1.4.0",
     "zod": "^3.23.8"
