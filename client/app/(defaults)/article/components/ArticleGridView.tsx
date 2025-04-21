@@ -55,8 +55,8 @@ const ArticleCardComponent: React.FC<ArticleCardComponentProps> = ({
           <Image
             src={thumbnail}
             alt={article.title}
-            layout="fill"
-            objectFit="cover"
+            fill
+            style={{ objectFit: 'cover' }}
             className="transition-transform duration-300 hover:scale-105"
             unoptimized // Using unoptimized for dynamic images from API
           />
@@ -129,7 +129,7 @@ const ArticleCardComponent: React.FC<ArticleCardComponentProps> = ({
           </Tooltip>
 
           <Tooltip title="ویرایش">
-            <IconButton size="small" color="primary" onClick={() => onEdit(article.id)}>
+            <IconButton size="small" color="warning" onClick={() => onEdit(article.id)}>
               <FiEdit3 />
             </IconButton>
           </Tooltip>

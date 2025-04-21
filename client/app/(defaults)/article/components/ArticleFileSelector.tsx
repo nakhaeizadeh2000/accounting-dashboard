@@ -326,7 +326,7 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
         <>
           {/* Display existing files */}
           {selectedFiles.length > 0 && (
-            <div className="mb-6">
+            <div className="my-6">
               <Typography variant="subtitle2" className="mb-2">
                 فایل‌های انتخاب شده ({selectedFiles.length})
               </Typography>
@@ -374,6 +374,7 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
                           {metadata?.url && (
                             <Button
                               size="small"
+                              color="success"
                               startIcon={<FiDownload size={14} />}
                               href={metadata.url}
                               target="_blank"
