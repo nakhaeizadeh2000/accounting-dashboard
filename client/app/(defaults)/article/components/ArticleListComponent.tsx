@@ -19,7 +19,7 @@ import DataGridComponent from '@/components/modules/data-grid/DataGridComponent'
 import ArticleFilterComponent from './ArticleFilterComponent';
 import { GridColDef, GridValidRowModel } from '@mui/x-data-grid';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { formatDate } from '@/shared/utils/date-utils'; // Update the import to use the shared utility function
 import {
   Button,
   IconButton,
@@ -34,6 +34,7 @@ import { FiEdit3, FiEye, FiTrash2, FiDownload, FiFilePlus } from 'react-icons/fi
 import ButtonLoading from '@/components/modules/loadings/ButtonLoading';
 import { ARTICLE_ROUTES } from '..';
 import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux.hook';
+import { ResponseUserDto } from '@/store/features/users/users.model';
 
 const ArticleListComponent: React.FC = () => {
   const router = useRouter();
@@ -143,25 +144,6 @@ const ArticleListComponent: React.FC = () => {
     setArticleToDelete(null);
   };
 
-  // Format date for display
-  const formatDate = (dateString: string | Date): string => {
-    try {
-      // If already a Date object, use it directly
-      const date = dateString instanceof Date ? dateString : new Date(dateString);
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date detected:', dateString);
-        return 'Invalid date';
-      }
-
-      return format(date, 'yyyy/MM/dd HH:mm');
-    } catch (err) {
-      console.error('Date formatting error:', err, 'for date string:', dateString);
-      return 'Invalid date';
-    }
-  };
-
   // Navigate to create new article
   const handleCreateArticle = () => {
     router.push(ARTICLE_ROUTES.CREATE);
@@ -170,23 +152,34 @@ const ArticleListComponent: React.FC = () => {
   // Define columns for the DataGrid
   const columns: GridColDef[] = [
     { field: 'title', headerName: 'عنوان', width: 200 },
-    { field: 'authorId', headerName: 'نویسنده', width: 180, flex: 1 },
+    {
+      field: 'author',
+      headerName: 'نویسنده',
+      width: 180,
+      flex: 1,
+      valueGetter: (author: ResponseUserDto) => {
+        if (!author) return '-';
+        return author.firstName && author.lastName
+          ? `${author.firstName} ${author.lastName}`
+          : author.email;
+      },
+    },
     {
       field: 'createdAt',
       headerName: 'تاریخ ایجاد',
       width: 150,
-      valueFormatter: (params: { value: string | Date | undefined }) => {
-        if (!params.value) return '-';
-        return formatDate(params.value);
+      valueFormatter: (date) => {
+        if (!date) return '-';
+        return formatDate(date);
       },
     },
     {
       field: 'updatedAt',
       headerName: 'تاریخ بروزرسانی',
       width: 150,
-      valueFormatter: (params: { value: string | Date | undefined }) => {
-        if (!params.value) return '-';
-        return formatDate(params.value);
+      valueFormatter: (date) => {
+        if (!date) return '-';
+        return formatDate(date);
       },
     },
     {
@@ -196,7 +189,7 @@ const ArticleListComponent: React.FC = () => {
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <div className="flex gap-1">
+        <div className="flex h-full w-full items-center justify-center gap-1">
           <Tooltip title="مشاهده">
             <IconButton size="small" color="info" onClick={() => handleViewArticle(params.row.id)}>
               <FiEye />
