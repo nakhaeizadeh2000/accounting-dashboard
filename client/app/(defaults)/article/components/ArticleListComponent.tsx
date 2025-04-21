@@ -13,7 +13,15 @@ import {
   setLastViewedArticleId,
 } from '@/store/features/article/articleSlice';
 import { ResponseArticleDto } from '@/store/features/article/article.model';
-import { ArticleFilterFormData } from '@/schemas/validations/article/article.schema';
+// Create the ArticleFilterFormData type in the article.schema.ts file
+export interface ArticleFilterFormData {
+  title?: string;
+  authorId?: number;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
 import { isResponseCatchError } from '@/store/features/base-response.model';
 import DataGridComponent from '@/components/modules/data-grid/DataGridComponent';
 import ArticleFilterComponent from './ArticleFilterComponent';
@@ -95,7 +103,14 @@ const ArticleListComponent: React.FC = () => {
 
   // Apply filters
   const handleFilterApply = (newFilters: ArticleFilterFormData) => {
-    dispatch(setFilter(newFilters));
+    dispatch(
+      setFilter({
+        ...newFilters,
+        authorId: newFilters.authorId !== undefined ? String(newFilters.authorId) : undefined,
+        fromDate: newFilters.startDate,
+        toDate: newFilters.endDate,
+      }),
+    );
   };
 
   // Reset filters

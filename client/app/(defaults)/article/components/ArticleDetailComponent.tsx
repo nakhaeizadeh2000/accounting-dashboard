@@ -29,6 +29,7 @@ import {
   setLastViewedArticleId,
 } from '@/store/features/article/articleSlice';
 import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux.hook';
+import { formatDate } from '@/shared/utils/date-utils';
 
 interface ArticleDetailComponentProps {
   articleId: number;
@@ -62,16 +63,6 @@ const ArticleDetailComponent: React.FC<ArticleDetailComponentProps> = ({ article
       dispatch(setLastViewedArticleId(articleId));
     }
   }, [data, dispatch, articleId, currentArticle]);
-
-  // Format date for display
-  const formatDate = (dateString: string | Date): string => {
-    try {
-      const date = dateString instanceof Date ? dateString : new Date(dateString);
-      return format(date, 'yyyy/MM/dd HH:mm');
-    } catch (err) {
-      return 'تاریخ نامعتبر';
-    }
-  };
 
   // Calculate reading time
   const calculateReadingTime = (content: string): number => {
@@ -187,7 +178,7 @@ const ArticleDetailComponent: React.FC<ArticleDetailComponentProps> = ({ article
             <div className="flex flex-wrap gap-3">
               <div className="flex items-center text-sm text-gray-200">
                 <span className="ml-1">👤</span>
-                {article.authorId}
+                {article.author.firstName + ' ' + article.author.lastName}
               </div>
 
               <div className="flex items-center text-sm text-gray-200">
@@ -207,7 +198,12 @@ const ArticleDetailComponent: React.FC<ArticleDetailComponentProps> = ({ article
           <h1 className="mb-4 text-2xl font-bold dark:text-white lg:text-3xl">{article.title}</h1>
 
           <div className="mb-4 flex flex-wrap gap-3">
-            <Chip icon={<span>👤</span>} label={article.authorId} variant="outlined" size="small" />
+            <Chip
+              icon={<span>👤</span>}
+              label={article.author.firstName + ' ' + article.author.lastName}
+              variant="outlined"
+              size="small"
+            />
 
             <Chip
               icon={<span>📅</span>}

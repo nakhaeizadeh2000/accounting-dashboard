@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCreateArticleMutation } from '@/store/features/article/article.api';
 import { isResponseCatchError } from '@/store/features/base-response.model';
@@ -45,50 +45,47 @@ import { ARTICLE_ROUTES } from '..';
 
 // Types
 import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
+import { useArticleForm } from '../hooks/useArticleForm';
 
 const ArticleAddFormComponent: React.FC = () => {
   const router = useRouter();
 
-  // Form state management
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [fileIds, setFileIds] = useState<string[]>([]);
-  const [selectedAuthor, setSelectedAuthor] = useState<ItemType[]>([]);
+  // Use our custom form hook with validation on initialization
+  const {
+    formData,
+    errors,
+    isFormValid,
+    handleChange,
+    validateForm,
+    validateField,
+    formatForCreate,
+  } = useArticleForm(undefined, true); // Pass true to validate on initialization
 
-  // Validation errors
-  const [errors, setErrors] = useState<{
-    title?: string[];
-    content?: string[];
-    authorId?: string[];
-    fileIds?: string[];
-    formErrors?: string[];
-  }>({});
+  // Author selection state
+  const [selectedAuthor, setSelectedAuthor] = useState<ItemType[]>([]);
+  const [authorError, setAuthorError] = useState<string[]>(['انتخاب نویسنده الزامی است']);
 
   // UI state
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const [helpExpanded, setHelpExpanded] = useState(false);
+  const [apiErrors, setApiErrors] = useState<string[]>([]);
 
   // RTK Query mutation
   const [createArticle, { isLoading: isSubmitting }] = useCreateArticleMutation();
 
+  // Check if the form can be submitted
+  const canSubmit = isFormValid && selectedAuthor.length > 0 && !isSubmitting;
+
   // Handle title change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTitle(e.target.value);
-
-    // Clear error when user types
-    if (errors.title) {
-      setErrors((prev) => ({ ...prev, title: undefined }));
-    }
+    handleChange('title', e.target.value);
+    validateField('title');
   };
 
   // Handle content change
   const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-
-    // Clear error when user types
-    if (errors.content) {
-      setErrors((prev) => ({ ...prev, content: undefined }));
-    }
+    handleChange('content', newContent);
+    validateField('content');
   };
 
   // Handle author selection
@@ -96,67 +93,38 @@ const ArticleAddFormComponent: React.FC = () => {
     setSelectedAuthor(authors);
 
     // Clear error when user selects
-    if (errors.authorId) {
-      setErrors((prev) => ({ ...prev, authorId: undefined }));
+    if (authorError.length > 0) {
+      setAuthorError([]);
     }
   };
 
   // Handle file selection
   const handleFileIdsChange = (selectedFileIds: string[]) => {
-    setFileIds(selectedFileIds);
-
-    // Clear error if needed
-    if (errors.fileIds) {
-      setErrors((prev) => ({ ...prev, fileIds: undefined }));
-    }
+    handleChange('fileIds', selectedFileIds);
   };
 
-  // Validate form
-  const validateForm = (): boolean => {
-    let isValid = true;
-    const newErrors: typeof errors = {};
-
-    // Validate title
-    if (!title.trim()) {
-      newErrors.title = ['عنوان مقاله الزامی است'];
-      isValid = false;
-    } else if (title.trim().length < 3) {
-      newErrors.title = ['عنوان مقاله باید حداقل 3 کاراکتر باشد'];
-      isValid = false;
-    }
-
-    // Validate content
-    if (!content.trim()) {
-      newErrors.content = ['محتوای مقاله الزامی است'];
-      isValid = false;
-    } else if (content.trim().length < 10) {
-      newErrors.content = ['محتوای مقاله باید حداقل 10 کاراکتر باشد'];
-      isValid = false;
-    }
-
-    // Validate author
+  // Validate author field
+  const validateAuthor = (): boolean => {
     if (selectedAuthor.length === 0) {
-      newErrors.authorId = ['انتخاب نویسنده الزامی است'];
-      isValid = false;
+      setAuthorError(['انتخاب نویسنده الزامی است']);
+      return false;
     }
-
-    setErrors(newErrors);
-    return isValid;
+    setAuthorError([]);
+    return true;
   };
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!validateForm()) {
+    // Validate all fields
+    const isAuthorValid = validateAuthor();
+
+    if (!isFormValid || !isAuthorValid) {
       return;
     }
 
     try {
-      const createData = {
-        title,
-        content,
-        authorId: selectedAuthor[0].value.toString(),
-        fileIds,
-      };
+      // Format data for API
+      const createData = formatForCreate(selectedAuthor[0].value.toString());
 
       const result = await createArticle(createData).unwrap();
 
@@ -167,7 +135,32 @@ const ArticleAddFormComponent: React.FC = () => {
       if (isResponseCatchError(err)) {
         // Handle validation errors from API
         if (err.data.validationErrors) {
-          setErrors(err.data.validationErrors);
+          // Map API validation errors to our form errors structure
+          const apiValidationErrors = err.data.validationErrors;
+
+          // Handle specific field errors
+          if (apiValidationErrors.title) {
+            handleChange('title', formData.title); // Trigger error display
+            validateField('title');
+          }
+
+          if (apiValidationErrors.content) {
+            handleChange('content', formData.content); // Trigger error display
+            validateField('content');
+          }
+
+          if (apiValidationErrors.authorId) {
+            setAuthorError(apiValidationErrors.authorId);
+          }
+
+          if (apiValidationErrors.fileIds) {
+            handleChange('fileIds', formData.fileIds); // Trigger error display
+          }
+
+          // Handle general form errors
+          if (apiValidationErrors.formErrors) {
+            setApiErrors(apiValidationErrors.formErrors);
+          }
         } else {
           // Handle message as array or string
           const errorMessage = err.data.message;
@@ -175,15 +168,11 @@ const ArticleAddFormComponent: React.FC = () => {
             ? errorMessage
             : [errorMessage || 'خطا در ذخیره مقاله'];
 
-          setErrors({
-            formErrors: errorMessages,
-          });
+          setApiErrors(errorMessages);
         }
       } else {
         console.error('Unknown error:', err);
-        setErrors({
-          formErrors: ['خطای ناشناخته در ارتباط با سرور'],
-        });
+        setApiErrors(['خطای ناشناخته در ارتباط با سرور']);
       }
     }
   };
@@ -198,6 +187,15 @@ const ArticleAddFormComponent: React.FC = () => {
     setSuccessDialogOpen(false);
     router.push(ARTICLE_ROUTES.LIST);
   };
+
+  // Validate all fields on component mount
+  useEffect(() => {
+    // Validate all fields immediately when the component mounts
+    validateField('title');
+    validateField('content');
+
+    // No need to validate fileIds as they're optional
+  }, []);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -240,9 +238,9 @@ const ArticleAddFormComponent: React.FC = () => {
         {/* Form */}
         <div className="p-6">
           {/* Form errors */}
-          {errors.formErrors && errors.formErrors.length > 0 && (
+          {apiErrors.length > 0 && (
             <Alert severity="error" className="mb-6 text-sm">
-              {errors.formErrors.map((error, index) => (
+              {apiErrors.map((error, index) => (
                 <div key={index}>{error}</div>
               ))}
             </Alert>
@@ -257,9 +255,9 @@ const ArticleAddFormComponent: React.FC = () => {
 
             <div className="mb-4">
               <TextField
-                label="عنوان مقاله"
+                label="عنوان مقاله *"
                 fullWidth
-                value={title}
+                value={formData.title}
                 onChange={handleTitleChange}
                 error={!!errors.title}
                 helperText={errors.title && errors.title[0]}
@@ -271,15 +269,15 @@ const ArticleAddFormComponent: React.FC = () => {
             <div className="mb-4">
               <UserSingleSelectWidget
                 options={{
-                  title: 'نویسنده',
+                  title: 'نویسنده *',
                   onChange: handleAuthorSelect,
                   value: selectedAuthor,
                   containerClass: 'w-full',
                 }}
               />
-              {errors.authorId && (
+              {authorError.length > 0 && (
                 <Typography color="error" variant="caption" className="mt-1 block">
-                  {errors.authorId[0]}
+                  {authorError[0]}
                 </Typography>
               )}
             </div>
@@ -291,11 +289,11 @@ const ArticleAddFormComponent: React.FC = () => {
           <Box className="mb-6">
             <Typography variant="h6" className="mb-4 flex items-center font-bold">
               <FiFileText className="mr-2 text-blue-600" />
-              محتوای مقاله
+              محتوای مقاله *
             </Typography>
 
             <ArticleEditorComponent
-              initialContent={content}
+              initialContent={formData.content}
               onChange={handleContentChange}
               errors={errors.content}
             />
@@ -311,32 +309,59 @@ const ArticleAddFormComponent: React.FC = () => {
             </Typography>
 
             <ArticleFileSelector
-              selectedFileIds={fileIds}
+              selectedFileIds={formData.fileIds || []}
               onSelectedFilesChange={handleFileIdsChange}
               errors={errors.fileIds}
             />
           </Box>
 
           {/* Action buttons */}
-          <div className="mt-8 flex justify-end gap-4">
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={handleCancel}
-              startIcon={<FiX />}
-              disabled={isSubmitting}
-            >
-              انصراف
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSubmit}
-              startIcon={isSubmitting ? <CircularProgress size={20} /> : <FiSave />}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'در حال ذخیره...' : 'ایجاد مقاله'}
-            </Button>
+          <div className="mt-8 flex flex-col gap-2">
+            <div className="flex justify-end gap-4">
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleCancel}
+                startIcon={<FiX />}
+                disabled={isSubmitting}
+              >
+                انصراف
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                onClick={handleSubmit}
+                disabled={isSubmitting || !isFormValid}
+                className="mt-4"
+              >
+                {isSubmitting ? (
+                  <>
+                    <CircularProgress size={20} />
+                    <span className="mr-2">در حال ذخیره...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiSave className="ml-2" />
+                    ذخیره مقاله
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Helper text to explain why the button might be disabled */}
+            {!isFormValid && !Object.keys(errors).length && (
+              <Typography variant="caption" color="text.secondary" className="text-right">
+                برای فعال شدن دکمه ذخیره، لطفاً عنوان و محتوای مقاله را وارد کنید.
+              </Typography>
+            )}
+
+            {/* Show specific validation errors if they exist */}
+            {Object.keys(errors).length > 0 && (
+              <Typography variant="caption" color="warning" className="text-right">
+                لطفاً خطاهای فرم را برطرف کنید تا دکمه ذخیره فعال شود.
+              </Typography>
+            )}
           </div>
         </div>
       </Paper>

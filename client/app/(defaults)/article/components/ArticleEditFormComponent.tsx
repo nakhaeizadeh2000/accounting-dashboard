@@ -73,6 +73,10 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
   const [helpExpanded, setHelpExpanded] = useState(false);
   const [originalArticle, setOriginalArticle] = useState<ResponseArticleDto | null>(null);
 
+  // Additional states for tracking changes
+  const [contentChanged, setContentChanged] = useState(false);
+  const [formChanged, setFormChanged] = useState(false);
+
   // RTK Query hooks
   const {
     data: articleResponse,
@@ -93,6 +97,13 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
     }
   }, [articleResponse]);
 
+  // Track title changes
+  useEffect(() => {
+    if (originalArticle) {
+      setFormChanged(title !== originalArticle.title);
+    }
+  }, [title, originalArticle]);
+
   // Handle title change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
@@ -100,6 +111,11 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
     // Clear error when user types
     if (errors.title) {
       setErrors((prev) => ({ ...prev, title: undefined }));
+    }
+
+    // Check if title has changed from original
+    if (originalArticle) {
+      setFormChanged(e.target.value !== originalArticle.title);
     }
   };
 
@@ -113,8 +129,14 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
     }
   };
 
+  // Function to track content changes
+  const handleContentChangeStatus = (hasChanged: boolean) => {
+    setContentChanged(hasChanged);
+  };
+
   // Handle file selection
   const handleFileIdsChange = (selectedFileIds: string[]) => {
+    // Keep the IDs as strings since the state is defined as string[]
     setFileIds(selectedFileIds);
 
     // Clear error if needed
@@ -151,26 +173,18 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
   };
 
   // Determine if anything has changed
-  const hasChanges = (): boolean => {
-    if (!originalArticle) return false;
-
-    const originalFileIds = originalArticle.files?.map((file) => file.id) || [];
-    const fileIdsChanged =
-      fileIds.length !== originalFileIds.length ||
-      !fileIds.every((id) => originalFileIds.includes(id));
-
-    return title !== originalArticle.title || content !== originalArticle.content || fileIdsChanged;
-  };
+  const hasAnyChanges = formChanged || contentChanged;
 
   // Handle form submission
   const handleSubmit = async () => {
     if (!validateForm()) {
+      console.log('Form validation failed');
       return;
     }
 
     // Check if anything has changed
-    if (!hasChanges()) {
-      // No changes, show success dialog directly
+    if (!hasAnyChanges) {
+      console.log('No changes detected, showing success dialog directly');
       setSuccessDialogOpen(true);
       return;
     }
@@ -203,6 +217,10 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
 
       if (result.success) {
         setSuccessDialogOpen(true);
+        // Automatically redirect to the article info page after a short delay
+        setTimeout(() => {
+          router.push(ARTICLE_ROUTES.VIEW(articleId));
+        }, 1500);
       }
     } catch (err) {
       if (isResponseCatchError(err)) {
@@ -373,6 +391,7 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
               initialContent={content}
               onChange={handleContentChange}
               errors={errors.content}
+              onChangeStatus={handleContentChangeStatus}
             />
           </Box>
 
@@ -406,13 +425,21 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
               انصراف
             </Button>
             <Button
+              type="submit"
               variant="contained"
               color="primary"
-              onClick={handleSubmit}
-              startIcon={isSubmitting ? <CircularProgress size={20} /> : <FiSave />}
-              disabled={isSubmitting || !hasChanges()}
+              onClick={handleSubmit} // Add this line to call the handleSubmit function
+              disabled={isSubmitting || !hasAnyChanges}
+              className="mt-4"
             >
-              {isSubmitting ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
+              {isSubmitting ? (
+                <>
+                  <CircularProgress size={20} />
+                  <span className="mr-2">در حال ذخیره...</span>
+                </>
+              ) : (
+                <>{hasAnyChanges ? 'ذخیره تغییرات' : 'بدون تغییرات'}</>
+              )}
             </Button>
           </div>
         </div>
@@ -431,8 +458,7 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
         </div>
         <DialogContent>
           <DialogContentText>
-            تغییرات مقاله با موفقیت ذخیره شد. می‌توانید از طریق دکمه زیر به صفحه نمایش مقاله
-            بازگردید.
+            تغییرات مقاله با موفقیت ذخیره شد. در حال انتقال به صفحه نمایش مقاله...
           </DialogContentText>
         </DialogContent>
         <DialogActions>
