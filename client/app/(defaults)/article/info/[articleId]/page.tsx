@@ -1,15 +1,14 @@
-// app/article/info/[articleId]/page.tsx
 import React from 'react';
 import { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 
-// Dynamically import the component with no SSR to avoid hydration issues with client data fetching
+// Dynamically import the Redux-based article detail component
 const ArticleDetail = dynamic(() => import('../../components/ArticleDetailComponent'), {
   ssr: false,
   loading: () => <div className="p-6 text-center">در حال بارگذاری اطلاعات مقاله...</div>,
 });
 
-// Generate metadata for this page - this function is called during static generation
+// Generate metadata for this page
 export async function generateMetadata({
   params,
 }: {

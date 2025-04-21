@@ -3,8 +3,8 @@ import React from 'react';
 import { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 
-// Dynamically import the component with no SSR to avoid hydration issues with client data fetching
-const ArticleForm = dynamic(() => import('../../components/ArticleFormComponent'), {
+// Dynamically import the ArticleAddFormComponent to reduce initial bundle size
+const ArticleAddForm = dynamic(() => import('../../components/ArticleAddFormComponent'), {
   ssr: false,
   loading: () => <div className="p-6 text-center">در حال بارگذاری فرم ایجاد مقاله...</div>,
 });
@@ -12,11 +12,11 @@ const ArticleForm = dynamic(() => import('../../components/ArticleFormComponent'
 // Export metadata for this page
 export const metadata: Metadata = {
   title: 'ایجاد مقاله جدید',
-  description: 'فرم ایجاد مقاله جدید',
+  description: 'فرم ایجاد مقاله جدید در سیستم مدیریت محتوا',
 };
 
 const ArticleAddPage = () => {
-  return <ArticleForm isEditMode={false} />;
+  return <ArticleAddForm />;
 };
 
 export default ArticleAddPage;

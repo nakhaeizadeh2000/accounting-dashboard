@@ -148,80 +148,33 @@ export class ArticleService {
   async findAll(
     pagination: Pagination,
   ): Promise<PaginatedResponse<ResponseArticleDto>> {
-    const { page, limit } = pagination;
-    const ability = await this.caslAbilityFactory.defineAbility(
-      this.request.user,
-    );
-    const permissionConditions = buildQueryforArticle(
-      ability,
-      'read',
-      this.request.user,
-    );
-
-    const [articles, count] = await this.articleRepository.findAndCount({
-      where: {
-        ...permissionConditions,
+    const [articles, total] = await this.articleRepository.findAndCount({
+      skip: (pagination.page - 1) * pagination.limit,
+      take: pagination.limit,
+      relations: ['author'], // Add this to include author data
+      order: {
+        createdAt: 'DESC',
       },
-      take: limit,
-      skip: limit * (page - 1),
-      relations: ['files'], // Include files relation
     });
 
-    const convertedArticles = articles.map((article) =>
-      plainToInstance(ResponseArticleDto, article, {
+    const responseArticles = articles.map(article => {
+      const responseArticle = plainToInstance(ResponseArticleDto, article, {
         excludeExtraneousValues: true,
-      }),
-    );
+      });
+      return responseArticle;
+    });
 
-    const standardResponse = paginateResponse<ResponseArticleDto>(
-      convertedArticles,
-      count,
-      page,
-      limit,
-    );
-
-    return standardResponse;
+    return paginateResponse(responseArticles, total, pagination.page, pagination.limit);
   }
 
   async findOne(id: number): Promise<ResponseArticleDto> {
-    const ability = await this.caslAbilityFactory.defineAbility(
-      this.request.user,
-    );
-    const permissionConditions = buildQueryforArticle(
-      ability,
-      'read',
-      this.request.user,
-      'article',
-    );
-
-    // Create the query builder
-    const queryBuilder = this.articleRepository
-      .createQueryBuilder('article')
-      .leftJoinAndSelect('article.files', 'files') // Include files
-      .where('article.id = :id', { id });
-
-    // Add permission conditions correctly based on the type returned
-    if (Array.isArray(permissionConditions)) {
-      // If it's a tuple [string, object], apply it correctly
-      queryBuilder.andWhere(permissionConditions[0], permissionConditions[1]);
-    } else {
-      // If it's a conditions object, apply the authorId condition
-      // Cast to the correct type for TypeScript
-      const conditions = permissionConditions as any;
-
-      for (const key in conditions) {
-        if (Object.prototype.hasOwnProperty.call(permissionConditions, key)) {
-          queryBuilder.andWhere(`article.${key} = :${key}`, {
-            [key]: permissionConditions[key],
-          });
-        }
-      }
-    }
-
-    const article = await queryBuilder.getOne();
+    const article = await this.articleRepository.findOne({
+      where: { id },
+      relations: ['author'], // Add this to include author data
+    });
 
     if (!article) {
-      throw new NotFoundException(`Article with ID "${id}" not found`);
+      throw new NotFoundException(`Article with ID ${id} not found`);
     }
 
     return plainToInstance(ResponseArticleDto, article, {

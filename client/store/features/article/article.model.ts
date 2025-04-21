@@ -1,4 +1,5 @@
 import { ResponseFileDto } from '../files/file.model';
+import { ResponseUserDto } from '../users/users.model';
 
 // Base interface for article data
 export interface ArticleData {
@@ -20,8 +21,9 @@ export interface ResponseArticleDto {
   title: string;
   content: string;
   authorId: string;
-  createdAt: string | Date;
-  updatedAt: string | Date;
+  author: ResponseUserDto;
+  createdAt: Date;
+  updatedAt: Date;
   files?: ResponseFileDto[];
 }
 

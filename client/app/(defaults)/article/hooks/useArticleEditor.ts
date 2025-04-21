@@ -83,19 +83,21 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
         fileIds: initialArticle.files?.map((f) => f.id) || [],
       });
 
-      setSelectedAuthor([
-        {
-          value: initialArticle.authorId,
-          label: initialArticle.authorId,
-        },
-      ]);
+      // Create a new author object with consistent properties
+      const authorObject = {
+        value: initialArticle.authorId,
+        label: initialArticle.authorId,
+      };
 
-      authorRef.current = [
-        {
-          value: initialArticle.authorId,
-          label: initialArticle.authorId,
-        },
-      ];
+      setSelectedAuthor([authorObject]);
+      authorRef.current = [authorObject];
+
+      // In edit mode, consider fields as touched for validation
+      setTouched({
+        title: true,
+        content: true,
+        fileIds: true,
+      });
     }
   }, [initialArticle, isEditMode]);
 
@@ -131,18 +133,16 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
       // Update the ref first to avoid rendering issues
       authorRef.current = authors;
 
-      // Update state outside of render cycle
-      setTimeout(() => {
-        setSelectedAuthor(authors);
+      // Update state directly - this should be safe if we're managing state well
+      setSelectedAuthor(authors);
 
-        // Clear form errors if there was an author-related error
-        if (errors.formErrors) {
-          setErrors((prev) => ({
-            ...prev,
-            formErrors: undefined,
-          }));
-        }
-      }, 0);
+      // Clear form errors if there was an author-related error
+      if (errors.formErrors) {
+        setErrors((prev) => ({
+          ...prev,
+          formErrors: prev.formErrors?.filter((err) => !err.includes('نویسنده')),
+        }));
+      }
     },
     [errors],
   );
@@ -158,8 +158,11 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
           if (!formState.title.trim()) {
             fieldErrors.push('عنوان مقاله الزامی است');
             isValid = false;
-          } else if (formState.title.length < 3) {
+          } else if (formState.title.trim().length < 3) {
             fieldErrors.push('عنوان مقاله باید حداقل 3 کاراکتر باشد');
+            isValid = false;
+          } else if (formState.title.length > 255) {
+            fieldErrors.push('عنوان مقاله نمی‌تواند بیشتر از 255 کاراکتر باشد');
             isValid = false;
           }
           break;
@@ -168,26 +171,27 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
           if (!formState.content.trim()) {
             fieldErrors.push('محتوای مقاله الزامی است');
             isValid = false;
-          } else if (formState.content.length < 10) {
+          } else if (formState.content.trim().length < 10) {
             fieldErrors.push('محتوای مقاله باید حداقل 10 کاراکتر باشد');
             isValid = false;
           }
           break;
 
-        // Add validation for fileIds if needed
+        // Add validation for fileIds if needed in the future
+        case 'fileIds':
+          // Files are optional, so no validation required
+          break;
       }
 
-      // Only update errors if field has been touched
-      if (touched[name] && fieldErrors.length > 0) {
-        setErrors((prev) => ({
-          ...prev,
-          [name]: fieldErrors,
-        }));
-      }
+      // Update errors state
+      setErrors((prev) => ({
+        ...prev,
+        [name]: fieldErrors.length > 0 ? fieldErrors : undefined,
+      }));
 
       return isValid;
     },
-    [formState, touched],
+    [formState],
   );
 
   // Validate the whole form
@@ -199,37 +203,46 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
       fileIds: true,
     });
 
-    const newErrors: ArticleFormErrors = {};
+    // Validate each field
+    const isTitleValid = validateField('title');
+    const isContentValid = validateField('content');
 
-    if (!formState.title.trim()) {
-      newErrors.title = ['عنوان مقاله الزامی است'];
-    } else if (formState.title.length < 3) {
-      newErrors.title = ['عنوان مقاله باید حداقل 3 کاراکتر باشد'];
+    // No need to validate fileIds since they're optional
+
+    // For new articles, check if author is selected
+    let isAuthorValid = true;
+    let hasFormErrors = false;
+
+    if (!isEditMode && authorRef.current.length === 0) {
+      isAuthorValid = false;
+      hasFormErrors = true;
+
+      setErrors((prev) => ({
+        ...prev,
+        formErrors: [...(prev.formErrors || []), 'انتخاب نویسنده الزامی است'],
+      }));
     }
 
-    if (!formState.content.trim()) {
-      newErrors.content = ['محتوای مقاله الزامی است'];
-    } else if (formState.content.length < 10) {
-      newErrors.content = ['محتوای مقاله باید حداقل 10 کاراکتر باشد'];
-    }
-
-    if (!isEditMode && !authorRef.current.length) {
-      newErrors.formErrors = ['انتخاب نویسنده الزامی است'];
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formState, isEditMode]);
+    return isTitleValid && isContentValid && isAuthorValid && !hasFormErrors;
+  }, [validateField, isEditMode]);
 
   // Submit form
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       if (e) {
         e.preventDefault();
+        e.stopPropagation(); // Prevent event bubbling
       }
 
-      setIsSubmitting(true);
+      // Reset submission status at the beginning of a new submission
       setIsSubmitSuccess(false);
+      setIsSubmitting(true);
+
+      // Clear any previous form errors
+      setErrors((prev) => ({
+        ...prev,
+        formErrors: undefined,
+      }));
 
       if (!validateForm()) {
         setIsSubmitting(false);
@@ -260,11 +273,6 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
 
           if (result.success) {
             setIsSubmitSuccess(true);
-
-            // Navigate to article detail page after a short delay
-            setTimeout(() => {
-              router.push(ARTICLE_ROUTES.VIEW(initialArticle.id));
-            }, 500);
           }
         } else {
           // Create new article
@@ -287,11 +295,6 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
 
           if (result.success) {
             setIsSubmitSuccess(true);
-
-            // Navigate to article list page after a short delay
-            setTimeout(() => {
-              router.push(ARTICLE_ROUTES.LIST);
-            }, 500);
           }
         }
       } catch (err) {
@@ -300,11 +303,18 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
           if (err.data.validationErrors) {
             setErrors(err.data.validationErrors);
           } else {
+            // Handle message as array or string
+            const errorMessage = err.data.message;
+            const errorMessages = Array.isArray(errorMessage)
+              ? errorMessage
+              : [errorMessage || 'خطا در ذخیره مقاله'];
+
             setErrors({
-              formErrors: err.data.message || ['خطا در ذخیره مقاله'],
+              formErrors: errorMessages,
             });
           }
         } else {
+          console.error('Unknown error:', err);
           setErrors({
             formErrors: ['خطای ناشناخته در ارتباط با سرور'],
           });
@@ -313,7 +323,7 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
         setIsSubmitting(false);
       }
     },
-    [validateForm, isEditMode, initialArticle, formState, updateArticle, createArticle, router],
+    [validateForm, isEditMode, initialArticle, formState, updateArticle, createArticle],
   );
 
   // Handle cancellation
@@ -335,6 +345,7 @@ export function useArticleEditor(options: UseArticleEditorOptions = {}) {
     handleInputChange,
     handleAuthorSelect,
     validateField,
+    validateForm,
     handleSubmit,
     handleCancel,
   };

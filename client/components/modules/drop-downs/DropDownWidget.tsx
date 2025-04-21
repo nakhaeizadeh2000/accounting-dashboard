@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { LazyMotion, m } from 'framer-motion';
 import { TiArrowSortedDown } from 'react-icons/ti';
 import { HiMiniXMark } from 'react-icons/hi2';
 import { ItemType, Props } from './drop-down.type';
 import { SelectedLabel } from './SelectedLabel';
+import { createPortal } from 'react-dom';
 
 const loadLazyMotionFeatures = () =>
   import('@/components/lazy-framer-motion').then((res) => res.default);
@@ -25,32 +26,81 @@ export default function DropDownWidget({
     isLTR = false,
     isMultiSelectable = false,
     multiSelectLabelsViewType = 'simple',
+    appendToBody = false,
   },
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<ItemType[]>(selectedValue);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
 
-  const dropdownRef = useRef<HTMLDivElement>(null); // Create a ref for the dropdown
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [portalElement, setPortalElement] = useState<HTMLUListElement | null>(null);
+
+  // Track if we've mounted to prevent SSR issues with createPortal
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Effect to handle clicks outside of the dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen((prevState) => false); // Close dropdown if clicked outside
+      // Check if the click was outside both the dropdown and the portal
+      const clickedOutsideDropdown =
+        dropdownRef.current && !dropdownRef.current.contains(event.target as Node);
+      const clickedOutsidePortal = !portalElement || !portalElement.contains(event.target as Node);
+
+      // Only close if the click was outside both elements
+      if (clickedOutsideDropdown && clickedOutsidePortal) {
+        setIsOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside); // Cleanup event listener
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [portalElement]);
+
+  // Effect to calculate dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current && appendToBody) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, [isOpen, appendToBody]);
+
+  // Handle window resize to update dropdown position
+  useEffect(() => {
+    const handleResize = () => {
+      if (isOpen && buttonRef.current && appendToBody) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isOpen, appendToBody]);
 
   function onRemoveItemClick(e: React.MouseEvent) {
     e.stopPropagation();
     if (!isMultiSelectable) {
       setSelectedItems([]);
+      onChange([]);
     }
   }
 
@@ -72,7 +122,7 @@ export default function DropDownWidget({
       let newData: ItemType[];
       if (isItemSelected(item)) {
         newData = prevSelectedItems.filter(
-          (prevSelecteditem) => prevSelecteditem.value !== item.value,
+          (prevSelectedItem) => prevSelectedItem.value !== item.value,
         );
       } else {
         if (isMultiSelectable) {
@@ -81,6 +131,7 @@ export default function DropDownWidget({
           newData = [item];
         }
       }
+      // Call the parent onChange handler
       onChange(newData);
       return newData;
     });
@@ -90,14 +141,74 @@ export default function DropDownWidget({
     }
   }
 
+  const renderDropdownList = () => (
+    <m.ul
+      variants={{
+        open: {
+          clipPath: 'inset(0% 0% 0% 0% round 5px)',
+          transition: {
+            type: 'spring',
+            bounce: 0,
+            duration: 0.5,
+          },
+        },
+        closed: {
+          clipPath: 'inset(10% 50% 90% 50% round 5px)',
+          transition: {
+            type: 'spring',
+            bounce: 0,
+            duration: 0.3,
+          },
+        },
+      }}
+      style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
+      className="z-50 rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
+      ref={setPortalElement}
+    >
+      <div
+        onScroll={handleScroll}
+        className={`max-h-[300px] overflow-auto ${isLTR ? 'direction-ltr' : ''} scrollbar scrollbar-track-transparent scrollbar-thumb-slate-700 scrollbar-track-rounded-full scrollbar-thumb-rounded-full scrollbar-w-2 scrollbar-h-2 dark:scrollbar-track-transparent dark:scrollbar-thumb-slate-300`}
+      >
+        <div className="w-max min-w-full">
+          {items.length ? (
+            items.map((item) => (
+              <m.li
+                key={item.value}
+                className={`cursor-pointer border border-solid border-transparent text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600 ${isItemSelected(item) ? 'bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
+                onClick={() => onChangeSelection(item)}
+              >
+                <m.p
+                  className={`text-nowrap px-4 py-1`}
+                  whileHover={{
+                    x: isLTR ? '5px' : '-5px',
+                    width: 'calc(100% - 5px)',
+                  }}
+                >
+                  {item.label}
+                </m.p>
+              </m.li>
+            ))
+          ) : (
+            <m.li
+              key={label}
+              className={`flex h-[32px] items-center justify-center bg-transparent text-neutral-400 dark:text-neutral-500`}
+            >
+              !داده ای جهت نمایش وجود ندارد
+            </m.li>
+          )}
+        </div>
+      </div>
+    </m.ul>
+  );
+
   return (
     <div className={`flex flex-col ${containerClass}`}>
       <LazyMotion features={loadLazyMotionFeatures}>
         <m.label
           className={`pointer-events-none right-2 z-10 mb-0 truncate pt-[0.37rem] leading-[1.6] text-neutral-600 dark:text-neutral-300 ${labelClass}`}
           animate={{
-            position: 'relative', // Keep it absolute
-            top: !!selectedItems.length || isOpen ? '0' : '1.95rem', // Move up if touched or has value
+            position: 'relative',
+            top: !!selectedItems.length || isOpen ? '0' : '1.95rem',
           }}
           transition={{
             type: 'spring',
@@ -111,13 +222,14 @@ export default function DropDownWidget({
           initial={false}
           animate={isOpen ? 'open' : 'closed'}
           className={`relative rounded border ${isOpen ? 'border-blue-500' : 'border-transparent'} bg-neutral-100 dark:bg-slate-800 ${navClass}`}
-          ref={dropdownRef} // Attach ref to the nav element
+          ref={dropdownRef}
         >
           <m.button
             title={label}
             id="dropdown-widget-button"
             onClick={() => setIsOpen(!isOpen)}
             className="flex w-full items-center justify-between gap-2 rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
+            ref={buttonRef}
           >
             <m.div
               whileTap={{ scale: 0.97 }}
@@ -129,8 +241,8 @@ export default function DropDownWidget({
                   isMarquee={isMarquee}
                   isLTR={isLTR}
                   multiSelectLabelsViewType={multiSelectLabelsViewType}
-                  isMultiSelectable={isMultiSelectable} // Pass it here
-                  onChangeSelection={onChangeSelection} // Pass down the selection handler
+                  isMultiSelectable={isMultiSelectable}
+                  onChangeSelection={onChangeSelection}
                 />
               )}
             </m.div>
@@ -161,62 +273,28 @@ export default function DropDownWidget({
               </m.div>
             </div>
           </m.button>
-          <m.ul
-            variants={{
-              open: {
-                clipPath: 'inset(0% 0% 0% 0% round 5px)',
-                transition: {
-                  type: 'spring',
-                  bounce: 0,
-                  duration: 0.5,
-                },
-              },
-              closed: {
-                clipPath: 'inset(10% 50% 90% 50% round 5px)',
-                transition: {
-                  type: 'spring',
-                  bounce: 0,
-                  duration: 0.3,
-                },
-              },
-            }}
-            style={{ pointerEvents: isOpen ? 'auto' : 'none' }}
-            className="absolute z-10 mt-2 min-h-[50px] w-full rounded border border-solid border-transparent bg-neutral-200 p-1 leading-[1.6] text-neutral-600 dark:bg-slate-700 dark:text-neutral-300"
-          >
-            <div
-              onScroll={handleScroll}
-              className={`max-h-[300px] overflow-auto overflow-x-scroll ${isLTR ? 'direction-ltr' : ''} scrollbar scrollbar-track-transparent scrollbar-thumb-slate-700 scrollbar-track-rounded-full scrollbar-thumb-rounded-full scrollbar-w-2 scrollbar-h-2 dark:scrollbar-track-transparent dark:scrollbar-thumb-slate-300`}
-            >
-              <div className="max-h-[300px] w-max min-w-full">
-                {items.length ? (
-                  items.map((item) => (
-                    <m.li
-                      key={item.value}
-                      className={`cursor-pointer border border-solid border-transparent text-neutral-600 hover:bg-neutral-300 dark:text-neutral-300 hover:dark:bg-slate-600 ${isItemSelected(item) ? 'bg-neutral-300 dark:bg-slate-600 hover:dark:bg-slate-600' : ''}`}
-                      onClick={() => onChangeSelection(item)}
-                    >
-                      <m.p
-                        className={`text-nowrap px-4 py-1`}
-                        whileHover={{
-                          x: isLTR ? '5px' : '-5px',
-                          width: 'calc(100% - 5px)',
-                        }}
-                      >
-                        {item.label}
-                      </m.p>
-                    </m.li>
-                  ))
-                ) : (
-                  <m.li
-                    key={label}
-                    className={`flex h-[32px] items-center justify-center bg-transparent text-neutral-400 dark:text-neutral-500`}
-                  >
-                    !داده ای جهت نمایش وجود ندارد
-                  </m.li>
-                )}
-              </div>
-            </div>
-          </m.ul>
+
+          {/* Dropdown list - either appended to body or rendered in place */}
+          {isOpen && appendToBody && isMounted
+            ? createPortal(
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: `${dropdownPosition.top}px`,
+                    left: `${dropdownPosition.left}px`,
+                    width: `${dropdownPosition.width}px`,
+                    zIndex: 9999,
+                  }}
+                >
+                  {renderDropdownList()}
+                </div>,
+                document.body,
+              )
+            : isOpen && (
+                <div className="absolute left-0 top-full z-10 mt-1 w-full">
+                  {renderDropdownList()}
+                </div>
+              )}
         </m.nav>
       </LazyMotion>
     </div>

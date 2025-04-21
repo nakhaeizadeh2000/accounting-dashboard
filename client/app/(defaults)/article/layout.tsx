@@ -1,7 +1,6 @@
 // app/article/layout.tsx
 import React from 'react';
 import { Metadata } from 'next';
-import { ArticleProvider } from './context/ArticleContext';
 
 // Define metadata for the article section
 export const metadata: Metadata = {
@@ -18,9 +17,5 @@ interface ArticleLayoutProps {
  * This layout wraps the article context provider around all article routes
  */
 export default function ArticleLayout({ children }: ArticleLayoutProps) {
-  return (
-    <ArticleProvider>
-      <section data-section="article-module">{children}</section>
-    </ArticleProvider>
-  );
+  return <section data-section="article-module">{children}</section>;
 }

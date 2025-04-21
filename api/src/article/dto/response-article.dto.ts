@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ResponseFileDto } from 'src/minio-files/dto/response-file.dto';
+import { ResponseUserDto } from 'src/users/dto/response-user.dto';
 
 export class ResponseArticleDto {
   @Expose()
@@ -48,6 +49,11 @@ export class ResponseArticleDto {
     example: 'a1b2c3d4-e5f6-7890-abcd-1234567890ab',
   })
   authorId: string;
+
+  @Expose()
+  @Type(() => ResponseUserDto)
+  @ApiProperty()
+  author: ResponseUserDto;
 
   @Expose()
   @IsDate()

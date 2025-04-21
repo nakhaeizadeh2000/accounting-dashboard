@@ -86,6 +86,7 @@ const UserSingleSelectWidget = ({
         onChange: handleSelectionChange,
         isMultiSelectable: false, // Changed to false since we only want single selection for authors
         multiSelectLabelsViewType: 'chips',
+        appendToBody: true,
       }}
     />
   );

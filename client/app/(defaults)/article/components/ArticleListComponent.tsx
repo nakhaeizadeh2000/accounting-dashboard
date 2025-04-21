@@ -1,18 +1,33 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import {
   useGetArticlesQuery,
   useDeleteArticleMutation,
 } from '@/store/features/article/article.api';
+import {
+  setFilter,
+  resetFilter,
+  setSelectedArticleIds,
+  clearSelectedArticleIds,
+  setLastViewedArticleId,
+} from '@/store/features/article/articleSlice';
 import { ResponseArticleDto } from '@/store/features/article/article.model';
-import { ArticleFilterFormData } from '@/schemas/validations/article/article.schema';
+// Create the ArticleFilterFormData type in the article.schema.ts file
+export interface ArticleFilterFormData {
+  title?: string;
+  authorId?: number;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
 import { isResponseCatchError } from '@/store/features/base-response.model';
 import DataGridComponent from '@/components/modules/data-grid/DataGridComponent';
 import ArticleFilterComponent from './ArticleFilterComponent';
-import { GridColDef } from '@mui/x-data-grid';
+import { GridColDef, GridValidRowModel } from '@mui/x-data-grid';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { formatDate } from '@/shared/utils/date-utils'; // Update the import to use the shared utility function
 import {
   Button,
   IconButton,
@@ -25,72 +40,84 @@ import {
 } from '@mui/material';
 import { FiEdit3, FiEye, FiTrash2, FiDownload, FiFilePlus } from 'react-icons/fi';
 import ButtonLoading from '@/components/modules/loadings/ButtonLoading';
-import useDebounce from '@/shared/hooks/useDebounce.hook';
 import { ARTICLE_ROUTES } from '..';
-import { parseISO } from 'date-fns-jalali';
+import { useAppDispatch, useAppSelector } from '@/shared/hooks/redux.hook';
+import { ResponseUserDto } from '@/store/features/users/users.model';
 
-const EnhancedArticleListComponent: React.FC = () => {
+const ArticleListComponent: React.FC = () => {
   const router = useRouter();
-  const [page, setPage] = useState<number>(0);
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [selectedArticles, setSelectedArticles] = useState<ResponseArticleDto[]>([]);
-  const [filters, setFilters] = useState<ArticleFilterFormData>({
-    page: 1,
-    limit: 10,
-  });
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [articleToDelete, setArticleToDelete] = useState<number | null>(null);
+  const dispatch = useAppDispatch();
 
-  // Debounce filter changes to prevent excessive API calls
-  const debouncedFilters = useDebounce<ArticleFilterFormData>(filters, 500);
+  // Get current filter and selection from Redux store
+  const currentFilter = useAppSelector((state) => state.article.currentFilter);
+  const selectedArticleIds = useAppSelector((state) => state.article.selectedArticleIds);
+
+  // Local state for UI controls
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [articleToDelete, setArticleToDelete] = React.useState<number | null>(null);
 
   // Fetch articles with pagination and filtering
   const { data, isLoading, isFetching, error, refetch } = useGetArticlesQuery({
-    page: debouncedFilters.page || 1,
-    limit: debouncedFilters.limit || 10,
-    // Additional filter params would be added here in a real implementation
+    ...currentFilter,
   });
 
   // Delete mutation
   const [deleteArticle, { isLoading: isDeleting }] = useDeleteArticleMutation();
 
-  // Update page size when pagination changes
+  const lastViewedArticleId = useAppSelector((state) => state.article.lastViewedArticleId);
+
+  // Clear selection only when coming from article detail page
   useEffect(() => {
-    setFilters((prev) => ({
-      ...prev,
-      page: page + 1, // API expects 1-based indexing
-      limit: pageSize,
-    }));
-  }, [page, pageSize]);
+    if (lastViewedArticleId !== null) {
+      // Clear selection only if we're coming from a detail page
+      dispatch(clearSelectedArticleIds());
+      // Reset the last viewed article ID
+      dispatch(setLastViewedArticleId(null));
+    }
+  }, [dispatch, lastViewedArticleId]);
 
   // Handle pagination changes
   const handlePaginationModelChange = (model: { page: number; pageSize: number }) => {
-    setPage(model.page);
-    setPageSize(model.pageSize);
+    dispatch(
+      setFilter({
+        page: model.page + 1, // API expects 1-based indexing while DataGrid uses 0-based
+        limit: model.pageSize,
+      }),
+    );
   };
 
   // Handle article selection
-  const handleSelectionChange = (selectedRows: any[]) => {
-    setSelectedArticles(selectedRows as ResponseArticleDto[]);
+  const handleSelectionChange = <T extends GridValidRowModel>(items: T[]) => {
+    // First, check if items have the expected properties of a ResponseArticleDto
+    if (items.length > 0 && 'id' in items[0]) {
+      // Cast the selection to any to bypass type checking, then to ResponseArticleDto[]
+      const articleRows = items as any as ResponseArticleDto[];
+      dispatch(setSelectedArticleIds(articleRows.map((article) => article.id)));
+    } else if (items.length === 0) {
+      dispatch(setSelectedArticleIds([]));
+    } else {
+      console.warn('Selected items do not have expected structure:', items);
+      dispatch(setSelectedArticleIds([]));
+    }
   };
 
   // Apply filters
-  const handleFilterApply = useCallback((newFilters: ArticleFilterFormData) => {
-    setFilters(newFilters);
-    // Reset to first page when applying new filters
-    setPage(0);
-  }, []);
+  const handleFilterApply = (newFilters: ArticleFilterFormData) => {
+    dispatch(
+      setFilter({
+        ...newFilters,
+        authorId: newFilters.authorId !== undefined ? String(newFilters.authorId) : undefined,
+        fromDate: newFilters.startDate,
+        toDate: newFilters.endDate,
+      }),
+    );
+  };
 
   // Reset filters
-  const handleFilterReset = useCallback(() => {
-    setFilters({
-      page: 1,
-      limit: pageSize,
-    });
-    // Reset to first page
-    setPage(0);
+  const handleFilterReset = () => {
+    dispatch(resetFilter());
     refetch();
-  }, [pageSize, refetch]);
+  };
 
   // Navigate to article details
   const handleViewArticle = (id: number) => {
@@ -132,25 +159,6 @@ const EnhancedArticleListComponent: React.FC = () => {
     setArticleToDelete(null);
   };
 
-  // Format date for display
-  const formatDate = (dateString: string | Date): string => {
-    try {
-      // If already a Date object, use it directly
-      const date = dateString instanceof Date ? dateString : new Date(dateString);
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date detected:', dateString);
-        return 'Invalid date';
-      }
-
-      return format(date, 'yyyy/MM/dd HH:mm');
-    } catch (err) {
-      console.error('Date formatting error:', err, 'for date string:', dateString);
-      return 'Invalid date';
-    }
-  };
-
   // Navigate to create new article
   const handleCreateArticle = () => {
     router.push(ARTICLE_ROUTES.CREATE);
@@ -158,27 +166,35 @@ const EnhancedArticleListComponent: React.FC = () => {
 
   // Define columns for the DataGrid
   const columns: GridColDef[] = [
-    // { field: 'id', headerName: 'ID', width: 70 },
     { field: 'title', headerName: 'عنوان', width: 200 },
-    { field: 'authorId', headerName: 'نویسنده', width: 180, flex: 1 },
+    {
+      field: 'author',
+      headerName: 'نویسنده',
+      width: 180,
+      flex: 1,
+      valueGetter: (author: ResponseUserDto) => {
+        if (!author) return '-';
+        return author.firstName && author.lastName
+          ? `${author.firstName} ${author.lastName}`
+          : author.email;
+      },
+    },
     {
       field: 'createdAt',
       headerName: 'تاریخ ایجاد',
       width: 150,
-      valueFormatter: (params) => {
-        // Guard against undefined values
-        if (!params) return '-';
-        return formatDate(params);
+      valueFormatter: (date) => {
+        if (!date) return '-';
+        return formatDate(date);
       },
     },
     {
       field: 'updatedAt',
       headerName: 'تاریخ بروزرسانی',
       width: 150,
-      valueFormatter: (params) => {
-        // Guard against undefined values
-        if (!params) return '-';
-        return formatDate(params);
+      valueFormatter: (date) => {
+        if (!date) return '-';
+        return formatDate(date);
       },
     },
     {
@@ -188,7 +204,7 @@ const EnhancedArticleListComponent: React.FC = () => {
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <div className="flex gap-1">
+        <div className="flex h-full w-full items-center justify-center gap-1">
           <Tooltip title="مشاهده">
             <IconButton size="small" color="info" onClick={() => handleViewArticle(params.row.id)}>
               <FiEye />
@@ -197,7 +213,7 @@ const EnhancedArticleListComponent: React.FC = () => {
           <Tooltip title="ویرایش">
             <IconButton
               size="small"
-              color="primary"
+              color="warning"
               onClick={() => handleEditArticle(params.row.id)}
             >
               <FiEdit3 />
@@ -221,6 +237,29 @@ const EnhancedArticleListComponent: React.FC = () => {
       ),
     },
   ];
+
+  // Selected articles based on IDs
+  const selectedArticles = React.useMemo(() => {
+    if (!data?.data?.items) return [];
+    return data.data.items.filter((article) => selectedArticleIds.includes(article.id));
+  }, [data?.data?.items, selectedArticleIds]);
+
+  // Batch operations on selected articles
+  const handleBatchDelete = () => {
+    if (selectedArticles.length === 0) return;
+
+    if (window.confirm(`آیا از حذف ${selectedArticles.length} مقاله انتخاب شده اطمینان دارید؟`)) {
+      // Sequentially delete each selected article
+      selectedArticles.forEach((article) => {
+        deleteArticle({ id: article.id });
+      });
+    }
+  };
+
+  const handleBatchDownload = () => {
+    // Implementation for batch download would go here
+    console.log('Downloading selected articles:', selectedArticles);
+  };
 
   return (
     <div className="w-full bg-white p-6 shadow-md dark:bg-gray-800">
@@ -250,30 +289,18 @@ const EnhancedArticleListComponent: React.FC = () => {
       ) : (
         <div className="relative">
           {/* Batch actions for selected items */}
-          {selectedArticles.length > 0 && (
+          {selectedArticleIds.length > 0 && (
             <div className="absolute right-2 top-[-48px] z-10 flex items-center gap-2 rounded-t-md bg-blue-50 px-3 py-2 dark:bg-blue-900">
               <span className="text-sm text-blue-700 dark:text-blue-300">
-                {selectedArticles.length} مورد انتخاب شده
+                {selectedArticleIds.length} مورد انتخاب شده
               </span>
               <Tooltip title="حذف موارد انتخاب شده">
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={() => {
-                    /* Implement batch delete */
-                  }}
-                >
+                <IconButton size="small" color="error" onClick={handleBatchDelete}>
                   <FiTrash2 />
                 </IconButton>
               </Tooltip>
               <Tooltip title="صادر کردن لیست">
-                <IconButton
-                  size="small"
-                  color="primary"
-                  onClick={() => {
-                    /* Implement export */
-                  }}
-                >
+                <IconButton size="small" color="primary" onClick={handleBatchDownload}>
                   <FiDownload />
                 </IconButton>
               </Tooltip>
@@ -319,7 +346,10 @@ const EnhancedArticleListComponent: React.FC = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDeleteDialog} color="primary">
+          <Button
+            onClick={closeDeleteDialog}
+            className="[&&]:text-neutral-500 [&&]:dark:text-neutral-400"
+          >
             انصراف
           </Button>
           <Button onClick={handleDeleteArticle} color="error" autoFocus disabled={isDeleting}>
@@ -338,4 +368,4 @@ const EnhancedArticleListComponent: React.FC = () => {
   );
 };
 
-export default EnhancedArticleListComponent;
+export default ArticleListComponent;

@@ -17,22 +17,21 @@ import { File } from 'src/minio-files/entities/file.entity';
 export class Article {
   kind: 'Article';
 
-  @Column({ default: 'Article' })
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
   title: string;
 
-  @Column({ type: 'text' })
+  @Column('text')
   content: string;
-
-  @Column()
-  authorId: string;
 
   @ManyToOne(() => User, (user) => user.articles)
   @JoinColumn({ name: 'authorId' })
   author: User;
+
+  @Column()
+  authorId: string;
 
   @CreateDateColumn()
   createdAt: Date;

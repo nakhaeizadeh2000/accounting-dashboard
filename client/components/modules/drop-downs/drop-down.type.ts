@@ -15,6 +15,7 @@ export type Props = {
     isLTR?: boolean;
     isMultiSelectable?: boolean;
     multiSelectLabelsViewType?: 'simple' | 'chips';
+    appendToBody?: boolean;
   };
 };
 

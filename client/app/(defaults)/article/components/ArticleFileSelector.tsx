@@ -1,31 +1,64 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Chip, Typography, Box, Alert } from '@mui/material';
-import { FiX } from 'react-icons/fi';
+import { Chip, Typography, Box, Alert, Card, CardContent, Button } from '@mui/material';
+import {
+  FiX,
+  FiFile,
+  FiImage,
+  FiVideo,
+  FiMusic,
+  FiFileText,
+  FiDownload,
+  FiPaperclip,
+} from 'react-icons/fi';
 import { FileUploadInfo, MultiFileUpload } from '@/components/modules/upload-files';
+import Image from 'next/image';
+
+// Define file metadata type
+interface FileMetadata {
+  id: string;
+  url?: string;
+  thumbnailUrl?: string;
+  originalName?: string;
+  uniqueName?: string;
+  size?: number;
+  mimetype?: string;
+}
+
+// Define selected file type with optional metadata
+interface SelectedFile {
+  id: string;
+  name: string;
+  metadata?: FileMetadata;
+}
 
 interface ArticleFileSelectorProps {
   selectedFileIds: string[];
   onSelectedFilesChange: (fileIds: string[]) => void;
   errors?: string[];
+  isEditMode?: boolean;
+  existingFiles?: FileMetadata[];
 }
 
 const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
   selectedFileIds,
   onSelectedFilesChange,
   errors,
+  isEditMode = false,
+  existingFiles = [],
 }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<{ id: string; name: string }[]>([]);
-  const multiUploadRef = useRef<string>('article-multi-upload');
+  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
+  const multiUploadRef = useRef<string>(
+    `article-multi-upload-${Math.random().toString(36).substring(2, 9)}`,
+  );
   const processedFilesRef = useRef<Set<string>>(new Set());
 
   // Handle file upload success
   const handleUploadComplete = (uploadedFiles: FileUploadInfo[]) => {
-    console.log('Upload completed with files:', uploadedFiles);
-
     // Extract IDs from uploaded files - filter out files we've already processed
     const newFileIds = uploadedFiles
-      .filter((file) => !processedFilesRef.current.has(file.id)) // Skip already processed files
+      .filter((file) => !processedFilesRef.current.has(file.id))
       .map((file) => {
         // Extract ID from the file metadata or response
         const fileId = getFileId(file);
@@ -34,11 +67,16 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
         if (fileId) {
           // Mark this file as processed to avoid duplicate processing
           processedFilesRef.current.add(file.id);
-          return { id: fileId, name: fileName };
+          const metadata = file.response?.data?.files?.[0] || file.metadata;
+          return {
+            id: fileId,
+            name: fileName,
+            metadata: metadata,
+          } as SelectedFile;
         }
         return null;
       })
-      .filter(Boolean) as { id: string; name: string }[];
+      .filter(Boolean) as SelectedFile[];
 
     if (newFileIds.length > 0) {
       // Create a Set to ensure uniqueness when adding to existing files
@@ -56,7 +94,7 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
       onSelectedFilesChange(updatedIds);
 
       // Update the local state for display - create a new array with all existing files
-      const uniqueFilesMap = new Map<string, { id: string; name: string }>();
+      const uniqueFilesMap = new Map<string, SelectedFile>();
 
       // Add existing files to map
       selectedFiles.forEach((file) => {
@@ -79,11 +117,9 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
 
   // Handle all uploads complete
   const handleAllUploadsComplete = (succeeded: FileUploadInfo[], failed: FileUploadInfo[]) => {
-    console.log('All uploads complete:', succeeded);
-
     // Process all successfully uploaded files to get their IDs
     const newFileIds = succeeded
-      .filter((file) => !processedFilesRef.current.has(file.id)) // Skip already processed files
+      .filter((file) => !processedFilesRef.current.has(file.id))
       .map((file) => {
         const fileId = getFileId(file);
         const fileName = getFileName(file);
@@ -91,11 +127,16 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
         if (fileId) {
           // Mark this file as processed
           processedFilesRef.current.add(file.id);
-          return { id: fileId, name: fileName };
+          const metadata = file.response?.data?.files?.[0] || file.metadata;
+          return {
+            id: fileId,
+            name: fileName,
+            metadata: metadata,
+          } as SelectedFile;
         }
         return null;
       })
-      .filter(Boolean) as { id: string; name: string }[];
+      .filter(Boolean) as SelectedFile[];
 
     if (newFileIds.length > 0) {
       // Create a new set with current + new IDs
@@ -110,7 +151,7 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
       onSelectedFilesChange(Array.from(currentIds));
 
       // Update the display files using a Map to ensure uniqueness
-      const uniqueFilesMap = new Map<string, { id: string; name: string }>();
+      const uniqueFilesMap = new Map<string, SelectedFile>();
 
       // Add existing files to map
       selectedFiles.forEach((file) => {
@@ -148,7 +189,7 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
 
   // Helper function to extract file name consistently
   const getFileName = (file: FileUploadInfo): string => {
-    return file.fileData?.name || file.metadata?.originalName || `Unknown file`;
+    return file.fileData?.name || file.metadata?.originalName || 'Unknown file';
   };
 
   // Remove a selected file
@@ -160,38 +201,106 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
     setSelectedFiles((prev) => prev.filter((file) => file.id !== fileId));
   };
 
-  // Load initial file data if IDs are provided
+  // Function to get a file type icon based on mimetype
+  const getFileIcon = (mimetype: string | undefined) => {
+    if (!mimetype) return <FiFile className="h-6 w-6 text-gray-500" />;
+
+    if (mimetype.startsWith('image/')) return <FiImage className="h-6 w-6 text-blue-500" />;
+    if (mimetype.startsWith('video/')) return <FiVideo className="h-6 w-6 text-red-500" />;
+    if (mimetype.startsWith('audio/')) return <FiMusic className="h-6 w-6 text-purple-500" />;
+    if (mimetype.includes('pdf')) return <FiFileText className="h-6 w-6 text-orange-500" />;
+
+    return <FiFile className="h-6 w-6 text-gray-500" />;
+  };
+
+  // Format file size for display
+  const formatFileSize = (sizeInBytes: number | undefined) => {
+    if (!sizeInBytes) return 'Unknown size';
+
+    if (sizeInBytes < 1024) return `${sizeInBytes} B`;
+    if (sizeInBytes < 1024 * 1024) return `${(sizeInBytes / 1024).toFixed(2)} KB`;
+    return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  // Load existing files info from passed fileIds on mount
   useEffect(() => {
-    if (selectedFileIds.length > 0) {
-      // Create a map of existing display files by ID for quick lookups
-      const existingFilesMap = new Map(selectedFiles.map((file) => [file.id, file]));
+    setIsLoadingFiles(true);
 
-      // Create a new display files array with all IDs
-      const displayFiles = selectedFileIds.map((id) => {
-        // If we already have display info for this file, use it
-        if (existingFilesMap.has(id)) {
-          return existingFilesMap.get(id)!;
-        }
+    try {
+      // Initialize files from existing files prop in edit mode
+      if (isEditMode && existingFiles && existingFiles.length > 0) {
+        const filesToAdd = existingFiles
+          .filter((file) => selectedFileIds.includes(file.id))
+          .map((file) => ({
+            id: file.id,
+            name: file.originalName || file.uniqueName || `File ${file.id.substring(0, 8)}...`,
+            metadata: file,
+          }));
 
-        // Otherwise create a placeholder
-        return {
+        setSelectedFiles(filesToAdd);
+      } else if (selectedFileIds.length > 0) {
+        // Create placeholders for IDs without metadata
+        const displayFiles = selectedFileIds.map((id) => ({
           id,
           name: `File ${id.substring(0, 8)}...`,
-        };
-      });
+        }));
 
-      // Only update state if the array has changed
-      if (
-        displayFiles.length !== selectedFiles.length ||
-        !displayFiles.every((file, i) => file.id === selectedFiles[i]?.id)
-      ) {
         setSelectedFiles(displayFiles);
       }
-    } else if (selectedFiles.length > 0) {
-      // If there are no selected IDs but we have display files, clear them
-      setSelectedFiles([]);
+    } catch (error) {
+      console.error('Error loading file data:', error);
+    } finally {
+      setIsLoadingFiles(false);
     }
-  }, [selectedFileIds]);
+  }, []);
+
+  // Update selected files when selectedFileIds changes
+  useEffect(() => {
+    // This effect handles updates to the selectedFileIds from outside this component
+    if (!isLoadingFiles) {
+      // Get existing file IDs to check what needs to be added/removed
+      const existingIds = new Set(selectedFiles.map((file) => file.id));
+      const currentIds = new Set(selectedFileIds);
+
+      // Check if there are any changes
+      let hasChanges = false;
+
+      // Files to be added (in selectedFileIds but not in existingIds)
+      const filesToAdd: SelectedFile[] = [];
+
+      selectedFileIds.forEach((id) => {
+        if (!existingIds.has(id)) {
+          hasChanges = true;
+
+          // Find in existingFiles or create a placeholder
+          const existingFile = existingFiles.find((file) => file.id === id);
+
+          if (existingFile) {
+            filesToAdd.push({
+              id,
+              name:
+                existingFile.originalName ||
+                existingFile.uniqueName ||
+                `File ${id.substring(0, 8)}...`,
+              metadata: existingFile,
+            });
+          } else {
+            filesToAdd.push({
+              id,
+              name: `File ${id.substring(0, 8)}...`,
+            });
+          }
+        }
+      });
+
+      // Files to be removed (in existingIds but not in currentIds)
+      const newFiles = selectedFiles.filter((file) => currentIds.has(file.id));
+
+      if (filesToAdd.length > 0 || newFiles.length !== selectedFiles.length) {
+        setSelectedFiles([...newFiles, ...filesToAdd]);
+      }
+    }
+  }, [selectedFileIds, existingFiles, isLoadingFiles]);
 
   // Generate a unique id for the MultiFileUpload component to avoid state sharing
   useEffect(() => {
@@ -202,52 +311,129 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
 
   return (
     <div className="w-full">
-      <Typography variant="subtitle1" className="mb-2">
+      <Typography variant="subtitle1" className="mb-4 flex items-center">
+        <FiPaperclip className="mr-2" />
         فایل‌های پیوست
+        <span className="mr-2 text-sm text-gray-500">(اختیاری)</span>
       </Typography>
 
-      {/* Selected files display */}
-      {selectedFiles.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {selectedFiles.map((file) => (
-            <Chip
-              key={file.id}
-              label={file.name}
-              onDelete={() => handleRemoveFile(file.id)}
-              color="primary"
-              size="small"
-              deleteIcon={<FiX />}
+      {isLoadingFiles ? (
+        <div className="flex h-20 items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+          <span className="ml-2">در حال بارگذاری اطلاعات فایل‌ها...</span>
+        </div>
+      ) : (
+        <>
+          {/* Display existing files */}
+          {selectedFiles.length > 0 && (
+            <div className="my-6">
+              <Typography variant="subtitle2" className="mb-2">
+                فایل‌های انتخاب شده ({selectedFiles.length})
+              </Typography>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {selectedFiles.map((file) => {
+                  const metadata = file.metadata;
+                  const hasThumbnail =
+                    metadata?.thumbnailUrl && metadata.mimetype?.startsWith('image/');
+
+                  return (
+                    <Card key={file.id} variant="outlined" className="overflow-hidden">
+                      {/* File preview */}
+                      <div className="h-32 bg-gray-100 dark:bg-gray-800">
+                        {hasThumbnail ? (
+                          <div className="relative h-full w-full">
+                            <Image
+                              src={metadata.thumbnailUrl!}
+                              alt={file.name}
+                              width={150}
+                              height={150}
+                              className="h-full w-full object-contain"
+                              unoptimized
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            {getFileIcon(metadata?.mimetype)}
+                          </div>
+                        )}
+                      </div>
+
+                      <CardContent className="px-3 py-2">
+                        <Typography variant="body2" className="truncate font-medium">
+                          {file.name}
+                        </Typography>
+
+                        {metadata?.size && (
+                          <Typography variant="caption" className="text-gray-500">
+                            {formatFileSize(metadata.size)}
+                          </Typography>
+                        )}
+
+                        <div className="mt-1 flex justify-between">
+                          {metadata?.url && (
+                            <Button
+                              size="small"
+                              color="success"
+                              startIcon={<FiDownload size={14} />}
+                              href={metadata.url}
+                              target="_blank"
+                              className="text-xs"
+                            >
+                              دانلود
+                            </Button>
+                          )}
+
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => handleRemoveFile(file.id)}
+                            className="text-xs"
+                            startIcon={<FiX size={14} />}
+                          >
+                            حذف
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Success message */}
+          {uploadSuccess && (
+            <Alert severity="success" className="mb-3">
+              فایل با موفقیت آپلود و به مقاله اضافه شد
+            </Alert>
+          )}
+
+          {/* Upload component */}
+          <Box className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+            <Typography variant="subtitle2" className="mb-3">
+              افزودن فایل جدید
+            </Typography>
+
+            <MultiFileUpload
+              id={multiUploadRef.current}
+              bucket="default"
+              acceptedFileTypes="image/*,application/pdf,video/*,audio/*"
+              maxSizeMB={100}
+              onUploadComplete={handleUploadComplete}
+              onAllUploadsComplete={handleAllUploadsComplete}
             />
-          ))}
-        </div>
-      )}
+          </Box>
 
-      {/* Success message */}
-      {uploadSuccess && (
-        <Alert severity="success" className="mb-3">
-          فایل با موفقیت آپلود و به مقاله اضافه شد
-        </Alert>
-      )}
-
-      {/* Upload component */}
-      <Box className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-        <MultiFileUpload
-          id={multiUploadRef.current}
-          bucket="default"
-          acceptedFileTypes="image/*,application/pdf,video/*,audio/*"
-          maxSizeMB={100}
-          onUploadComplete={handleUploadComplete}
-          onAllUploadsComplete={handleAllUploadsComplete}
-        />
-      </Box>
-
-      {/* Error display */}
-      {errors && errors.length > 0 && (
-        <div className="mt-2 text-sm text-red-600">
-          {errors.map((error, index) => (
-            <div key={index}>{error}</div>
-          ))}
-        </div>
+          {/* Error display */}
+          {errors && errors.length > 0 && (
+            <div className="mt-2 text-sm text-red-600">
+              {errors.map((error, index) => (
+                <div key={index}>{error}</div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
