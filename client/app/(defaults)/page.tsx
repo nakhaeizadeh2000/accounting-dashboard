@@ -1,21 +1,11 @@
-import BadgesComponents from '@/components/modules/badges/BadgesComponents';
 import { Metadata } from 'next';
 
-import SimpleFileManager from '@/components/modules/files-manager/eamples/SimpleFileManager';
-import { ExampleMultiUploadFile, ExampleSingleUploadFile } from '@/components/modules/upload-files';
-
 export const metadata: Metadata = {
-  title: 'SalsetDatees Admin',
+  title: 'داشبورد',
 };
 
 const Sales = () => {
-  return (
-    <>
-      <ExampleSingleUploadFile />
-      <ExampleMultiUploadFile />
-      <SimpleFileManager />
-    </>
-  );
+  return <></>;
 };
 
 export default Sales;
