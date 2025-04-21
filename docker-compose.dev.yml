@@ -3,9 +3,10 @@ version: "3.8"
 services:
   nginx:
     container_name: nginx
+    restart: always
     image: nginx:alpine
     ports:
-      - "81:80" # HTTP
+      - "80:80" # HTTP
       - "443:443" # HTTPS (if needed)
     volumes:
       - ./:/app
@@ -14,12 +15,14 @@ services:
     depends_on:
       - api
       - client
+      - minio1
     networks:
       isatis:
         ipv4_address: "172.20.0.10"
 
   api:
     container_name: api
+    restart: always
     build:
       context: .
       dockerfile: dev-env/api.dev.dockerfile
@@ -46,13 +49,17 @@ services:
 
   minio1:
     image: minio/minio:RELEASE.2024-11-07T00-52-20Z.fips
-    hostname: minio
+    restart: always
+    hostname: minio1
     command: server --console-address ":9001" /data
     container_name: minio
     env_file:
       - ./minio/minio.env
     environment:
       MINIO_BROWSER_REDIRECT_URL: http://localhost/minio/console
+      # Add environment variable to allow public policy
+      MINIO_BROWSER: "on"
+      MINIO_DOMAIN: localhost
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -66,6 +73,7 @@ services:
 
   client:
     container_name: client
+    restart: always
     build:
       context: .
       dockerfile: dev-env/client.dev.dockerfile
@@ -85,6 +93,7 @@ services:
   postgres:
     container_name: ${POSTGRES_HOST}
     image: postgres:16-alpine
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -93,7 +102,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
-    restart: unless-stopped
     tty: true
     volumes:
       - ./postgres/data/data:/var/lib/postgresql/data
@@ -105,9 +113,9 @@ services:
   redis:
     container_name: ${REDIS_HOST}
     image: redis:7.4.0-alpine
+    restart: always
     env_file:
       - .env
-    restart: always
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -127,5 +135,3 @@ networks:
     ipam:
       config:
         - subnet: "172.20.0.0/24" # Define the subnet including the desired IP address
-
-# //TODO fix issue and level up security and write best practice

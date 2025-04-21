@@ -11,6 +11,20 @@ export type FileUploadStatus =
   | 'failed';
 export type QueueStatus = 'idle' | 'selected' | 'uploading' | 'completed' | 'failed';
 
+// File metadata from the API response
+export interface FileMetadata {
+  originalName: string;
+  uniqueName: string;
+  size: number;
+  mimetype: string;
+  thumbnailName?: string;
+  url: string;
+  thumbnailUrl?: string;
+  bucket: string;
+  uploadedAt: Date;
+}
+
+// Our local file tracking data
 export interface FileUploadInfo {
   id: string; // Unique ID for the file
   ownerId: string; // Component ID that owns this file
@@ -23,7 +37,8 @@ export interface FileUploadInfo {
   progress: number;
   bytesUploaded: number;
   errorMessage: string;
-  response?: any;
+  response?: any; // API response data
+  metadata?: FileMetadata; // Structured metadata from the server
   isUploading?: boolean; // Track if a file is actively being uploaded
 }
 
@@ -173,6 +188,22 @@ const uploadSlice = createSlice({
           state.queue[fileIndex].progress = 100; // Always set to 100% when completed
           state.queue[fileIndex].response = response;
           state.queue[fileIndex].isUploading = false;
+
+          // Extract file metadata from the response if available
+          if (response.files && response.files.length > 0) {
+            // Try to find the matching file in the response by comparing names
+            const fileData = state.queue[fileIndex].fileData;
+            const matchingFile = response.files.find(
+              (file: FileMetadata) => file.originalName === fileData.name,
+            );
+
+            if (matchingFile) {
+              state.queue[fileIndex].metadata = matchingFile;
+            } else {
+              // If no exact match, just use the first file from the response
+              state.queue[fileIndex].metadata = response.files[0];
+            }
+          }
 
           // Find next waiting file for the same component
           const nextIndex = state.queue.findIndex(

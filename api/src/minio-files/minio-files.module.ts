@@ -1,22 +1,30 @@
-import { Module, forwardRef } from '@nestjs/common';
+// src/minio-files/minio-files.module.ts
+import { Module, forwardRef, Global } from '@nestjs/common';
 import { CaslModule } from 'src/casl/casl.module';
 import { JwtService } from '@nestjs/jwt';
-import { MinioFilesController } from './controllers/minio-files.controller';
 import { MinioFilesService } from './services/minio-files.service';
 import { MinioConfigService } from 'config/minio/minio.config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MinioFilesController } from './controllers/minio-files.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { File } from './entities/file.entity';
+import { FileRepositoryService } from './services/file.repository.service';
+import { FilesController } from './controllers/files.controller';
 
 @Module({
   imports: [
-    // TypeOrmModule.forFeature([Permission]),
     forwardRef(() => CaslModule),
+    ConfigModule,
+    TypeOrmModule.forFeature([File]),
   ],
-  controllers: [MinioFilesController],
+  controllers: [MinioFilesController, FilesController],
   providers: [
-    // PermissionService,
     JwtService,
     MinioConfigService,
-    MinioFilesService
+    MinioFilesService,
+    ConfigService,
+    FileRepositoryService,
   ],
-  // exports: [PermissionService],
+  exports: [MinioFilesService, MinioConfigService, FileRepositoryService],
 })
-export class MinioFilesModule { }
+export class MinioFilesModule {}

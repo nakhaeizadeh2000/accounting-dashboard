@@ -1,1 +1,1 @@
-export const tags = ['User', 'SignIn', 'SignUp', 'SignOut'];
+export const tags = ['User', 'SignIn', 'SignUp', 'SignOut', 'Article'];

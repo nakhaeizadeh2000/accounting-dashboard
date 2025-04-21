@@ -2,6 +2,7 @@ services:
   nginx:
     container_name: nginx
     image: nginx:alpine
+    restart: always
     ports:
       - "80:80" # Expose Nginx service on port 80
     volumes:
@@ -15,7 +16,7 @@ services:
 
   api:
     container_name: api
-    # restart: always
+    restart: always
     build:
       context: .
       dockerfile: dev-env/api.dockerfile
@@ -42,6 +43,7 @@ services:
 
   client:
     container_name: client
+    restart: always
     build:
       context: .
       dockerfile: dev-env/client.dockerfile
@@ -59,6 +61,7 @@ services:
   postgres:
     container_name: ${POSTGRES_HOST}
     image: postgres:16-alpine
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -67,7 +70,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - ${POSTGRES_PORT:-5432}:5432
-    restart: unless-stopped
     tty: true
     volumes:
       - ./api/database/postgres-db/data:/var/lib/postgresql/data
@@ -79,9 +81,9 @@ services:
   redis:
     container_name: ${REDIS_HOST}
     image: redis:7.4.0-alpine
+    restart: always
     env_file:
       - .env
-    restart: always
     ports:
       - ${REDIS_PORT:-6379}:6379
     volumes:
@@ -126,6 +128,7 @@ services:
   mailpit:
     container_name: mailpit
     image: axllent/mailpit:latest
+    restart: always
     # ports:
     #   - ${FORWARD_MAILPIT_PORT:-1025}:1025
     #   - ${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025

@@ -7,7 +7,7 @@ import { useSignUpMutation } from '@/store/features/auth/sign-up/sign-up.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AnimatedInputElement from '../modules/input-elements/AnimatedInputElement';
-import FormButton from '../modules/buttons/FormButton';
+import FormButton from '../modules/button/components/FormButton';
 
 type SignUpErrorState = FormValidationsErrorState<SignUpFormData>;
 

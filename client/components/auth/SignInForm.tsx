@@ -13,6 +13,7 @@ import { MdOutlineAlternateEmail } from 'react-icons/md';
 import { FaEyeLowVision } from 'react-icons/fa6';
 import AnimatedPasswordInputelement from '../modules/input-elements/AnimatedPasswordInputElement';
 import LoadingButtonComponent from '../modules/button-advanced/components/LoadingButton';
+import FormButton from '../modules/button/components/FormButton';
 
 type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 
@@ -45,7 +46,7 @@ export default function SignInForm() {
 
     try {
       const result = await signIn(data).unwrap();
-      if (result.success) {
+      if (result.success && result.data) {
         setAccessTokenCookie(result.data.access_token, result.data.cookie_expires_in);
         if (window.history.length > 1 && document.referrer.includes('SignUp')) {
           router.back();
