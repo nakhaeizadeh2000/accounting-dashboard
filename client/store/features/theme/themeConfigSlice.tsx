@@ -85,13 +85,16 @@ const themeConfigSlice = createSlice({
     },
     toggleCalenderType(state, { payload }) {
       payload = payload || state.calenderType;
-      localStorage.setItem('calenderType', payload);
+      localStorage.setItem('calenderType',  payload);
       if (payload === 'jalali') {
         state.calenderType = 'jalali';
       } else {
         state.calenderType = 'gregorian';
       }
     },
+    toggleLanguage(state,{payload}){
+
+    }
   },
 });
 

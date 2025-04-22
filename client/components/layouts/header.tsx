@@ -84,6 +84,7 @@ const Header = () => {
   const themeConfig = useSelector((state: IRootState) => state.themeConfig);
   const setLocale = (flag: string) => {
     //* set the language for chosen rtl or ltr
+    console.log(flag)
 
     if (flag.toLowerCase() === 'ae' || flag.toLowerCase() === 'ir') {
       dispatch(toggleCalenderType('jalali'));
