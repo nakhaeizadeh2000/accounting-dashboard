@@ -372,7 +372,9 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
                   className="flex items-center text-gray-700 dark:text-gray-300"
                 >
                   <FiUser className="mr-2 text-blue-500" />
-                  نویسنده: {originalArticle.authorId} (غیرقابل تغییر)
+                  نویسنده:{' '}
+                  {originalArticle.author.firstName + ' ' + originalArticle.author.lastName}{' '}
+                  (غیرقابل تغییر)
                 </Typography>
               </div>
             )}

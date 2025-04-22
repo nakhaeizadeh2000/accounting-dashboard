@@ -7,15 +7,17 @@ export type Props = {
     containerClass?: string;
     labelClass?: string;
     isMarquee?: boolean;
-    items?: ItemType[];
+    items: ItemType[];
     selectedValue?: ItemType[]; // To hold the selected value
-    onChange: (item: ItemType[]) => void; // Callback to handle change
-    isLoading: boolean;
+    onChange: (items: ItemType[]) => void; // Callback to handle change
+    isLoading?: boolean;
     onFullScroll?: () => void;
     isLTR?: boolean;
     isMultiSelectable?: boolean;
     multiSelectLabelsViewType?: 'simple' | 'chips';
     appendToBody?: boolean;
+    isDisabled?: boolean; // New prop for disabled state
+    isValid?: boolean; // New prop for validation state
   };
 };
 

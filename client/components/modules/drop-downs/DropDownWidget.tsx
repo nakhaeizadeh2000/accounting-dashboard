@@ -27,6 +27,8 @@ export default function DropDownWidget({
     isMultiSelectable = false,
     multiSelectLabelsViewType = 'simple',
     appendToBody = false,
+    isDisabled = false, // Default to not disabled
+    isValid = true, // Default to valid
   },
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
@@ -96,7 +98,14 @@ export default function DropDownWidget({
     };
   }, [isOpen, appendToBody]);
 
+  // Update selectedItems when selectedValue changes from parent
+  useEffect(() => {
+    setSelectedItems(selectedValue);
+  }, [selectedValue]);
+
   function onRemoveItemClick(e: React.MouseEvent) {
+    if (isDisabled) return; // Prevent actions when disabled
+    
     e.stopPropagation();
     if (!isMultiSelectable) {
       setSelectedItems([]);
@@ -118,6 +127,8 @@ export default function DropDownWidget({
   }
 
   function onChangeSelection(item: ItemType) {
+    if (isDisabled) return; // Prevent selection changes when disabled
+    
     setSelectedItems((prevSelectedItems) => {
       let newData: ItemType[];
       if (isItemSelected(item)) {
@@ -140,6 +151,11 @@ export default function DropDownWidget({
       setIsOpen(false);
     }
   }
+
+  const handleDropdownToggle = () => {
+    if (isDisabled) return; // Prevent opening dropdown when disabled
+    setIsOpen(!isOpen);
+  };
 
   const renderDropdownList = () => (
     <m.ul
@@ -201,11 +217,24 @@ export default function DropDownWidget({
     </m.ul>
   );
 
+  // Determine border color based on validation and focus state
+  const getBorderClass = () => {
+    if (!isValid) return 'border-red-500'; // Invalid state - red border
+    if (isOpen) return 'border-blue-500'; // Focused state - blue border
+    return 'border-transparent'; // Default state - transparent border
+  };
+
+  // Determine label color based on validation state
+  const getLabelColorClass = () => {
+    if (!isValid) return 'text-red-500'; // Invalid state - red text
+    return 'text-neutral-600 dark:text-neutral-300'; // Default state
+  };
+
   return (
     <div className={`flex flex-col ${containerClass}`}>
       <LazyMotion features={loadLazyMotionFeatures}>
         <m.label
-          className={`pointer-events-none right-2 z-10 mb-0 truncate pt-[0.37rem] leading-[1.6] text-neutral-600 dark:text-neutral-300 ${labelClass}`}
+          className={`pointer-events-none right-2 z-10 mb-0 truncate pt-[0.37rem] leading-[1.6] ${getLabelColorClass()} ${labelClass} ${isDisabled ? 'opacity-60' : ''}`}
           animate={{
             position: 'relative',
             top: !!selectedItems.length || isOpen ? '0' : '1.95rem',
@@ -221,18 +250,19 @@ export default function DropDownWidget({
         <m.nav
           initial={false}
           animate={isOpen ? 'open' : 'closed'}
-          className={`relative rounded border ${isOpen ? 'border-blue-500' : 'border-transparent'} bg-neutral-100 dark:bg-slate-800 ${navClass}`}
+          className={`relative rounded border ${getBorderClass()} bg-neutral-100 dark:bg-slate-800 ${navClass} ${isDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           ref={dropdownRef}
         >
           <m.button
             title={label}
             id="dropdown-widget-button"
-            onClick={() => setIsOpen(!isOpen)}
-            className="flex w-full items-center justify-between gap-2 rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300"
+            onClick={handleDropdownToggle}
+            className={`flex w-full items-center justify-between gap-2 rounded border border-solid border-transparent bg-transparent px-3 py-[0.32rem] leading-[1.6] text-neutral-600 dark:bg-slate-800 dark:text-neutral-300 ${isDisabled ? 'cursor-not-allowed' : ''}`}
             ref={buttonRef}
+            disabled={isDisabled}
           >
             <m.div
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: isDisabled ? 1 : 0.97 }}
               className={`${isMultiSelectable ? 'w-[90%]' : 'w-4/5'} overflow-hidden`}
             >
               {!!selectedItems.length && (
@@ -253,7 +283,7 @@ export default function DropDownWidget({
               {!!selectedItems.length && !isMultiSelectable && (
                 <HiMiniXMark
                   onClick={onRemoveItemClick}
-                  className="justify-end rounded-full bg-neutral-300 dark:bg-slate-600"
+                  className={`justify-end rounded-full bg-neutral-300 dark:bg-slate-600 ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 />
               )}
               <m.div
@@ -275,7 +305,7 @@ export default function DropDownWidget({
           </m.button>
 
           {/* Dropdown list - either appended to body or rendered in place */}
-          {isOpen && appendToBody && isMounted
+          {isOpen && !isDisabled && appendToBody && isMounted
             ? createPortal(
                 <div
                   style={{
@@ -290,7 +320,7 @@ export default function DropDownWidget({
                 </div>,
                 document.body,
               )
-            : isOpen && (
+            : isOpen && !isDisabled && (
                 <div className="absolute left-0 top-full z-10 mt-1 w-full">
                   {renderDropdownList()}
                 </div>

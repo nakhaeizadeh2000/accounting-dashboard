@@ -316,7 +316,7 @@ const ArticleListComponent: React.FC = () => {
               checkboxSelection: true,
               getSelectedData: handleSelectionChange,
               disableColumnMenu: false,
-              className: 'h-[600px] w-full',
+              className: 'mt-16 h-[600px] w-full',
             }}
           />
         </div>

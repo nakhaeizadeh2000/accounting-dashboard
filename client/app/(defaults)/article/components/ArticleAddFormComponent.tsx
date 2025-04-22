@@ -51,18 +51,11 @@ const ArticleAddFormComponent: React.FC = () => {
   const router = useRouter();
 
   // Use our custom form hook with validation on initialization
-  const {
-    formData,
-    errors,
-    isFormValid,
-    handleChange,
-    validateForm,
-    validateField,
-    formatForCreate,
-  } = useArticleForm(undefined, true); // Pass true to validate on initialization
+  const { formData, errors, isFormValid, handleChange, validateField, formatForCreate } =
+    useArticleForm(undefined, true); // Pass true to validate on initialization
 
   // Author selection state
-  const [selectedAuthor, setSelectedAuthor] = useState<ItemType[]>([]);
+  const [author, setAuthor] = useState<ItemType[]>([]);
   const [authorError, setAuthorError] = useState<string[]>(['انتخاب نویسنده الزامی است']);
 
   // UI state
@@ -74,7 +67,7 @@ const ArticleAddFormComponent: React.FC = () => {
   const [createArticle, { isLoading: isSubmitting }] = useCreateArticleMutation();
 
   // Check if the form can be submitted
-  const canSubmit = isFormValid && selectedAuthor.length > 0 && !isSubmitting;
+  const canSubmit = isFormValid && author.length > 0 && !isSubmitting;
 
   // Handle title change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,8 +82,8 @@ const ArticleAddFormComponent: React.FC = () => {
   };
 
   // Handle author selection
-  const handleAuthorSelect = (authors: ItemType[]) => {
-    setSelectedAuthor(authors);
+  const handleAuthorChange = (authors: ItemType[]) => {
+    setAuthor(authors);
 
     // Clear error when user selects
     if (authorError.length > 0) {
@@ -105,7 +98,7 @@ const ArticleAddFormComponent: React.FC = () => {
 
   // Validate author field
   const validateAuthor = (): boolean => {
-    if (selectedAuthor.length === 0) {
+    if (author.length === 0) {
       setAuthorError(['انتخاب نویسنده الزامی است']);
       return false;
     }
@@ -124,7 +117,7 @@ const ArticleAddFormComponent: React.FC = () => {
 
     try {
       // Format data for API
-      const createData = formatForCreate(selectedAuthor[0].value.toString());
+      const createData = formatForCreate(author[0].value.toString());
 
       const result = await createArticle(createData).unwrap();
 
@@ -179,7 +172,20 @@ const ArticleAddFormComponent: React.FC = () => {
 
   // Handle cancel button
   const handleCancel = () => {
-    router.push(ARTICLE_ROUTES.LIST);
+    if (isSubmitting) return; // Prevent navigation during submission
+
+    // Show confirmation dialog if form has been modified
+    if (
+      formData.title ||
+      formData.content ||
+      author.length > 0 ||
+      (formData.fileIds?.length ?? 0) > 0
+    ) {
+      // Confirmation dialog logic
+      // ...
+    } else {
+      router.push(ARTICLE_ROUTES.LIST);
+    }
   };
 
   // Handle success dialog close
@@ -187,6 +193,15 @@ const ArticleAddFormComponent: React.FC = () => {
     setSuccessDialogOpen(false);
     router.push(ARTICLE_ROUTES.LIST);
   };
+
+  // Validate author when it changes
+  useEffect(() => {
+    if (author.length === 0) {
+      setAuthorError(['انتخاب نویسنده الزامی است']);
+    } else {
+      setAuthorError([]);
+    }
+  }, [author]);
 
   // Validate all fields on component mount
   useEffect(() => {
@@ -266,19 +281,25 @@ const ArticleAddFormComponent: React.FC = () => {
               />
             </div>
 
+            {/* Author Selection */}
             <div className="mb-4">
               <UserSingleSelectWidget
                 options={{
-                  title: 'نویسنده *',
-                  onChange: handleAuthorSelect,
-                  value: selectedAuthor,
+                  onChange: handleAuthorChange,
+                  value: author,
                   containerClass: 'w-full',
+                  title: 'نویسنده',
+                  isRequired: true,
+                  isDisabled: isSubmitting, // Disable during form submission
+                  isValid: !authorError.length,
                 }}
               />
               {authorError.length > 0 && (
-                <Typography color="error" variant="caption" className="mt-1 block">
-                  {authorError[0]}
-                </Typography>
+                <div className="mt-1 text-sm text-red-600">
+                  {authorError.map((error, index) => (
+                    <div key={index}>{error}</div>
+                  ))}
+                </div>
               )}
             </div>
           </Box>
@@ -315,53 +336,27 @@ const ArticleAddFormComponent: React.FC = () => {
             />
           </Box>
 
-          {/* Action buttons */}
-          <div className="mt-8 flex flex-col gap-2">
-            <div className="flex justify-end gap-4">
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={handleCancel}
-                startIcon={<FiX />}
-                disabled={isSubmitting}
-              >
-                انصراف
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                onClick={handleSubmit}
-                disabled={isSubmitting || !isFormValid}
-                className="mt-4"
-              >
-                {isSubmitting ? (
-                  <>
-                    <CircularProgress size={20} />
-                    <span className="mr-2">در حال ذخیره...</span>
-                  </>
-                ) : (
-                  <>
-                    <FiSave className="ml-2" />
-                    ذخیره مقاله
-                  </>
-                )}
-              </Button>
-            </div>
+          {/* Form Actions */}
+          <div className="mt-6 flex justify-between">
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<FiX />}
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              انصراف
+            </Button>
 
-            {/* Helper text to explain why the button might be disabled */}
-            {!isFormValid && !Object.keys(errors).length && (
-              <Typography variant="caption" color="text.secondary" className="text-right">
-                برای فعال شدن دکمه ذخیره، لطفاً عنوان و محتوای مقاله را وارد کنید.
-              </Typography>
-            )}
-
-            {/* Show specific validation errors if they exist */}
-            {Object.keys(errors).length > 0 && (
-              <Typography variant="caption" color="warning" className="text-right">
-                لطفاً خطاهای فرم را برطرف کنید تا دکمه ذخیره فعال شود.
-              </Typography>
-            )}
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={isSubmitting ? <CircularProgress size={20} /> : <FiSave />}
+              onClick={handleSubmit}
+              disabled={!canSubmit} // Use canSubmit instead of just isSubmitting
+            >
+              {isSubmitting ? 'در حال ذخیره...' : 'ذخیره مقاله'}
+            </Button>
           </div>
         </div>
       </Paper>

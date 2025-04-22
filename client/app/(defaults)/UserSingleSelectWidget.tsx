@@ -12,16 +12,30 @@ type Props = {
     value: ItemType[];
     containerClass: string;
     title?: string;
+    isDisabled?: boolean; // New prop for disabled state
+    isValid?: boolean; // New prop for validation state
+    isRequired?: boolean; // New prop to indicate if selection is required
   };
 };
 
 const UserSingleSelectWidget = ({
-  options: { onChange, containerClass = 'w-full', value, title = 'کاربر' },
+  options: { 
+    onChange, 
+    containerClass = 'w-full', 
+    value, 
+    title = 'کاربر',
+    isDisabled = false,
+    isValid = true,
+    isRequired = false
+  },
 }: Props) => {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Array<UserFormData & { id: string }>>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [dropdownItems, setDropdownItems] = useState<ItemType[]>([]);
+  
+  // Determine validation state - if required and no value selected, it's invalid
+  const computedIsValid = isRequired ? (value && value.length > 0) || isValid : isValid;
 
   const { data, error, isLoading } = useGetUsersQuery({ page, limit: 10 });
 
@@ -79,7 +93,7 @@ const UserSingleSelectWidget = ({
         isLoading: isLoading || isLoadingMore,
         onFullScroll: handleFullScroll,
         isLTR: true,
-        label: title,
+        label: isRequired ? `${title} *` : title, // Add asterisk for required fields
         selectedValue: value,
         containerClass: containerClass,
         items: dropdownItems,
@@ -87,6 +101,8 @@ const UserSingleSelectWidget = ({
         isMultiSelectable: false, // Changed to false since we only want single selection for authors
         multiSelectLabelsViewType: 'chips',
         appendToBody: true,
+        isDisabled: isDisabled, // Pass through the disabled state
+        isValid: computedIsValid, // Pass through the computed validation state
       }}
     />
   );
