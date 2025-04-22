@@ -1,6 +1,5 @@
 // components/Editor.tsx
 'use client'; // Add this if using Next.js 13+ with App Router
-
 import { Editor } from '@tinymce/tinymce-react';
 import type { Editor as TinyMCEEditor } from 'tinymce';
 import { useEffect, useRef } from 'react';
@@ -9,6 +8,10 @@ import { IRootState } from '@/store';
 import { useDispatch } from 'react-redux';
 import { toggleTheme } from '@/store/features/theme/themeConfigSlice';
 import { InitOptions } from '@tinymce/tinymce-react/lib/cjs/main/ts/components/Editor';
+
+// const Editor = dynamic(() => import('@tinymce/tinymce-react').then((mod) => mod.Editor), {
+//   ssr: false,
+// });
 
 interface EditorProps {
   initialValue?: string;
@@ -25,20 +28,24 @@ const TinyEditor = ({ initialValue = '', onChange, initOptionsTinyMce }: EditorP
 
   useEffect(() => {
     const themeMode = dispatch(toggleTheme(localStorage.getItem('theme') || themeConfig.theme));
-    console.log(themeMode, themeConfig.theme);
+
+    console.log(process.env.PUBLIC_URL);
   }, [dispatch, themeConfig.theme]);
 
   return (
     <Editor
+      // tinymceScriptSrc="/assets/tinymce/tinymce.min.js"
+      tinymceScriptSrc="/tinymce/tinymce.min.js"
       key={themeConfig.theme}
-      apiKey="no api key" // Get this from https://www.tiny.cloud/
+      licenseKey="gpl"
+      // apiKey="no api key" // Get this from https://www.tiny.cloud/
       onInit={(evt, editor) => (editorRef.current = editor)}
       initialValue={initialValue}
       init={{
         branding: false,
         statusbar: false,
         height: 500,
-        menubar: true,
+        menubar: false,
         plugins: [
           'advlist',
           'autolink',
@@ -65,28 +72,17 @@ const TinyEditor = ({ initialValue = '', onChange, initOptionsTinyMce }: EditorP
           'directionality',
           'visualchars',
           'nonbreaking',
-          'template',
           'pagebreak',
-          'textpattern',
           'quickbars',
-          'print',
           'importcss',
-          'toc',
         ],
         skin: themeConfig.theme === 'dark' ? 'oxide-dark' : 'oxide',
         content_css: themeConfig.theme === 'dark' ? 'tinymce-5-dark' : 'tinymce-5',
-        // toolbar_groups: {
-        //   formatting: {
-        //     icon: 'bold',
-        //     tooltip: 'Formatting',
-        //     items: 'bold italic underline | superscript subscript',
-        //   },
-        // },
         toolbar:
           'undo redo | formatselect | ' +
-          'bold italic backcolor | alignleft aligncenter ' +
-          'alignright alignjustify | bullist numlist outdent indent | ' +
-          'removeformat | help | image media link table codesample | ' +
+          'bold italic backcolor |alignright alignleft aligncenter ' +
+          ' alignjustify | bullist numlist outdent indent | ' +
+          'removeformat | help | image media link table | ' +
           'fullscreen preview | emoticons | save | print',
         content_style: 'body { font-family:var(--font-yekan-bakh); font-size:14px }',
         language: 'fa',
@@ -96,12 +92,11 @@ const TinyEditor = ({ initialValue = '', onChange, initOptionsTinyMce }: EditorP
           plugins: ['autosave', 'lists', 'autolink'],
           toolbar: 'undo redo | formatselect | bold italic | bullist numlist',
         },
-        table_toolbar:
-          'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol',
         setup(editor) {
           editor.on('init', () => {
             editor.getDoc().body.style.fontSize = '14px';
             editor.getDoc().body.style.fontFamily = 'var(--font-yekan-bakh)';
+            editor.execCommand('JustifyRight');
           });
           editor.on('keydown', (e) => {
             if (e.key === 'Tab') {
@@ -111,6 +106,7 @@ const TinyEditor = ({ initialValue = '', onChange, initOptionsTinyMce }: EditorP
             }
           });
         },
+        default_align: 'right',
         ...initOptionsTinyMce,
       }}
       onEditorChange={(content) => {

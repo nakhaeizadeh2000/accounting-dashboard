@@ -1,4 +1,3 @@
-import BadgesComponents from '@/components/modules/badges/BadgesComponents';
 import { Metadata } from 'next';
 
 import ExampleMultiUploadFile from '@/components/modules/upload-files/example/ExampleMultiUploadFile';

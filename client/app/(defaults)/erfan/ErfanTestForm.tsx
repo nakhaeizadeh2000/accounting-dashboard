@@ -68,7 +68,7 @@ const ErfanTestForm = () => {
       <hr className="m-4" />
       <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
       <hr className="m-4" />
-      <TinyEditor onChange={(data) => console.log(data)} initOptionsTinyMce={{ menubar: false }} />
+      <TinyEditor onChange={(data) => console.log(data)} initOptionsTinyMce={{ menubar: true }} />
       <hr className="m-4" />
       <span className="text-lg">Badge</span>
       <AdvancedBadgeExample />
