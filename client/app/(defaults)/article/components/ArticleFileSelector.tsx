@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Chip, Typography, Box, Alert, Card, CardContent, Button } from '@mui/material';
+import { Chip, Typography, Box, Alert, Card, CardContent, Button, CircularProgress } from '@mui/material';
 import {
   FiX,
   FiFile,
@@ -12,6 +12,7 @@ import {
 } from 'react-icons/fi';
 import { FileUploadInfo, MultiFileUpload } from '@/components/modules/upload-files';
 import Image from 'next/image';
+import { useRemoveFileFromArticleMutation } from '@/store/features/article/article.api';
 
 // Define file metadata type
 interface FileMetadata {
@@ -35,16 +36,18 @@ interface ArticleFileSelectorProps {
   selectedFileIds: string[];
   onSelectedFilesChange: (fileIds: string[]) => void;
   errors?: string[];
+  articleId?: number;
   isEditMode?: boolean;
-  existingFiles?: FileMetadata[];
+  existingFiles?: any[]; // Make this prop optional
 }
 
 const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
   selectedFileIds,
   onSelectedFilesChange,
   errors,
+  articleId,
   isEditMode = false,
-  existingFiles = [],
+  existingFiles = [], // Provide default empty array
 }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
@@ -53,6 +56,10 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
     `article-multi-upload-${Math.random().toString(36).substring(2, 9)}`,
   );
   const processedFilesRef = useRef<Set<string>>(new Set());
+  const [removingFileIds, setRemovingFileIds] = useState<Set<string>>(new Set());
+
+  // Add the RTK Query hook
+  const [removeFileFromArticle] = useRemoveFileFromArticleMutation();
 
   // Handle file upload success
   const handleUploadComplete = (uploadedFiles: FileUploadInfo[]) => {
@@ -193,12 +200,35 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
   };
 
   // Remove a selected file
-  const handleRemoveFile = (fileId: string) => {
-    // Update parent component
-    onSelectedFilesChange(selectedFileIds.filter((id) => id !== fileId));
+  const handleRemoveFile = async (fileId: string) => {
+    // Mark this file as being removed
+    setRemovingFileIds((prev) => new Set(prev).add(fileId));
 
-    // Update local state
-    setSelectedFiles((prev) => prev.filter((file) => file.id !== fileId));
+    try {
+      // If we're in edit mode and have an articleId, call the API to remove the file
+      if (isEditMode && articleId) {
+        await removeFileFromArticle({
+          articleId,
+          fileId,
+        }).unwrap();
+      }
+
+      // Update parent component
+      onSelectedFilesChange(selectedFileIds.filter((id) => id !== fileId));
+
+      // Update local state
+      setSelectedFiles((prev) => prev.filter((file) => file.id !== fileId));
+    } catch (error) {
+      console.error('Error removing file:', error);
+      // You could add error handling UI here
+    } finally {
+      // Remove from the loading state
+      setRemovingFileIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(fileId);
+        return newSet;
+      });
+    }
   };
 
   // Function to get a file type icon based on mimetype
@@ -273,7 +303,7 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
           hasChanges = true;
 
           // Find in existingFiles or create a placeholder
-          const existingFile = existingFiles.find((file) => file.id === id);
+          const existingFile = existingFiles?.find((file) => file.id === id);
 
           if (existingFile) {
             filesToAdd.push({
@@ -309,8 +339,26 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
     processedFilesRef.current = new Set();
   }, []);
 
+  // If in edit mode and we have an articleId, we can fetch the current files
+  useEffect(() => {
+    if (isEditMode && articleId) {
+      // You might want to fetch the current files for this article
+      // This depends on your API structure
+    }
+  }, [isEditMode, articleId]);
+
   return (
-    <div className="w-full">
+    <div className="rounded-lg border border-gray-300 p-4 dark:border-gray-700">
+      {isEditMode && (
+        <div className="mb-4">
+          <Typography variant="subtitle2" className="mb-2">
+            فایل‌های فعلی مقاله
+          </Typography>
+          {/* Display current files with options to remove */}
+          {/* This would depend on your UI components */}
+        </div>
+      )}
+
       <Typography variant="subtitle1" className="mb-4 flex items-center">
         <FiPaperclip className="mr-2" />
         فایل‌های پیوست
@@ -389,9 +437,10 @@ const ArticleFileSelector: React.FC<ArticleFileSelectorProps> = ({
                             color="error"
                             onClick={() => handleRemoveFile(file.id)}
                             className="text-xs"
-                            startIcon={<FiX size={14} />}
+                            startIcon={removingFileIds.has(file.id) ? <CircularProgress size={14} /> : <FiX size={14} />}
+                            disabled={removingFileIds.has(file.id)}
                           >
-                            حذف
+                            {removingFileIds.has(file.id) ? 'در حال حذف...' : 'حذف'}
                           </Button>
                         </div>
                       </CardContent>

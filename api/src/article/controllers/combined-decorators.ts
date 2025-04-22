@@ -11,6 +11,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -23,6 +24,8 @@ import { ResponseArticleDto } from '../dto/response-article.dto';
 import { Article } from '../entities/article.entity';
 import { PaginationApiQuery } from 'common/decorators/pagination-api-query.decorator';
 import { ArticlePaginatedResponseDto } from '../dto/article-paginated-response.dto';
+import { BaseResponseDto } from 'common/interceptors/response/response-wraper.dto';
+import { ErrorDto } from 'common/interceptors/response/response-wraper.dto';
 
 // controller
 export function articleControllerDecorators() {
@@ -121,6 +124,37 @@ export function articleDeleteEndpointDecorators() {
     CheckPolicies(
       (ability: AppAbility) =>
         ability.can('delete', 'Article') ||
+        ability.can('super-modify', 'Article'),
+    ),
+  );
+}
+
+// Add this new decorator function for the removeFileFromArticle endpoint
+export function articleRemoveFileEndpointDecorators() {
+  return applyDecorators(
+    Delete(':id/files/:fileId'),
+    UseGuards(JwtAuthGuard),
+    ApiOperation({ summary: 'Remove a file from an article' }),
+    ApiParam({ name: 'id', description: 'Article ID' }),
+    ApiParam({ name: 'fileId', description: 'File ID to remove' }),
+    ApiResponse({
+      status: 200,
+      description: 'File successfully removed from article',
+      type: BaseResponseDto,
+    }),
+    ApiResponse({
+      status: 404,
+      description: 'Article or file not found',
+      type: ErrorDto,
+    }),
+    ApiResponse({
+      status: 401,
+      description: 'Unauthorized',
+      type: ErrorDto,
+    }),
+    CheckPolicies(
+      (ability: AppAbility) =>
+        ability.can('update', 'Article') ||
         ability.can('super-modify', 'Article'),
     ),
   );

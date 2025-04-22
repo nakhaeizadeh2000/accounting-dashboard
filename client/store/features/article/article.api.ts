@@ -7,6 +7,7 @@ import {
   UpdateArticleDto,
 } from './article.model';
 import { BaseResponse } from '@/store/features/base-response.model';
+import { BaseResponseDto } from '../../../../api/common/interceptors/response/response-wraper.dto';
 
 export const articleApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -59,6 +60,17 @@ export const articleApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Article'],
     }),
+
+    // Remove a file from an article
+    removeFileFromArticle: builder.mutation<BaseResponse<{ success: boolean }>, { articleId: number; fileId: string }>({
+      query: ({ articleId, fileId }) => ({
+        url: `article/${articleId}/files/${fileId}`, // Changed from 'articles' to 'article'
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, { articleId }) => [
+        { type: 'Article', id: articleId.toString() },
+      ],
+    }),
   }),
 });
 
@@ -68,4 +80,5 @@ export const {
   useCreateArticleMutation,
   useUpdateArticleMutation,
   useDeleteArticleMutation,
+  useRemoveFileFromArticleMutation,
 } = articleApi;

@@ -170,7 +170,7 @@ export class ArticleService {
   async findOne(id: number): Promise<ResponseArticleDto> {
     const article = await this.articleRepository.findOne({
       where: { id },
-      relations: ['author'], // Add this to include author data
+      relations: ['author', 'files'], // Ensure files are included in the relation
     });
 
     if (!article) {
@@ -238,5 +238,68 @@ export class ArticleService {
     }
 
     this.logger.log(`Successfully deleted article ${id}`);
+  }
+
+  async removeFileFromArticle(articleId: number, fileId: string): Promise<{ success: boolean }> {
+    // Verify the article exists
+    const article = await this.articleRepository.findOne({
+      where: { id: articleId },
+      relations: ['files']
+    });
+
+    if (!article) {
+      throw new NotFoundException(`Article with ID ${articleId} not found`);
+    }
+
+    // Check if the file is associated with this article
+    const fileIndex = article.files.findIndex(file => file.id === fileId);
+    if (fileIndex === -1) {
+      throw new NotFoundException(`File with ID ${fileId} not found in article ${articleId}`);
+    }
+
+    // Get the file to be removed
+    const file = article.files[fileIndex];
+
+    // Remove the file from the article's files array
+    article.files.splice(fileIndex, 1);
+    
+    // Save the article with the updated files array
+    await this.articleRepository.save(article);
+
+    // Check if the file is used by other articles
+    const usageCount = await this.articleRepository
+      .createQueryBuilder('article')
+      .innerJoin('article.files', 'file')
+      .where('file.id = :fileId', { fileId })
+      .andWhere('article.id != :articleId', { articleId })
+      .getCount();
+
+    // If this is the only article using the file, delete it
+    if (usageCount === 0) {
+      this.logger.log(
+        `Deleting unused file ${file.id} (${file.originalName})`,
+      );
+
+      try {
+        // Delete from MinIO using the service
+        await this.minioFilesService.deleteFile(
+          file.bucket,
+          file.uniqueName,
+        );
+
+        // Delete from database using the repository service
+        await this.fileRepositoryService.remove(file.id);
+      } catch (err) {
+        this.logger.error(`Error deleting file ${file.id}: ${err.message}`);
+        // We don't throw here to ensure the file is removed from the article
+        // even if physical deletion fails
+      }
+    } else {
+      this.logger.log(
+        `File ${file.id} is used by ${usageCount} other articles, keeping it`,
+      );
+    }
+
+    return { success: true };
   }
 }

@@ -7,10 +7,10 @@ import {
   CreateArticleDto,
   UpdateArticleDto,
 } from '@/store/features/article/article.model';
-import { 
-  articleFormSchema, 
-  validateArticleForm, 
-  validateArticleField 
+import {
+  articleFormSchema,
+  validateArticleForm,
+  validateArticleField
 } from '@/schemas/validations/article/article.schema';
 import { z } from 'zod';
 
@@ -50,7 +50,7 @@ export function useArticleForm(initialData?: ArticleFormData, validateOnInit: bo
     if (validateOnInit) {
       const result = validateArticleForm(formData);
       setErrors(result.errors);
-      
+
       // Mark all fields as touched
       setTouched({
         title: true,
@@ -114,7 +114,7 @@ export function useArticleForm(initialData?: ArticleFormData, validateOnInit: bo
   const validateField = useCallback(
     (name: keyof ArticleFormData) => {
       const fieldErrors = validateArticleField(name, formData[name]);
-      
+
       if (fieldErrors) {
         setErrors((prev) => ({
           ...prev,
@@ -159,21 +159,13 @@ export function useArticleForm(initialData?: ArticleFormData, validateOnInit: bo
 
   // Format for API (update) - only include changed fields
   const formatForUpdate = useCallback(
-    (originalData: ArticleFormData): UpdateArticleDto => {
-      const updateData: UpdateArticleDto = {};
-
-      if (formData.title !== originalData.title) {
-        updateData.title = formData.title.trim();
-      }
-
-      if (formData.content !== originalData.content) {
-        updateData.content = formData.content;
-      }
-
-      // Always include fileIds to ensure proper file relationships
-      updateData.fileIds = formData.fileIds || [];
-
-      return updateData;
+    (authorId: string): UpdateArticleDto => {
+      return {
+        title: formData.title,
+        content: formData.content,
+        authorId,
+        fileIds: formData.fileIds || [], // Include fileIds in the update DTO
+      };
     },
     [formData],
   );

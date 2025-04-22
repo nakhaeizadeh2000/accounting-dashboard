@@ -136,12 +136,23 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
 
   // Handle file selection
   const handleFileIdsChange = (selectedFileIds: string[]) => {
-    // Keep the IDs as strings since the state is defined as string[]
     setFileIds(selectedFileIds);
-
-    // Clear error if needed
+    
+    // Clear error when user selects files
     if (errors.fileIds) {
       setErrors((prev) => ({ ...prev, fileIds: undefined }));
+    }
+    
+    // Check if fileIds have changed from original
+    if (originalArticle) {
+      const originalFileIds = originalArticle.files?.map(file => file.id) || [];
+      const fileIdsChanged = 
+        selectedFileIds.length !== originalFileIds.length || 
+        selectedFileIds.some(id => !originalFileIds.includes(id)) ||
+        originalFileIds.some(id => !selectedFileIds.includes(id));
+      
+      // Update form changed status
+      setFormChanged(formChanged || fileIdsChanged);
     }
   };
 
@@ -190,12 +201,8 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
     }
 
     try {
-      // Only include changed fields in the update payload
-      const updateData: {
-        title?: string;
-        content?: string;
-        fileIds?: string[];
-      } = {};
+      // Prepare update data with only changed fields
+      const updateData: any = {};
 
       if (originalArticle) {
         if (title !== originalArticle.title) {
@@ -410,6 +417,7 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
               selectedFileIds={fileIds}
               onSelectedFilesChange={handleFileIdsChange}
               errors={errors.fileIds}
+              articleId={articleId}
               isEditMode={true}
               existingFiles={originalArticle?.files || []}
             />
@@ -430,7 +438,7 @@ const ArticleEditFormComponent: React.FC<ArticleEditFormComponentProps> = ({ art
               type="submit"
               variant="contained"
               color="primary"
-              onClick={handleSubmit} // Add this line to call the handleSubmit function
+              onClick={handleSubmit}
               disabled={isSubmitting || !hasAnyChanges}
               className="mt-4"
             >
