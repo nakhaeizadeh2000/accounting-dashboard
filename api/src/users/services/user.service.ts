@@ -47,25 +47,38 @@ export class UsersService {
   }
 
   async findAll(
-    pagination: Pagination,
-  ): Promise<PaginatedResponse<ResponseUserRoleDto>> {
-    const { page, limit } = pagination;
-    const [users, count] = await this.userRepository.findAndCount({
-      take: limit,
-      skip: limit * (page - 1),
-    });
-    const convertedUsers = users.map((user) =>
-      plainToInstance(ResponseUserRoleDto, user, {
-        excludeExtraneousValues: true,
-      }),
-    );
-    const standardResponse = paginateResponse<ResponseUserRoleDto>(
-      convertedUsers,
-      count,
-      page,
-      limit,
-    );
-    return standardResponse;
+    paginationParams: Pagination,
+    search?: string,
+  ): Promise<PaginatedResponse<User>> {
+    const { page, limit } = paginationParams;
+
+    // Create query builder
+    const queryBuilder = this.userRepository.createQueryBuilder('user');
+
+    // Add search condition if search term is provided
+    if (search && search.trim()) {
+      queryBuilder.where(
+        '(user.firstName ILIKE :search OR user.lastName ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${search.trim()}%` }
+      );
+    }
+
+    // Add pagination
+    const [items, total] = await queryBuilder
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    // Calculate total pages
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      items,
+      total,
+      currentPage: page,
+      pageSize: limit,
+      totalPages,
+    };
   }
 
   async findOne(id: string): Promise<ResponseUserRoleDto> {

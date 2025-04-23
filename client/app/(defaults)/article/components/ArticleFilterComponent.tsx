@@ -5,7 +5,7 @@ import { ArticleFilterFormData } from '@/schemas/validations/article/article.sch
 import { Button, TextField, IconButton, Collapse } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers-pro';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
+import { ItemType } from '@/components/modules/drop-down-legacy/drop-down.type';
 import { FiFilter, FiX, FiSearch, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import UserSingleSelectWidget from '../../UserSingleSelectWidget';
 import { AdapterDateFnsJalali } from '@mui/x-date-pickers/AdapterDateFnsJalaliV3';

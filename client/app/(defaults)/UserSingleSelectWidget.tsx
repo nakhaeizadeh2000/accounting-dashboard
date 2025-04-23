@@ -1,7 +1,7 @@
 'use client';
 
-import { ItemType } from '@/components/modules/drop-downs/drop-down.type';
-import DropDownWidget from '@/components/modules/drop-downs/DropDownWidget';
+import { ItemType } from '@/components/modules/drop-down-legacy/drop-down.type';
+import DropDownWidget from '@/components/modules/drop-down-legacy/DropDownWidget';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { useEffect, useState, useCallback } from 'react';
@@ -19,21 +19,21 @@ type Props = {
 };
 
 const UserSingleSelectWidget = ({
-  options: { 
-    onChange, 
-    containerClass = 'w-full', 
-    value, 
+  options: {
+    onChange,
+    containerClass = 'w-full',
+    value,
     title = 'کاربر',
     isDisabled = false,
     isValid = true,
-    isRequired = false
+    isRequired = false,
   },
 }: Props) => {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Array<UserFormData & { id: string }>>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [dropdownItems, setDropdownItems] = useState<ItemType[]>([]);
-  
+
   // Determine validation state - if required and no value selected, it's invalid
   const computedIsValid = isRequired ? (value && value.length > 0) || isValid : isValid;
 

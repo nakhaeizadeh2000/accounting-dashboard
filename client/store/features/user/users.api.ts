@@ -4,8 +4,29 @@ import { UserFormData } from '@/schemas/validations/users/user.schema';
 
 export const userApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getUsers: builder.query<getUsers, { page: number; limit: number }>({
-      query: ({ page, limit }) => `users?page=${page}&limit=${limit}`,
+    getUsers: builder.query<
+      {
+        data: {
+          currentPage: number;
+          items: Array<UserFormData & { id: string }>;
+          pageSize: number;
+          total: number;
+          totalPages: number;
+        };
+      },
+      { page: number; limit: number; search?: string }
+    >({
+      query: (params) => {
+        const { page, limit, search } = params;
+        let url = `users?page=${page}&limit=${limit}`;
+        
+        // Add search parameter if provided
+        if (search && search.trim()) {
+          url += `&search=${encodeURIComponent(search.trim())}`;
+        }
+        
+        return url;
+      },
       providesTags: ['User'],
     }),
     getUserById: builder.query<GetFull, { id: number }>({

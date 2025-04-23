@@ -15,9 +15,17 @@ type Props = {
   children: React.ReactNode;
   setUserId?: () => void;
   currentTab?: number;
+  bodyBgColor?: string;
+  bodyPadding?: string;
 };
 
-const BtnNavigationComponent = ({ currentTab, btn, children }: Props) => {
+const BtnNavigationComponent = ({
+  currentTab,
+  btn,
+  children,
+  bodyBgColor = 'white',
+  bodyPadding = '20px',
+}: Props) => {
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     // setCurrentTab(newValue);
     // console.log(newValue, 'new value');
@@ -56,11 +64,11 @@ const BtnNavigationComponent = ({ currentTab, btn, children }: Props) => {
       {/* Conditionally render components based on the selected tab */}
       <Box
         sx={{
-          padding: '20px',
+          padding: bodyPadding,
           //TODO set color dynamic when i choose the mode theme
           borderTop: '1px solid #e0e0e0',
           minHeight: '600px',
-          bgcolor: 'primary.main',
+          bgcolor: bodyBgColor,
         }}
       >
         {children}

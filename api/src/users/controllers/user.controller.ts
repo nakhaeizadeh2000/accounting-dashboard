@@ -1,4 +1,4 @@
-import { Body, Param } from '@nestjs/common';
+import { Body, Param, Query } from '@nestjs/common';
 import { UsersService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -27,8 +27,11 @@ export class UsersController {
   }
 
   @userFindAllEndpointDecorators()
-  async findAll(@PaginationParams() paginationParams: Pagination) {
-    return this.usersService.findAll(paginationParams);
+  async findAll(
+    @PaginationParams() paginationParams: Pagination,
+    @Query('search') search?: string
+  ) {
+    return this.usersService.findAll(paginationParams, search);
   }
 
   @userFindOneEndpointDecorators()
