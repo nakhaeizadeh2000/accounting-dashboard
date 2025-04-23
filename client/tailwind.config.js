@@ -28,8 +28,8 @@ module.exports = {
       },
       colors: {
         primary: {
-          DEFAULT: '#4361ee',
-          light: '#eaf1ff',
+          DEFAULT: '#6571ff',
+          light: '#7281ff',
           'dark-light': 'rgba(67,97,238,.15)',
         },
         secondary: {
@@ -69,7 +69,7 @@ module.exports = {
         },
         white: {
           DEFAULT: '#ffffff',
-          light: '#e0e6ed',
+          light: '#f6f7fa',
           dark: '#888ea8',
         },
       },

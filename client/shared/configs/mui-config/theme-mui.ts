@@ -1,4 +1,5 @@
 import { createTheme, ThemeOptions } from '@mui/material/styles';
+import { COLORS } from '../../constants/colors';
 
 // Extend the palette color options to include custom properties
 declare module '@mui/material/styles' {
@@ -25,29 +26,29 @@ export const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#6571ff',
-      light: '#eaf1ff',
-      'dark-light': 'rgba(101, 113, 255, 0.15)',
+      main: COLORS.primary.DEFAULT,
+      light: COLORS.primary.light,
+      'dark-light': COLORS.primary.darkLight,
     },
     error: {
-      main: '#e7515a',
+      main: COLORS.danger.DEFAULT,
     },
     text: {
-      primary: '#000',
+      primary: COLORS.black.DEFAULT,
     },
     background: {
-      default: '#f6f7fa',
-      paper: '#ffffff',
+      default: COLORS.white.light,
+      paper: COLORS.white.DEFAULT,
     },
   },
   components: {
     MuiTab: {
       styleOverrides: {
         root: {
-          color: '#121C27',
+          color: COLORS.black.DEFAULT,
 
           '&.Mui-selected': {
-            color: '#6571ff',
+            color: COLORS.primary.DEFAULT,
             backgroundColor: '#eee',
           },
         },
@@ -56,7 +57,7 @@ export const lightTheme = createTheme({
     MuiTabs: {
       styleOverrides: {
         root: {
-          backgroundColor: '#f6f7fa',
+          backgroundColor: COLORS.white.light,
         },
       },
     },
@@ -74,11 +75,11 @@ export const lightTheme = createTheme({
       styleOverrides: {
         root: {
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#6571ff',
+            borderColor: COLORS.primary.DEFAULT,
             borderWidth: '1px',
           },
           '&.Mui-error .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#e7515a',
+            borderColor: COLORS.danger.DEFAULT,
           },
           '&.Mui-disabled': {
             opacity: 0.6,
@@ -93,10 +94,10 @@ export const lightTheme = createTheme({
       styleOverrides: {
         root: {
           '&.Mui-focused': {
-            color: '#6571ff',
+            color: COLORS.primary.DEFAULT,
           },
           '&.Mui-error': {
-            color: '#e7515a',
+            color: COLORS.danger.DEFAULT,
           },
           '&.Mui-disabled': {
             opacity: 0.6,
@@ -122,10 +123,10 @@ export const lightTheme = createTheme({
       styleOverrides: {
         root: {
           '&.Mui-selected': {
-            backgroundColor: 'rgba(101, 113, 255, 0.08)',
+            backgroundColor: COLORS.primary.light,
           },
           '&.Mui-selected:hover': {
-            backgroundColor: 'rgba(101, 113, 255, 0.12)',
+            backgroundColor: COLORS.primary.darkLight,
           },
         },
       },
@@ -139,19 +140,19 @@ export const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#6571ff',
-      light: 'rgba(101, 113, 255, 0.2)',
-      'dark-light': 'rgba(101, 113, 255, 0.15)',
+      main: COLORS.primary.DEFAULT,
+      light: COLORS.primary.light,
+      'dark-light': COLORS.primary.darkLight,
     },
     error: {
-      main: '#e7515a',
+      main: COLORS.danger.DEFAULT,
     },
     background: {
-      default: '#101427',
-      paper: '#1a1f37',
+      default: COLORS.black.DEFAULT,
+      paper: COLORS.dark.DEFAULT,
     },
     text: {
-      primary: '#eee',
+      primary: COLORS.white.DEFAULT,
       secondary: 'rgba(255, 255, 255, 0.7)',
     },
   },
@@ -162,7 +163,7 @@ export const darkTheme = createTheme({
           color: 'rgba(255, 255, 255, 0.7)',
 
           '&.Mui-selected': {
-            color: '#6571ff',
+            color: COLORS.primary.DEFAULT,
           },
         },
       },
@@ -170,7 +171,7 @@ export const darkTheme = createTheme({
     MuiTabs: {
       styleOverrides: {
         root: {
-          backgroundColor: '#101427',
+          backgroundColor: COLORS.black.DEFAULT,
         },
       },
     },
@@ -179,11 +180,11 @@ export const darkTheme = createTheme({
       styleOverrides: {
         root: {
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#6571ff',
+            borderColor: COLORS.primary.DEFAULT,
             borderWidth: '1px',
           },
           '&.Mui-error .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#e7515a',
+            borderColor: COLORS.danger.DEFAULT,
           },
           '&.Mui-disabled': {
             opacity: 0.6,
@@ -199,10 +200,10 @@ export const darkTheme = createTheme({
       styleOverrides: {
         root: {
           '&.Mui-focused': {
-            color: '#6571ff',
+            color: COLORS.primary.DEFAULT,
           },
           '&.Mui-error': {
-            color: '#e7515a',
+            color: COLORS.danger.DEFAULT,
           },
           '&.Mui-disabled': {
             opacity: 0.6,
@@ -228,10 +229,10 @@ export const darkTheme = createTheme({
       styleOverrides: {
         root: {
           '&.Mui-selected': {
-            backgroundColor: 'rgba(101, 113, 255, 0.15)',
+            backgroundColor: COLORS.primary.darkLight,
           },
           '&.Mui-selected:hover': {
-            backgroundColor: 'rgba(101, 113, 255, 0.25)',
+            backgroundColor: COLORS.primary.light,
           },
         },
       },

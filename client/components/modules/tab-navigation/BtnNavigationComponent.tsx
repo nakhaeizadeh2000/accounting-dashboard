@@ -23,7 +23,7 @@ const BtnNavigationComponent = ({
   currentTab,
   btn,
   children,
-  bodyBgColor = 'white',
+  bodyBgColor = 'background.default',
   bodyPadding = '20px',
 }: Props) => {
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
