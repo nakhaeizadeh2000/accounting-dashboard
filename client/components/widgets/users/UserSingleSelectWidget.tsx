@@ -1,7 +1,7 @@
 'use client';
 
-import { ItemType } from '@/components/modules/drop-down-legacy/drop-down.type';
-import DropDownWidget from '@/components/modules/drop-down-legacy/DropDownWidget';
+import { ItemType } from '@/components/modules/drop-down/drop-down.type';
+import DropDownWidget from '@/components/modules/drop-down/DropDownWidget';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { useEffect, useState, useCallback } from 'react';

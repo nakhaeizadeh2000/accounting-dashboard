@@ -46,9 +46,11 @@ import { ARTICLE_ROUTES } from '..';
 
 // Types
 import { useArticleForm } from '../hooks/useArticleForm';
-import UserSingleSelectWidget, {
-  User,
-} from '@/components/modules/user-select/UserSingleSelectWidget';
+import { User } from '@/store/features/user/users.model';
+import UserSingleSelectWidget from '@/components/widgets/users/UserSingleSelectWidget';
+
+// First, import the ItemType
+import { ItemType } from '@/components/modules/drop-down/drop-down.type';
 
 const ArticleAddFormComponent: React.FC = () => {
   const router = useRouter();
@@ -57,8 +59,8 @@ const ArticleAddFormComponent: React.FC = () => {
   const { formData, errors, isFormValid, handleChange, validateField, formatForCreate } =
     useArticleForm(undefined, true); // Pass true to validate on initialization
 
-  // Author selection state - now using User type instead of ItemType[]
-  const [selectedAuthor, setSelectedAuthor] = useState<User | null>(null);
+  // Author selection state - now using ItemType[] instead of User
+  const [selectedAuthor, setSelectedAuthor] = useState<ItemType[]>([]);
   const [authorError, setAuthorError] = useState<string[]>(['انتخاب نویسنده الزامی است']);
 
   // UI state
@@ -70,7 +72,7 @@ const ArticleAddFormComponent: React.FC = () => {
   const [createArticle, { isLoading: isSubmitting }] = useCreateArticleMutation();
 
   // Check if the form can be submitted
-  const canSubmit = isFormValid && selectedAuthor !== null && !isSubmitting;
+  const canSubmit = isFormValid && selectedAuthor.length > 0 && !isSubmitting;
 
   // Handle title change
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,9 +87,9 @@ const ArticleAddFormComponent: React.FC = () => {
   };
 
   // Handle author selection
-  const handleAuthorChange = (user: User | null) => {
-    setSelectedAuthor(user);
-    if (user) {
+  const handleAuthorChange = (items: ItemType[]) => {
+    setSelectedAuthor(items);
+    if (items.length > 0) {
       setAuthorError([]);
     } else {
       setAuthorError(['انتخاب نویسنده الزامی است']);
@@ -101,7 +103,7 @@ const ArticleAddFormComponent: React.FC = () => {
 
   // Validate author field
   const validateAuthor = (): boolean => {
-    if (selectedAuthor === null) {
+    if (selectedAuthor.length === 0) {
       setAuthorError(['انتخاب نویسنده الزامی است']);
       return false;
     }
@@ -120,7 +122,7 @@ const ArticleAddFormComponent: React.FC = () => {
 
     try {
       // Format data for API - use the selectedAuthor.id directly
-      const createData = formatForCreate(selectedAuthor!.id.toString());
+      const createData = formatForCreate(selectedAuthor[0].value.toString());
 
       const result = await createArticle(createData).unwrap();
 
@@ -181,7 +183,7 @@ const ArticleAddFormComponent: React.FC = () => {
     if (
       formData.title ||
       formData.content ||
-      selectedAuthor !== null ||
+      selectedAuthor.length > 0 ||
       (formData.fileIds?.length ?? 0) > 0
     ) {
       // Confirmation dialog logic
@@ -199,7 +201,7 @@ const ArticleAddFormComponent: React.FC = () => {
 
   // Validate author when it changes
   useEffect(() => {
-    if (selectedAuthor === null) {
+    if (selectedAuthor.length === 0) {
       setAuthorError(['انتخاب نویسنده الزامی است']);
     } else {
       setAuthorError([]);
@@ -298,9 +300,7 @@ const ArticleAddFormComponent: React.FC = () => {
                     isValid: !authorError.length,
                   }}
                 />
-                {authorError.length > 0 && (
-                  <FormHelperText error>{authorError[0]}</FormHelperText>
-                )}
+                {authorError.length > 0 && <FormHelperText error>{authorError[0]}</FormHelperText>}
               </FormControl>
             </div>
           </Box>

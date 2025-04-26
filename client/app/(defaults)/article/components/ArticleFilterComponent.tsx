@@ -1,16 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArticleFilterFormData } from '@/schemas/validations/article/article.schema';
 import { Button, TextField, IconButton, Collapse } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers-pro';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { ItemType } from '@/components/modules/drop-down-legacy/drop-down.type';
+import { ItemType } from '@/components/modules/drop-down/drop-down.type';
 import { FiFilter, FiX, FiSearch, FiChevronDown, FiChevronUp } from 'react-icons/fi';
-import UserSingleSelectWidget from '../../UserSingleSelectWidget';
+import UserSingleSelectWidget from '../../../../components/widgets/users/UserSingleSelectWidget';
 import { AdapterDateFnsJalali } from '@mui/x-date-pickers/AdapterDateFnsJalaliV3';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks/redux.hook';
 import { unset } from 'lodash';
+import { ArticleFilterFormData } from './ArticleListComponent';
 
 interface ArticleFilterComponentProps {
   onFilter: (filters: ArticleFilterFormData) => void;
@@ -32,9 +32,9 @@ const ArticleFilterComponent: React.FC<ArticleFilterComponentProps> = ({
   // Form state (initialized from Redux)
   const [filters, setFilters] = useState<ArticleFilterFormData>({
     title: currentFilter.title || '',
-    authorId: currentFilter.authorId,
-    fromDate: currentFilter.fromDate,
-    toDate: currentFilter.toDate,
+    authorId: currentFilter.authorId ? Number(currentFilter.authorId) : undefined,
+    startDate: currentFilter.fromDate,
+    endDate: currentFilter.toDate,
     page: currentFilter.page,
     limit: currentFilter.limit,
   });
@@ -54,9 +54,9 @@ const ArticleFilterComponent: React.FC<ArticleFilterComponentProps> = ({
   useEffect(() => {
     setFilters({
       title: currentFilter.title || '',
-      authorId: currentFilter.authorId,
-      fromDate: currentFilter.fromDate,
-      toDate: currentFilter.toDate,
+      authorId: currentFilter.authorId ? Number(currentFilter.authorId) : undefined,
+      startDate: currentFilter.fromDate,
+      endDate: currentFilter.toDate,
       page: currentFilter.page,
       limit: currentFilter.limit,
     });
@@ -89,7 +89,7 @@ const ArticleFilterComponent: React.FC<ArticleFilterComponentProps> = ({
     setSelectedUser(users);
     setFilters((prev) => ({
       ...prev,
-      authorId: users.length > 0 ? users[0].value.toString() : undefined,
+      authorId: users.length > 0 ? Number(users[0].value) : undefined,
     }));
   };
 
@@ -98,7 +98,7 @@ const ArticleFilterComponent: React.FC<ArticleFilterComponentProps> = ({
     setFromDate(date);
     setFilters((prev) => ({
       ...prev,
-      fromDate: date ? date.toISOString() : undefined,
+      startDate: date ? date.toISOString() : undefined,
     }));
   };
 
@@ -107,7 +107,7 @@ const ArticleFilterComponent: React.FC<ArticleFilterComponentProps> = ({
     setToDate(date);
     setFilters((prev) => ({
       ...prev,
-      toDate: date ? date.toISOString() : undefined,
+      endDate: date ? date.toISOString() : undefined,
     }));
   };
 
@@ -125,8 +125,8 @@ const ArticleFilterComponent: React.FC<ArticleFilterComponentProps> = ({
     setFilters({
       title: '',
       authorId: undefined,
-      fromDate: undefined,
-      toDate: undefined,
+      startDate: undefined,
+      endDate: undefined,
       page: 1,
       limit: 10,
     });
@@ -185,7 +185,7 @@ const ArticleFilterComponent: React.FC<ArticleFilterComponentProps> = ({
                     size="small"
                     onClick={() => {
                       setFilters((prev) => ({ ...prev, title: '' }));
-                      if (!filters.authorId && !filters.fromDate && !filters.toDate) {
+                      if (!filters.authorId && !filters.startDate && !filters.endDate) {
                         onResetFilters(); // Only reset if this is the only active filter
                       } else {
                         onFilter({ ...filters, title: '' });

@@ -1,3 +1,8 @@
+import { UserFormData } from "@/schemas/validations/users/user.schema";
+
+// Define User type based on the API response
+export type User = UserFormData & { id: string };
+
 export interface GetIndex {
   id: number;
   username: string;

@@ -5,7 +5,9 @@ export const metadata: Metadata = {
 };
 
 const Sales = () => {
-  return <></>;
+  return (
+    <></>
+  );
 };
 
 export default Sales;

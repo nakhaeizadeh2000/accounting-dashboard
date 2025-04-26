@@ -1,5 +1,4 @@
-// components/Editor.tsx
-'use client'; // Add this if using Next.js 13+ with App Router
+'use client';
 
 import { Editor as TinyMCEEditor } from '@tinymce/tinymce-react';
 import { useEffect, useRef } from 'react';
@@ -23,7 +22,6 @@ export default function Editor({ initialValue = '', onChange }: EditorProps) {
 
   useEffect(() => {
     const themeMode = dispatch(toggleTheme(localStorage.getItem('theme') || themeConfig.theme));
-    console.log(themeMode, themeConfig.theme);
   }, [dispatch, themeConfig.theme]);
 
   // This effect ensures the editor content is updated when initialValue changes
