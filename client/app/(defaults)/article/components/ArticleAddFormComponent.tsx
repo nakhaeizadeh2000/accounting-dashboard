@@ -50,7 +50,7 @@ import { User } from '@/store/features/user/users.model';
 import UserSingleSelectWidget from '@/components/widgets/users/UserSingleSelectWidget';
 
 // First, import the ItemType
-import { ItemType } from '@/components/modules/drop-down/drop-down.type';
+import { ItemType } from '@/components/modules/checkBox/drop-down/drop-down.type';
 
 const ArticleAddFormComponent: React.FC = () => {
   const router = useRouter();

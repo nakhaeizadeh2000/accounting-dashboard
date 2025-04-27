@@ -4,12 +4,14 @@ import { baseApi } from './api';
 import { authMiddleware } from './redux-middlewares/auth-middleware';
 import fileUploadReducer from './features/files/progress-slice';
 import articleReducer from '@/store/features/article/articleSlice';
+import { dropdownReducer } from '@/components/modules/dropdown/store';
 
 const rootReducer = combineReducers({
   [baseApi.reducerPath]: baseApi.reducer,
   themeConfig: themeConfigSlice,
   upload: fileUploadReducer,
   article: articleReducer,
+  dropdowns: dropdownReducer,
 });
 
 const store = configureStore({

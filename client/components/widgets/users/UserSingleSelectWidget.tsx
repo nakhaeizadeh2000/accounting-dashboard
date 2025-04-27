@@ -1,7 +1,7 @@
 'use client';
 
-import { ItemType } from '@/components/modules/drop-down/drop-down.type';
-import DropDownWidget from '@/components/modules/drop-down/DropDownWidget';
+import { ItemType } from '@/components/modules/dropdown/types'; // Updated import path
+import Dropdown from '@/components/modules/dropdown/Dropdown'; // Updated to use Dropdown component
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { useEffect, useState, useCallback } from 'react';
@@ -88,7 +88,7 @@ const UserSingleSelectWidget = ({
   );
 
   return (
-    <DropDownWidget
+    <Dropdown
       options={{
         isLoading: isLoading || isLoadingMore,
         onFullScroll: handleFullScroll,
@@ -98,8 +98,7 @@ const UserSingleSelectWidget = ({
         containerClass: containerClass,
         items: dropdownItems,
         onChange: handleSelectionChange,
-        isMultiSelectable: false, // Changed to false since we only want single selection for authors
-        multiSelectLabelsViewType: 'chips',
+        isMultiSelectable: false, // Changed to false since we only want single selection for author
         appendToBody: true,
         isDisabled: isDisabled, // Pass through the disabled state
         isValid: computedIsValid, // Pass through the computed validation state

@@ -12,7 +12,7 @@ import {
 } from '@/store/features/article/article.api';
 import { useRouter } from 'next/navigation';
 import { isResponseCatchError } from '@/store/features/base-response.model';
-import { ItemType } from '@/components/modules/drop-down/drop-down.type';
+import { ItemType } from '@/components/modules/checkBox/drop-down/drop-down.type';
 import { ARTICLE_ROUTES } from '../index';
 
 interface ArticleFormState {
