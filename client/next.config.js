@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const CopyPlugin = require('copy-webpack-plugin');
+const path = require('path');
+
 const nextConfig = {
   productionBrowserSourceMaps: false, // Disables source maps for the browser in production
   reactStrictMode: true,
@@ -55,6 +58,21 @@ const nextConfig = {
       });
     }
 
+    // config.plugins.push(
+    //   new CopyPlugin({
+    //     patterns: [
+    //       {
+    //         // from: path.join(__dirname, 'node_modules/tinymce'),
+    //         // to: path.join(__dirname, 'public/assets/tinymce'),
+    //       },
+    //     ],
+    //   }),
+    // );
+    // if (config.cache && !dev) {
+    //   config.cache = Object.freeze({
+    //     type: 'memory',
+    //   });
+    // }
     // Important: return the modified config
     return config;
   },
