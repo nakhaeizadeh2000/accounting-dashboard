@@ -30,6 +30,11 @@ interface UseDropdownProps {
   appendToBody?: boolean;
   onFullScroll?: () => void;
   isLoading?: boolean;
+  // Add filter options
+  filterComponent?: React.ReactNode;
+  onFilterChange?: (filterValue: string) => void;
+  filterPlaceholder?: string;
+  showDefaultFilter?: boolean;
 }
 
 export const useDropdown = ({
@@ -42,6 +47,10 @@ export const useDropdown = ({
   appendToBody = false,
   onFullScroll = () => { },
   isLoading = false,
+  filterComponent,
+  onFilterChange,
+  filterPlaceholder,
+  showDefaultFilter = true,
 }: UseDropdownProps) => {
   // Generate a unique ID for this dropdown if not provided
   const [dropdownId] = useState(id || `dropdown-${nanoid()}`);
@@ -50,6 +59,9 @@ export const useDropdown = ({
   const [localDropdownPosition, setLocalDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const [portalElement, setPortalElement] = useState<HTMLUListElement | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+
+  // Add filter state if needed
+  const [filterValue, setFilterValue] = useState('');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -252,6 +264,14 @@ export const useDropdown = ({
     []
   );
 
+  // Handle filter change
+  const handleFilterChange = useCallback((value: string) => {
+    setFilterValue(value);
+    if (onFilterChange) {
+      onFilterChange(value);
+    }
+  }, [onFilterChange]);
+
   return {
     isOpen,
     selectedItems,
@@ -268,5 +288,10 @@ export const useDropdown = ({
     handleScroll,
     getBorderClass,
     getLabelColorClass,
+    filterValue,
+    handleFilterChange,
+    filterComponent,
+    showDefaultFilter,
+    filterPlaceholder,
   };
 };

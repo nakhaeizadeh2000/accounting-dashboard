@@ -263,6 +263,10 @@
       @apply ml-0 mr-1;
     }
   }
+
+  .dropdown-filter-input {
+    text-align: right;
+  }
 }
 
 // Accessibility focus styles
@@ -380,5 +384,31 @@
 
   .dropdown-menu {
     @apply hidden !important;
+  }
+}
+
+// Dropdown Filter Section
+.dropdown-filter-section {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+// Default Filter Input
+.dropdown-default-filter {
+  width: 100%;
+}
+
+.dropdown-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  
+  &:focus {
+    border-color: var(--primary-color, #3b82f6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
   }
 }

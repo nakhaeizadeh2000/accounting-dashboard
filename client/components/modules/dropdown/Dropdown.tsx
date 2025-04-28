@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { DropdownProps } from './types';
 import { useDropdown } from './hooks';
 import { DropdownButton, DropdownContainer, DropdownList } from './components';
@@ -21,6 +21,10 @@ const Dropdown: React.FC<DropdownProps> = ({
     appendToBody = false,
     isDisabled = false,
     isValid = true,
+    filterComponent,
+    onFilterChange,
+    filterPlaceholder = 'Search...',
+    showDefaultFilter = false,
   },
 }) => {
   const {
@@ -48,6 +52,48 @@ const Dropdown: React.FC<DropdownProps> = ({
     onFullScroll,
     isLoading,
   });
+
+  const [filterValue, setFilterValue] = useState('');
+
+  // Handle filter changes
+  const handleFilterChange = useCallback(
+    (value: string) => {
+      setFilterValue(value);
+      if (onFilterChange) {
+        onFilterChange(value);
+      }
+    },
+    [onFilterChange]
+  );
+
+  // This function will handle the input change event in the filter section
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      handleFilterChange(value);
+    },
+    [handleFilterChange]
+  );
+
+  // Prepare the filter section
+  const filterSection = (filterComponent || showDefaultFilter) && (
+    <div className="dropdown-filter-section p-2 border-b border-gray-200 dark:border-gray-700">
+      {filterComponent ? (
+        filterComponent
+      ) : showDefaultFilter ? (
+        <div className="dropdown-default-filter">
+          <input
+            type="text"
+            className="dropdown-filter-input w-full px-2 py-1 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+            placeholder={filterPlaceholder}
+            value={filterValue}
+            onChange={handleInputChange}
+            onClick={(e) => e.stopPropagation()} // Prevent dropdown from closing
+          />
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <DropdownContainer
@@ -89,7 +135,14 @@ const Dropdown: React.FC<DropdownProps> = ({
         label={label}
         handleItemSelection={handleItemSelection}
         isItemSelected={isItemSelected}
-      />
+        filterComponent={filterComponent}
+        showDefaultFilter={showDefaultFilter}
+        filterPlaceholder={filterPlaceholder}
+        onFilterChange={handleFilterChange}
+        filterValue={filterValue}
+      >
+        {filterSection}
+      </DropdownList>
     </DropdownContainer>
   );
 };

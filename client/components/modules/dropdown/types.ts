@@ -37,6 +37,11 @@ export interface DropdownOptions {
   appendToBody?: boolean;
   isDisabled?: boolean;
   isValid?: boolean;
+  // Add filter options
+  filterComponent?: React.ReactNode; // Custom filter component to render at the top of dropdown
+  onFilterChange?: (filterValue: string) => void; // Callback for filter changes
+  filterPlaceholder?: string; // Placeholder for the default filter input
+  showDefaultFilter?: boolean; // Whether to show the default filter input
 }
 
 export interface DropdownProps {
