@@ -1,7 +1,7 @@
 import { useGetUsersQuery } from '@/store/features/user/users.api';
 import { UserFormData } from '@/schemas/validations/users/user.schema';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { ItemType } from '@/components/modules/checkBox/drop-down/drop-down.type';
+import { ItemType } from '@/components/modules/dropdown-legacy/drop-down.type';
 import Dropdown from '@/components/modules/dropdown';
 
 type Props = {
