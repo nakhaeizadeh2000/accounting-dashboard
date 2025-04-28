@@ -14,7 +14,8 @@
     "analyze": "ANALYZE=true next build",
     "format": "prettier --write .",
     "lint": "eslint  --no-cache --config .eslintrc.js --ext .js,.jsx,.ts,.tsx --fix .",
-    "start": "next start --port 3000"
+    "start": "next start --port 3000",
+    "postinstall": "node postinstall.js"
   },
   "dependencies": {
     "@date-fns/utc": "^2.1.0",
@@ -44,6 +45,7 @@
     "date-fns-jalali": "^3.2.0-0",
     "date-fns-tz": "^3.2.0",
     "framer-motion": "^11.5.4",
+    "fs-extra": "^11.3.0",
     "i18next": "^23.12.2",
     "js-cookie": "^3.0.5",
     "lodash": "^4.17.21",
@@ -67,7 +69,7 @@
     "stylis-plugin-rtl": "^2.1.1",
     "sweetalert2": "^11.6.13",
     "tailwind-scrollbar": "^3.1.0",
-    "tinymce": "^7.7.2",
+    "tinymce": "^7.8.0",
     "universal-cookie": "^7.2.0",
     "yup": "^1.4.0",
     "zod": "^3.23.8"
@@ -86,6 +88,7 @@
     "@typescript-eslint/eslint-plugin": "^8.0.1",
     "@typescript-eslint/parser": "^8.0.1",
     "autoprefixer": "^10.4.13",
+    "copy-webpack-plugin": "^13.0.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.9",
     "eslint-config-prettier": "^9.1.0",
