@@ -20,6 +20,8 @@ import HooksExample from '@/components/modules/button-advanced/examples/HooksExa
 import ComponentModalExample from '@/components/modules/modal/examples/ComponentModalExample';
 import BridgeExample from '@/components/modules/modal/examples/BridgeModalExample';
 import TinyEditor from '@/components/modules/editor/TinyMceComponent';
+import TextFieldMuiComponent from '@/components/modules/input-elements/components/TextFieldMuiComponent';
+import { MdEmail } from 'react-icons/md';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -47,7 +49,7 @@ const ErfanTestForm = () => {
   };
 
   return (
-    <div className="m-2 mt-3 flex w-full flex-1 flex-col justify-center gap-2 overflow-y-auto border-4 border-indigo-500/100">
+    <div className="m-2 mt-3 flex w-full flex-1 flex-col justify-center gap-2 overflow-y-auto">
       <TimePickersSimpleComponent
         options={{ label: 'ساعت', getValue: setTime, formatTime: 'HH:mm' }}
       />
@@ -64,7 +66,15 @@ const ErfanTestForm = () => {
         }}
       />
       <hr className="m-4" />
-      <TextField id="outlined-basic" label="ایمیل" variant="outlined" size="small" />
+      <span className="text-lg">TextField</span>
+      <div className="flex items-center justify-center gap-4">
+        <TextField id="outlined-basic" label="ایمیل" variant="outlined" size="small" />
+        <TextFieldMuiComponent
+          label="Email"
+          onChange={(data) => console.log(data)}
+          icon={<MdEmail />}
+        />
+      </div>
       <hr className="m-4" />
       <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />
       <hr className="m-4" />
