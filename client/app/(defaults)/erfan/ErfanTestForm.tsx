@@ -68,12 +68,43 @@ const ErfanTestForm = () => {
       <hr className="m-4" />
       <span className="text-lg">TextField</span>
       <div className="flex items-center justify-center gap-4">
-        <TextField id="outlined-basic" label="ایمیل" variant="outlined" size="small" />
-        <TextFieldMuiComponent
-          label="Email"
-          onChange={(data) => console.log(data)}
-          icon={<MdEmail />}
-        />
+        <div>
+          <span className="text-lg">TextField default</span>
+          <TextFieldMuiComponent
+            label="Email"
+            onChange={(data) => console.log(data)}
+            icon={<MdEmail />}
+          />
+        </div>
+
+        <div>
+          <span className="text-lg">TextField with out label focused</span>
+          <TextFieldMuiComponent
+            label="Email"
+            onChange={(data) => console.log(data)}
+            icon={<MdEmail />}
+            labelFocused={false}
+          />
+        </div>
+        <div>
+          <span className="text-lg">TextField with out label focused and root focused</span>
+          <TextFieldMuiComponent
+            label="Email"
+            onChange={(data) => console.log(data)}
+            icon={<MdEmail />}
+            labelFocused={false}
+            rootFocused={false}
+          />
+        </div>
+        <div>
+          <span className="text-lg">TextField with out root focused</span>
+          <TextFieldMuiComponent
+            label="Email"
+            onChange={(data) => console.log(data)}
+            icon={<MdEmail />}
+            rootFocused={false}
+          />
+        </div>
       </div>
       <hr className="m-4" />
       <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />

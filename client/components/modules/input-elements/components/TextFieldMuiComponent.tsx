@@ -28,7 +28,12 @@ const TextFieldMuiComponent = ({
             },
             inputLabel: {
               // shrink: false,
-              focused: false,
+              focused: props?.labelFocused,
+            },
+            select: {},
+            htmlInput: {},
+            root: {
+              focused: props?.rootFocused,
             },
           }}
           {...props}
