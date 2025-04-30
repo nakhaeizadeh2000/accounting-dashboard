@@ -1,7 +1,6 @@
-import { InputAdornment, TextField, TextFieldProps } from '@mui/material';
+import { InputAdornment, TextField, useTheme } from '@mui/material';
 import React from 'react';
 import { TextFieldTypes } from '../types/textFiledTypes';
-import { MdAccountCircle } from 'react-icons/md';
 
 const TextFieldMuiComponent = ({
   size = 'small',
@@ -9,6 +8,8 @@ const TextFieldMuiComponent = ({
   color = 'primary',
   ...props
 }: TextFieldTypes) => {
+  const theme = useTheme();
+  console.log(theme.palette.mode, 'theme');
   return (
     <>
       <div>
@@ -17,24 +18,24 @@ const TextFieldMuiComponent = ({
           size={size}
           color={color}
           autoFocus={false}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              '&.Mui-focused fieldset': {
+                borderColor: 'rgba(0, 0, 0, 0.23)', // Same as default
+                borderWidth: '1px',
+              },
+            },
+          }}
           slotProps={{
             input: {
-              // startAdornment: (
-              //   <InputAdornment position="end">
-              //     <MdAccountCircle />
-              //   </InputAdornment>
-              // ),
               endAdornment: <InputAdornment position="end">{props.icon}</InputAdornment>,
             },
             inputLabel: {
-              // shrink: false,
-              focused: props?.labelFocused,
+              focused: false,
             },
-            select: {},
-            htmlInput: {},
-            root: {
-              focused: props?.rootFocused,
-            },
+            // root: {
+            //   focused: props?.rootFocused,
+            // },
           }}
           {...props}
         />

@@ -44,7 +44,6 @@ export const lightTheme = createTheme({
         },
       },
     },
-    // MuiD
   },
 });
 

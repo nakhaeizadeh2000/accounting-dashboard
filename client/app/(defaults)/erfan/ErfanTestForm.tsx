@@ -69,40 +69,10 @@ const ErfanTestForm = () => {
       <span className="text-lg">TextField</span>
       <div className="flex items-center justify-center gap-4">
         <div>
-          <span className="text-lg">TextField default</span>
           <TextFieldMuiComponent
-            label="Email"
+            label="ایمیل"
             onChange={(data) => console.log(data)}
             icon={<MdEmail />}
-          />
-        </div>
-
-        <div>
-          <span className="text-lg">TextField with out label focused</span>
-          <TextFieldMuiComponent
-            label="Email"
-            onChange={(data) => console.log(data)}
-            icon={<MdEmail />}
-            labelFocused={false}
-          />
-        </div>
-        <div>
-          <span className="text-lg">TextField with out label focused and root focused</span>
-          <TextFieldMuiComponent
-            label="Email"
-            onChange={(data) => console.log(data)}
-            icon={<MdEmail />}
-            labelFocused={false}
-            rootFocused={false}
-          />
-        </div>
-        <div>
-          <span className="text-lg">TextField with out root focused</span>
-          <TextFieldMuiComponent
-            label="Email"
-            onChange={(data) => console.log(data)}
-            icon={<MdEmail />}
-            rootFocused={false}
           />
         </div>
       </div>
