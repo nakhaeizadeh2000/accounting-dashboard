@@ -21,7 +21,7 @@ import ComponentModalExample from '@/components/modules/modal/examples/Component
 import BridgeExample from '@/components/modules/modal/examples/BridgeModalExample';
 import TinyEditor from '@/components/modules/editor/TinyMceComponent';
 import TextFieldMuiComponent from '@/components/modules/input-elements/components/TextFieldMuiComponent';
-import { MdEmail } from 'react-icons/md';
+import { MdEmail, MdNumbers } from 'react-icons/md';
 
 const ErfanTestForm = () => {
   const setDate = (date: Date | null) => {
@@ -68,14 +68,19 @@ const ErfanTestForm = () => {
       <hr className="m-4" />
       <span className="text-lg">TextField</span>
       <div className="flex items-center justify-center gap-4">
-        <div>
-          <TextFieldMuiComponent
-            label="ایمیل"
-            onChange={(data) => console.log(data)}
-            icon={<MdEmail />}
-            defaultValue={'hello'}
-          />
-        </div>
+        <TextFieldMuiComponent
+          label="ایمیل"
+          typeInput="email"
+          onChange={(data) => console.log(data)}
+          className="m-2"
+          icon={<MdEmail />}
+        />
+        <TextFieldMuiComponent
+          label="تلفن"
+          typeInput="number"
+          onChange={(data) => console.log(data)}
+          icon={<MdNumbers />}
+        />
       </div>
       <hr className="m-4" />
       <StaticDatePicker orientation="landscape" dayOfWeekFormatter={persianDayFormatter} />

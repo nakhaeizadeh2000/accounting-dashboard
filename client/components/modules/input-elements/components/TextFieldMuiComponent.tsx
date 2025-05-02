@@ -8,8 +8,6 @@ const TextFieldMuiComponent = ({
   color = 'primary',
   ...props
 }: TextFieldTypes) => {
-  const theme = useTheme();
-  console.log(theme.palette.mode, 'theme');
   return (
     <>
       <div>
@@ -18,13 +16,9 @@ const TextFieldMuiComponent = ({
           size={size}
           color={color}
           autoFocus={false}
+          type={props?.typeInput}
           // sx={{
-          //   '& .MuiOutlinedInput-root': {
-          //     '&.Mui-focused fieldset': {
-          //       borderColor: 'rgba(0, 0, 0, 0.23)', // Same as default
-          //       borderWidth: '1px',
-          //     },
-          //   },
+
           // }}
           slotProps={{
             input: {
@@ -33,9 +27,6 @@ const TextFieldMuiComponent = ({
             inputLabel: {
               focused: false,
             },
-            // root: {
-            //   focused: props?.rootFocused,
-            // },
           }}
           {...props}
         />
