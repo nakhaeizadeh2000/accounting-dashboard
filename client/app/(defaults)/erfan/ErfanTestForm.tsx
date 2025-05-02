@@ -73,6 +73,7 @@ const ErfanTestForm = () => {
             label="ایمیل"
             onChange={(data) => console.log(data)}
             icon={<MdEmail />}
+            defaultValue={'hello'}
           />
         </div>
       </div>

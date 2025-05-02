@@ -18,14 +18,14 @@ const TextFieldMuiComponent = ({
           size={size}
           color={color}
           autoFocus={false}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              '&.Mui-focused fieldset': {
-                borderColor: 'rgba(0, 0, 0, 0.23)', // Same as default
-                borderWidth: '1px',
-              },
-            },
-          }}
+          // sx={{
+          //   '& .MuiOutlinedInput-root': {
+          //     '&.Mui-focused fieldset': {
+          //       borderColor: 'rgba(0, 0, 0, 0.23)', // Same as default
+          //       borderWidth: '1px',
+          //     },
+          //   },
+          // }}
           slotProps={{
             input: {
               endAdornment: <InputAdornment position="end">{props.icon}</InputAdornment>,
