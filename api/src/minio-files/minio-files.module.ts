@@ -16,6 +16,8 @@ import { FilesController } from './controllers/files.controller';
     forwardRef(() => CaslModule),
     ConfigModule,
     TypeOrmModule.forFeature([File]),
+    // If there's another module that imports MinioFilesModule and is also imported by MinioFilesModule,
+    // you need to use forwardRef() here as well
   ],
   controllers: [MinioFilesController, FilesController],
   providers: [
@@ -24,7 +26,13 @@ import { FilesController } from './controllers/files.controller';
     MinioFilesService,
     ConfigService,
     FileRepositoryService,
+    // Other providers
   ],
-  exports: [MinioFilesService, MinioConfigService, FileRepositoryService],
+  exports: [
+    MinioFilesService,
+    MinioConfigService,
+    FileRepositoryService,
+    // Other exports
+  ],
 })
-export class MinioFilesModule {}
+export class MinioFilesModule { }

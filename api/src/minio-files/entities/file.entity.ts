@@ -17,20 +17,17 @@ export class File {
   @Column()
   originalName: string;
 
-  @Column()
+  @Column({ unique: true })
   uniqueName: string;
 
-  @Column()
+  @Column({ nullable: true })
   size: number;
 
-  @Column()
+  @Column({ nullable: true })
   mimetype: string;
 
   @Column({ nullable: true })
   thumbnailName: string;
-
-  @Column()
-  bucket: string;
 
   @Column({ nullable: true })
   url: string;
@@ -38,13 +35,28 @@ export class File {
   @Column({ nullable: true })
   thumbnailUrl: string;
 
+  @Column({ default: 'default' })
+  bucket: string;
+
+  @Column({ default: false })
+  isUsed: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
 
-  // Relationship with Article (many files can be in many articles)
-  @ManyToMany(() => Article, (article) => article.files)
+  // Use onDelete: 'CASCADE' for the ManyToMany relationship
+  @ManyToMany(() => Article, (article) => article.files, {
+    onDelete: 'CASCADE'
+  })
   articles: Article[];
+
+  // Add other entity relationships here with onDelete: 'CASCADE'
+  // For example:
+  // @ManyToMany(() => OtherEntity, (otherEntity) => otherEntity.files, {
+  //   onDelete: 'CASCADE'
+  // })
+  // otherEntities: OtherEntity[];
 }

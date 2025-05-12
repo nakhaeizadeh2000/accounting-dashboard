@@ -1,6 +1,7 @@
 // src/minio-files/dto/response-file.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDate,
   IsNumber,
   IsOptional,
@@ -69,4 +70,9 @@ export class ResponseFileDto {
   @IsDate()
   @Expose()
   updatedAt: Date;
+
+  @ApiProperty({ description: 'Indicates if the file is used' })
+  @IsBoolean()
+  @Expose()
+  isUsed: boolean;
 }

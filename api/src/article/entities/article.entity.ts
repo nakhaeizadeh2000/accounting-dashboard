@@ -1,4 +1,3 @@
-// src/article/entities/article.entity.ts
 import {
   Column,
   CreateDateColumn,
@@ -40,7 +39,9 @@ export class Article {
   updatedAt: Date;
 
   // Relationship with File (many articles can have many files)
-  @ManyToMany(() => File, (file) => file.articles)
+  @ManyToMany(() => File, (file) => file.articles, {
+    onDelete: 'CASCADE'
+  })
   @JoinTable({
     name: 'article_files',
     joinColumn: {

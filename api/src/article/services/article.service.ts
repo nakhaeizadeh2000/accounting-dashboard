@@ -34,6 +34,19 @@ export class ArticleService {
     this.articleRepository = this.dataSource.getRepository(Article);
   }
 
+  /**
+   * Creates a new article with optional file attachments
+   *
+   * This method creates a new article in the database with the provided data
+   * and associates it with the specified author. If file IDs are provided,
+   * it fetches those files and associates them with the article. Any files
+   * that were previously unused will have their usage status updated to reflect
+   * that they are now being used.
+   *
+   * @param createArticleDto - The DTO containing article data and optional file IDs to attach
+   * @param authorId - The unique identifier of the user who is creating the article
+   * @returns A promise that resolves to a ResponseArticleDto containing the created article data
+   */
   async create(
     createArticleDto: CreateArticleDto,
     authorId: string,
@@ -45,7 +58,6 @@ export class ArticleService {
       ...articleData,
       authorId,
     });
-
     // If fileIds were provided, associate them with the article
     if (fileIds && fileIds.length > 0) {
       // Now use the fileRepositoryService instead of direct repository access
@@ -78,6 +90,16 @@ export class ArticleService {
       });
 
       article.files = fileEntities;
+
+      // Update isUsed status for previously unused files
+      const unusedFiles = validFiles.filter(file => !file.isUsed);
+      if (unusedFiles.length > 0) {
+        const unusedFileIds = unusedFiles.map(file => file.id);
+        // Update each file's isUsed status to true
+        for (const fileId of unusedFileIds) {
+          await this.fileRepositoryService.updateUsageStatus(fileId, true);
+        }
+      }
     }
 
     const savedArticle = await this.articleRepository.save(article);
@@ -87,6 +109,20 @@ export class ArticleService {
     });
   }
 
+  /**
+   * Updates an existing article with new data and file associations
+   *
+   * This method updates an article's properties and its associated files.
+   * It fetches the article by ID, applies the updates from the DTO,
+   * and handles file associations by converting file DTOs to entities.
+   * Any previously unused files that are now associated with the article
+   * will have their usage status updated.
+   *
+   * @param id - The numeric ID of the article to update
+   * @param updateArticleDto - The DTO containing the updated article data and optional file IDs
+   * @throws NotFoundException - If no article with the specified ID exists
+   * @returns A promise that resolves to a ResponseArticleDto containing the updated article data
+   */
   async update(
     id: number,
     updateArticleDto: UpdateArticleDto,
@@ -136,6 +172,16 @@ export class ArticleService {
       });
 
       article.files = fileEntities;
+
+      // Update isUsed status for previously unused files
+      const unusedFiles = validFiles.filter(file => !file.isUsed);
+      if (unusedFiles.length > 0) {
+        const unusedFileIds = unusedFiles.map(file => file.id);
+        // Update each file's isUsed status to true
+        for (const fileId of unusedFileIds) {
+          await this.fileRepositoryService.updateUsageStatus(fileId, true);
+        }
+      }
     }
 
     const savedArticle = await this.articleRepository.save(article);
@@ -145,6 +191,18 @@ export class ArticleService {
     });
   }
 
+  /**
+   * Retrieves a paginated list of all articles with their authors
+   *
+   * This method fetches articles from the database with pagination support,
+   * including the related author data for each article. The results are ordered
+   * by creation date (newest first) and transformed into DTOs that exclude
+   * sensitive or unnecessary data.
+   *
+   * @param pagination - An object containing pagination parameters (page number and limit)
+   * @returns A promise that resolves to a paginated response containing article DTOs,
+   *          total count, and pagination metadata
+   */
   async findAll(
     pagination: Pagination,
   ): Promise<PaginatedResponse<ResponseArticleDto>> {
@@ -167,6 +225,17 @@ export class ArticleService {
     return paginateResponse(responseArticles, total, pagination.page, pagination.limit);
   }
 
+  /**
+   * Retrieves a single article by its ID with associated author and files
+   *
+   * This method fetches a specific article from the database along with its
+   * related author and file information. The response is transformed into a DTO
+   * that excludes sensitive or unnecessary data.
+   *
+   * @param id - The numeric ID of the article to retrieve
+   * @throws NotFoundException - If no article with the specified ID exists
+   * @returns A promise that resolves to a ResponseArticleDto containing the article data
+   */
   async findOne(id: number): Promise<ResponseArticleDto> {
     const article = await this.articleRepository.findOne({
       where: { id },
@@ -182,8 +251,19 @@ export class ArticleService {
     });
   }
 
+  /**
+   * Deletes an article and handles cleanup of associated files
+   *
+   * This method removes an article from the database and then checks if any
+   * associated files are still being used by other entities. If not, those
+   * files will be completely removed from storage to prevent orphaned files.
+   *
+   * @param id - The numeric ID of the article to be deleted
+   * @throws NotFoundException - If the article doesn't exist or if the deletion operation fails
+   * @returns A promise that resolves when the article and any unused files are successfully deleted
+   */
   async remove(id: number): Promise<void> {
-    // Find the article with its related files
+    // Find the article to check if it exists
     const article = await this.articleRepository.findOne({
       where: { id },
       relations: ['files'],
@@ -193,53 +273,38 @@ export class ArticleService {
       throw new NotFoundException(`Article with ID "${id}" not found`);
     }
 
-    // For each file, check if it's used by other articles
-    if (article.files && article.files.length > 0) {
-      for (const file of article.files) {
-        // Count how many articles use this file
-        const usageCount = await this.articleRepository
-          .createQueryBuilder('article')
-          .innerJoin('article.files', 'file')
-          .where('file.id = :fileId', { fileId: file.id })
-          .andWhere('article.id != :articleId', { articleId: id })
-          .getCount();
+    // Store file IDs for cleanup after article deletion
+    const fileIds = article.files ? article.files.map(file => file.id) : [];
 
-        // If this is the only article using the file, delete it
-        if (usageCount === 0) {
-          this.logger.log(
-            `Deleting unused file ${file.id} (${file.originalName})`,
-          );
-
-          try {
-            // Delete from MinIO using the service
-            await this.minioFilesService.deleteFile(
-              file.bucket,
-              file.uniqueName,
-            );
-
-            // Delete from database using the repository service
-            await this.fileRepositoryService.remove(file.id);
-          } catch (err) {
-            this.logger.error(`Error deleting file ${file.id}: ${err.message}`);
-          }
-        } else {
-          this.logger.log(
-            `File ${file.id} is used by ${usageCount} other articles, keeping it`,
-          );
-        }
-      }
-    }
-
-    // Now delete the article
+    // Delete the article - the cascade will handle removing entries from the join table
     const result = await this.articleRepository.delete(id);
 
     if (result.affected === 0) {
       throw new NotFoundException(`Failed to delete article with ID "${id}"`);
     }
 
+    // After article is deleted, check each file to see if it's still used
+    if (fileIds.length > 0) {
+      for (const fileId of fileIds) {
+        // Use the centralized method to check if file is used and delete if not
+        await this.fileRepositoryService.removeCompletely(fileId, false);
+      }
+    }
+
     this.logger.log(`Successfully deleted article ${id}`);
   }
 
+  /**
+   * Removes a specific file from an article and checks if the file should be deleted
+   *
+   * This method disassociates a file from an article and then checks if the file
+   * is still being used elsewhere. If not, the file will be completely removed from storage.
+   *
+   * @param articleId - The numeric ID of the article from which to remove the file
+   * @param fileId - The string ID of the file to be removed from the article
+   * @returns A promise that resolves to an object with a success boolean indicating the operation completed successfully
+   * @throws NotFoundException - If the article doesn't exist or the file is not associated with the article
+   */
   async removeFileFromArticle(articleId: number, fileId: string): Promise<{ success: boolean }> {
     // Verify the article exists
     const article = await this.articleRepository.findOne({
@@ -257,48 +322,14 @@ export class ArticleService {
       throw new NotFoundException(`File with ID ${fileId} not found in article ${articleId}`);
     }
 
-    // Get the file to be removed
-    const file = article.files[fileIndex];
-
     // Remove the file from the article's files array
     article.files.splice(fileIndex, 1);
-    
+
     // Save the article with the updated files array
     await this.articleRepository.save(article);
 
-    // Check if the file is used by other articles
-    const usageCount = await this.articleRepository
-      .createQueryBuilder('article')
-      .innerJoin('article.files', 'file')
-      .where('file.id = :fileId', { fileId })
-      .andWhere('article.id != :articleId', { articleId })
-      .getCount();
-
-    // If this is the only article using the file, delete it
-    if (usageCount === 0) {
-      this.logger.log(
-        `Deleting unused file ${file.id} (${file.originalName})`,
-      );
-
-      try {
-        // Delete from MinIO using the service
-        await this.minioFilesService.deleteFile(
-          file.bucket,
-          file.uniqueName,
-        );
-
-        // Delete from database using the repository service
-        await this.fileRepositoryService.remove(file.id);
-      } catch (err) {
-        this.logger.error(`Error deleting file ${file.id}: ${err.message}`);
-        // We don't throw here to ensure the file is removed from the article
-        // even if physical deletion fails
-      }
-    } else {
-      this.logger.log(
-        `File ${file.id} is used by ${usageCount} other articles, keeping it`,
-      );
-    }
+    // Check if the file is still used by any entity and delete if not
+    await this.fileRepositoryService.removeCompletely(fileId, false);
 
     return { success: true };
   }

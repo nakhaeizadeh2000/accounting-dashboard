@@ -11,7 +11,6 @@ import { RoleModule } from './role/role.module';
 import { CaslModule } from './casl/casl.module';
 import { ArticleModule } from './article/article.module';
 import { MinioFilesModule } from './minio-files/minio-files.module';
-// import { MinioFilesModule } from './minio-files-legacy/minio-files.module';
 
 @Module({
   imports: [
@@ -41,4 +40,4 @@ import { MinioFilesModule } from './minio-files/minio-files.module';
   providers: [],
   exports: [],
 })
-export class AppModule {}
+export class AppModule { }

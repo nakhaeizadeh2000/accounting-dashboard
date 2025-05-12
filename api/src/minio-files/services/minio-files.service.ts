@@ -5,6 +5,8 @@ import {
   BadRequestException,
   Logger,
   InternalServerErrorException,
+  forwardRef,
+  Inject,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MinioConfigService } from 'config/minio/minio.config';
@@ -61,6 +63,7 @@ export class MinioFilesService {
   constructor(
     private minioConfigService: MinioConfigService,
     private configService: ConfigService,
+    @Inject(forwardRef(() => FileRepositoryService))
     private fileRepositoryService: FileRepositoryService,
     private dataSource: DataSource, // Add this for transaction support
   ) {
