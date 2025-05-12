@@ -5,12 +5,12 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { ConfigService } from '@nestjs/config';
-import { fastifyBootstrap } from 'config/fastify/fastify-bootstrap';
+import { fastifyBootstrap } from 'src/config/fastify/fastify-bootstrap';
 import { FastifyInstance } from 'fastify/types/instance';
-import { swaggerBootstrap } from 'config/swagger/swagger-bootstrap';
+import { swaggerBootstrap } from 'src/config/swagger/swagger-bootstrap';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
-import { ResponseInterceptor } from 'common/interceptors/response/response.interceptor';
-import { HttpExceptionFilter } from 'common/exceptions/http-exception-filter';
+import { ResponseInterceptor } from 'src/common/interceptors/response/response.interceptor';
+import { HttpExceptionFilter } from 'src/common/exceptions/http-exception-filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(

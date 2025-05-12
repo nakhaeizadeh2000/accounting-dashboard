@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { UserSeederService } from 'src/users/seeders/user-seeder.service';
-import { ArticleSeederService } from '../../article/seeders/article-seeder.service';
+import { UserSeederService } from 'src/modules/users/seeders/user-seeder.service';
+import { ArticleSeederService } from '../../modules/articles/seeders/article-seeder.service';
 
 @Injectable()
 export class Seeder {
@@ -8,7 +8,7 @@ export class Seeder {
     private readonly logger: Logger,
     private readonly userSeederService: UserSeederService,
     private readonly articleSeederService: ArticleSeederService,
-  ) {}
+  ) { }
   async seed() {
     // seed users
     await this.userSeederService

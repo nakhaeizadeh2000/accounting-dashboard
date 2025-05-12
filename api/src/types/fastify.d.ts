@@ -4,7 +4,7 @@ import {
   DefaultHeaders,
   DefaultBody,
 } from 'fastify';
-import { ResponseUserDto } from 'src/users/dto/response-user.dto';
+import { ResponseUserDto } from 'src/modules/users/dto/response-user.dto';
 
 declare module 'fastify' {
   interface FastifyRequest<

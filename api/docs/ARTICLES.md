@@ -7,6 +7,7 @@ This document details the Articles module, which provides a complete system for 
 - [Articles Module](#articles-module)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
+  - [Module Structure](#module-structure)
   - [Data Model](#data-model)
   - [API Endpoints](#api-endpoints)
     - [Create Article](#create-article)
@@ -21,6 +22,7 @@ This document details the Articles module, which provides a complete system for 
   - [Access Control](#access-control)
     - [CASL Integration](#casl-integration)
     - [Query Filtering](#query-filtering)
+  - [File Attachments](#file-attachments)
   - [Example Requests](#example-requests)
     - [Creating an Article](#creating-an-article)
     - [Getting All Articles](#getting-all-articles)
@@ -39,7 +41,29 @@ Key features:
 - Role-based access control
 - Content filtering based on user permissions
 - Pagination support for listing articles
+- File attachment support
 - Proper validation of all inputs
+
+## Module Structure
+
+The Articles module follows the standard NestJS module structure and is organized as follows:
+
+```
+src/
+└── modules/
+    └── articles/
+        ├── controllers/           # HTTP request handlers
+        │   └── articles.controller.ts
+        ├── dto/                   # Data Transfer Objects
+        │   ├── create-article.dto.ts
+        │   ├── update-article.dto.ts
+        │   └── response-article.dto.ts
+        ├── entities/              # Database entities
+        │   └── article.entity.ts
+        ├── services/              # Business logic
+        │   └── article.service.ts
+        └── articles.module.ts     # Module definition
+```
 
 ## Data Model
 
@@ -73,6 +97,10 @@ export class Article {
 
   @Column({ type: 'uuid' })
   authorId: string;
+  
+  @ManyToMany(() => File)
+  @JoinTable()
+  files: File[];
 }
 ```
 
@@ -95,7 +123,8 @@ Creates a new article.
 {
   "title": "Example Article Title",
   "content": "This is the content of the article. It can be quite long and detailed.",
-  "authorId": "123e4567-e89b-12d3-a456-426614174000"
+  "authorId": "123e4567-e89b-12d3-a456-426614174000",
+  "fileIds": ["file-uuid-1", "file-uuid-2"]
 }
 ```
 
@@ -112,7 +141,19 @@ Creates a new article.
     "content": "This is the content of the article. It can be quite long and detailed.",
     "authorId": "123e4567-e89b-12d3-a456-426614174000",
     "createdAt": "2023-01-01T00:00:00.000Z",
-    "updatedAt": "2023-01-01T00:00:00.000Z"
+    "updatedAt": "2023-01-01T00:00:00.000Z",
+    "files": [
+      {
+        "id": "file-uuid-1",
+        "originalName": "document.pdf",
+        "url": "https://storage.example.com/files/document.pdf"
+      },
+      {
+        "id": "file-uuid-2",
+        "originalName": "image.jpg",
+        "url": "https://storage.example.com/files/image.jpg"
+      }
+    ]
   }
 }
 ```
@@ -148,7 +189,14 @@ Retrieves a paginated list of articles. The results are filtered based on the us
         "content": "This is the content of the article. It can be quite long and detailed.",
         "authorId": "123e4567-e89b-12d3-a456-426614174000",
         "createdAt": "2023-01-01T00:00:00.000Z",
-        "updatedAt": "2023-01-01T00:00:00.000Z"
+        "updatedAt": "2023-01-01T00:00:00.000Z",
+        "files": [
+          {
+            "id": "file-uuid-1",
+            "originalName": "document.pdf",
+            "url": "https://storage.example.com/files/document.pdf"
+          }
+        ]
       },
       {
         "id": 2,
@@ -156,7 +204,8 @@ Retrieves a paginated list of articles. The results are filtered based on the us
         "content": "This is another article's content.",
         "authorId": "123e4567-e89b-12d3-a456-426614174000",
         "createdAt": "2023-01-02T00:00:00.000Z",
-        "updatedAt": "2023-01-02T00:00:00.000Z"
+        "updatedAt": "2023-01-02T00:00:00.000Z",
+        "files": []
       }
     ],
     "total": 50,
@@ -191,7 +240,14 @@ Retrieves a specific article by ID.
     "content": "This is the content of the article. It can be quite long and detailed.",
     "authorId": "123e4567-e89b-12d3-a456-426614174000",
     "createdAt": "2023-01-01T00:00:00.000Z",
-    "updatedAt": "2023-01-01T00:00:00.000Z"
+    "updatedAt": "2023-01-01T00:00:00.000Z",
+    "files": [
+      {
+        "id": "file-uuid-1",
+        "originalName": "document.pdf",
+        "url": "https://storage.example.com/files/document.pdf"
+      }
+    ]
   }
 }
 ```
@@ -212,7 +268,8 @@ Updates an existing article. Users can only update their own articles unless the
 ```json
 {
   "title": "Updated Article Title",
-  "content": "This is the updated content of the article."
+  "content": "This is the updated content of the article.",
+  "fileIds": ["file-uuid-1", "file-uuid-3"]
 }
 ```
 
@@ -229,7 +286,19 @@ Updates an existing article. Users can only update their own articles unless the
     "content": "This is the updated content of the article.",
     "authorId": "123e4567-e89b-12d3-a456-426614174000",
     "createdAt": "2023-01-01T00:00:00.000Z",
-    "updatedAt": "2023-01-01T00:00:00.000Z"
+    "updatedAt": "2023-01-01T00:00:00.000Z",
+    "files": [
+      {
+        "id": "file-uuid-1",
+        "originalName": "document.pdf",
+        "url": "https://storage.example.com/files/document.pdf"
+      },
+      {
+        "id": "file-uuid-3",
+        "originalName": "spreadsheet.xlsx",
+        "url": "https://storage.example.com/files/spreadsheet.xlsx"
+      }
+    ]
   }
 }
 ```
@@ -284,6 +353,16 @@ export class CreateArticleDto {
   @IsUUID()
   @IsNotEmpty()
   authorId: string;
+  
+  @ApiProperty({
+    description: 'Array of file IDs to attach to the article',
+    type: [String],
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID(4, { each: true })
+  fileIds?: string[];
 }
 ```
 
@@ -349,6 +428,14 @@ export class ResponseArticleDto {
     example: '2024-08-16T14:30:00Z',
   })
   updatedAt: Date;
+  
+  @Expose()
+  @IsArray()
+  @ApiProperty({
+    description: 'Files attached to the article',
+    type: [ResponseFileDto],
+  })
+  files: ResponseFileDto[];
 }
 ```
 
@@ -375,7 +462,7 @@ if (ability.can('read', 'Article')) {
     this.request.user,
   );
 
-  const [articles, count] = await this.articleRepository.findAndCount({
+  const [articles, count] = await this.articleRepository.find({
     where: {
       ...permissionConditions,
     },
@@ -406,6 +493,82 @@ const permissionConditions = buildQueryforArticle(
 
 This approach ensures that database queries only return records the user is authorized to access.
 
+## File Attachments
+
+Articles can have multiple files attached to them. The file management is handled through the Files module, which provides functionality for uploading, retrieving, and managing files.
+
+When an article is created or updated with file IDs, the system:
+
+1. Validates that the files exist
+2. Updates the file usage status to mark them as being used
+3. Associates the files with the article
+
+When an article is deleted, the system doesn't automatically delete the associated files but updates their usage status.
+
+Example of file attachment in the article service:
+
+```typescript
+// Update the file associations if provided
+if (fileIds) {
+  // Now use the fileRepositoryService instead of direct repository access
+  const filePromises = fileIds.map((id) =>
+    this.fileRepositoryService.findOne(id),
+  );
+  const files = await Promise.all(filePromises);
+
+  // Filter out any null values (files not found)
+  const validFiles = files.filter((file) => file !== null);
+
+  // Convert ResponseFileDto objects to File entities
+  const fileEntities = validFiles.map((fileDto) => {
+    const fileEntity = new File();
+    Object.assign(fileEntity, {
+      id: fileDto.id,
+      originalName: fileDto.originalName,
+      uniqueName: fileDto.uniqueName,
+      size: fileDto.size,
+      mimetype: fileDto.mimetype,
+      thumbnailName: fileDto.thumbnailName,
+      url: fileDto.url,
+      thumbnailUrl: fileDto.thumbnailUrl,
+      bucket: fileDto.bucket,
+      createdAt: fileDto.createdAt,
+      updatedAt: fileDto.updatedAt,
+    });
+    return fileEntity;
+  });
+
+  article.files = fileEntities;
+
+  // Update isUsed status for previously unused files
+  const unusedFiles = validFiles.filter(file => !file.isUsed);
+  if (unusedFiles.length > 0) {
+    const unusedFileIds = unusedFiles.map(file => file.id);
+    // Update each file's isUsed status to true
+    for (const fileId of unusedFileIds) {
+      await this.fileRepositoryService.updateUsageStatus(fileId, true);
+    }
+  }
+}
+```
+
+The system also includes a file usage service that can refresh the usage status of all files in the system:
+
+```typescript
+async refreshFilesUsageStatus(): Promise<void> {
+  // Using a raw query for efficiency to update all files at once
+  await this.entityManager.query(`
+    UPDATE files
+    SET "isUsed" = EXISTS (
+      SELECT 1 FROM article_files_files
+      WHERE article_files_files."filesId" = files.id
+    )
+  `);
+}
+```
+
+This ensures that files are properly tracked and can be cleaned up if they're no longer used by any articles.
+
 ## Example Requests
 
 ### Creating an Article
@@ -417,7 +580,8 @@ curl -X POST http://localhost:3000/api/article \
   -d '{
     "title": "Example Article Title",
     "content": "This is the content of the article. It can be quite long and detailed.",
-    "authorId": "123e4567-e89b-12d3-a456-426614174000"
+    "authorId": "123e4567-e89b-12d3-a456-426614174000",
+    "fileIds": ["file-uuid-1", "file-uuid-2"]
   }'
 ```
 
@@ -443,7 +607,8 @@ curl -X PATCH http://localhost:3000/api/article/1 \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "title": "Updated Article Title",
-    "content": "This is the updated content of the article."
+    "content": "This is the updated content of the article.",
+    "fileIds": ["file-uuid-1", "file-uuid-3"]
   }'
 ```
 
@@ -458,5 +623,6 @@ curl -X DELETE http://localhost:3000/api/article/1 \
 
 - [CASL Authorization](./CASL.md) - Learn more about the permission system
 - [Users Module](./USERS.md) - Documentation on the Users module that articles are linked to
+- [Files Module](./FILES.md) - Documentation on the Files module used for article attachments
 - [Error Handling](./ERRORS.md) - Understand how errors are handled and formatted
 - [Response Format](./RESPONSE.md) - Details on the standardized response format

@@ -5,7 +5,6 @@ import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { Role } from '../entities/role.entity';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
-import { Permission } from 'src/permissions/entities/permission.entity';
 import { plainToInstance } from 'class-transformer';
 import { ResponseRoleDto } from '../dto/response-role.dto';
 
@@ -15,7 +14,7 @@ export class RoleService {
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+  ) { }
 
   async create(createRoleDto: CreateRoleDto): Promise<ResponseRoleDto> {
     const role = this.roleRepository.create(createRoleDto);
