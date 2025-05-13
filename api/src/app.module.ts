@@ -11,6 +11,7 @@ import { RoleModule } from './role/role.module';
 import { FilesModule } from './modules/files/files.module';
 import { CaslModule } from './modules/casl-legacy/casl.module';
 import { ArticleModule } from './modules/articles/article.module';
+import { CaslNewModule } from './modules/casl/casl.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ArticleModule } from './modules/articles/article.module';
     PermissionModule,
     RoleModule,
     CaslModule,
+    CaslNewModule,
     FilesModule,
     ArticleModule,
   ],
