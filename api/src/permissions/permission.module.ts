@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Permission } from './entities/permission.entity';
 import { PermissionService } from './services/permission.service';
 import { JwtService } from '@nestjs/jwt';
-import { CaslModule } from 'src/modules/casl/casl.module';
+import { CaslModule } from 'src/modules/casl-legacy/casl.module';
 import { PermissionController } from './controllers/permission.controller';
 
 @Module({
@@ -16,4 +16,4 @@ import { PermissionController } from './controllers/permission.controller';
   providers: [PermissionService, JwtService],
   exports: [PermissionService],
 })
-export class PermissionModule { }
+export class PermissionModule {}

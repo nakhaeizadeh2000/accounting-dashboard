@@ -9,7 +9,7 @@ import { redisStore } from 'cache-manager-redis-yet';
 import { PermissionModule } from './permissions/permission.module';
 import { RoleModule } from './role/role.module';
 import { FilesModule } from './modules/files/files.module';
-import { CaslModule } from './modules/casl/casl.module';
+import { CaslModule } from './modules/casl-legacy/casl.module';
 import { ArticleModule } from './modules/articles/article.module';
 
 @Module({
@@ -40,4 +40,4 @@ import { ArticleModule } from './modules/articles/article.module';
   providers: [],
   exports: [],
 })
-export class AppModule { }
+export class AppModule {}

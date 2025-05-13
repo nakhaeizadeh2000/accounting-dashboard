@@ -10,7 +10,7 @@ import {
   PaginatedResponse,
   paginateResponse,
 } from 'src/common/utils/pagination.util';
-import { CaslAbilityFactory } from 'src/modules/casl/abilities/casl-ability.factory';
+import { CaslAbilityFactory } from 'src/modules/casl-legacy/abilities/casl-ability.factory';
 import { FastifyRequest } from 'fastify';
 import { REQUEST } from '@nestjs/core';
 import { FileRepositoryService } from 'src/modules/files/services/file.repository.service';
@@ -90,9 +90,9 @@ export class ArticleService {
       article.files = fileEntities;
 
       // Update isUsed status for previously unused files
-      const unusedFiles = validFiles.filter(file => !file.isUsed);
+      const unusedFiles = validFiles.filter((file) => !file.isUsed);
       if (unusedFiles.length > 0) {
-        const unusedFileIds = unusedFiles.map(file => file.id);
+        const unusedFileIds = unusedFiles.map((file) => file.id);
         // Update each file's isUsed status to true
         for (const fileId of unusedFileIds) {
           await this.fileRepositoryService.updateUsageStatus(fileId, true);
@@ -172,9 +172,9 @@ export class ArticleService {
       article.files = fileEntities;
 
       // Update isUsed status for previously unused files
-      const unusedFiles = validFiles.filter(file => !file.isUsed);
+      const unusedFiles = validFiles.filter((file) => !file.isUsed);
       if (unusedFiles.length > 0) {
-        const unusedFileIds = unusedFiles.map(file => file.id);
+        const unusedFileIds = unusedFiles.map((file) => file.id);
         // Update each file's isUsed status to true
         for (const fileId of unusedFileIds) {
           await this.fileRepositoryService.updateUsageStatus(fileId, true);
@@ -213,14 +213,19 @@ export class ArticleService {
       },
     });
 
-    const responseArticles = articles.map(article => {
+    const responseArticles = articles.map((article) => {
       const responseArticle = plainToInstance(ResponseArticleDto, article, {
         excludeExtraneousValues: true,
       });
       return responseArticle;
     });
 
-    return paginateResponse(responseArticles, total, pagination.page, pagination.limit);
+    return paginateResponse(
+      responseArticles,
+      total,
+      pagination.page,
+      pagination.limit,
+    );
   }
 
   /**
@@ -272,7 +277,7 @@ export class ArticleService {
     }
 
     // Store file IDs for cleanup after article deletion
-    const fileIds = article.files ? article.files.map(file => file.id) : [];
+    const fileIds = article.files ? article.files.map((file) => file.id) : [];
 
     // Delete the article - the cascade will handle removing entries from the join table
     const result = await this.articleRepository.delete(id);
@@ -303,11 +308,14 @@ export class ArticleService {
    * @returns A promise that resolves to an object with a success boolean indicating the operation completed successfully
    * @throws NotFoundException - If the article doesn't exist or the file is not associated with the article
    */
-  async removeFileFromArticle(articleId: number, fileId: string): Promise<{ success: boolean }> {
+  async removeFileFromArticle(
+    articleId: number,
+    fileId: string,
+  ): Promise<{ success: boolean }> {
     // Verify the article exists
     const article = await this.articleRepository.findOne({
       where: { id: articleId },
-      relations: ['files']
+      relations: ['files'],
     });
 
     if (!article) {
@@ -315,9 +323,11 @@ export class ArticleService {
     }
 
     // Check if the file is associated with this article
-    const fileIndex = article.files.findIndex(file => file.id === fileId);
+    const fileIndex = article.files.findIndex((file) => file.id === fileId);
     if (fileIndex === -1) {
-      throw new NotFoundException(`File with ID ${fileId} not found in article ${articleId}`);
+      throw new NotFoundException(
+        `File with ID ${fileId} not found in article ${articleId}`,
+      );
     }
 
     // Remove the file from the article's files array

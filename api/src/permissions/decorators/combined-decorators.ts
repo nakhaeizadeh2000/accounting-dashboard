@@ -15,13 +15,13 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import { PoliciesGuard } from 'src/modules/casl/guards/policies.guard';
-import { AppAbility } from 'src/modules/casl/abilities/casl-ability.factory';
+import { PoliciesGuard } from 'src/modules/casl-legacy/guards/policies.guard';
+import { AppAbility } from 'src/modules/casl-legacy/abilities/casl-ability.factory';
 import { PaginationApiQuery } from 'src/common/decorators/pagination/pagination-api-query.decorator';
 import { CreatePermissionDto } from '../dto/create-permission.dto';
 import { ResponsePermissionDto } from '../dto/response-permission.dto';
 import { UpdatePermissionDto } from '../dto/update-permission.dto';
-import { CheckPolicies } from 'src/modules/casl/decorators/check-policies.decorator';
+import { CheckPolicies } from 'src/modules/casl-legacy/decorators/check-policies.decorator';
 
 // controller
 export function permissionControllerDecorators() {

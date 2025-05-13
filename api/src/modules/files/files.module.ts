@@ -8,7 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { File } from './entities/file.entity';
 import { FileRepositoryService } from './services/file.repository.service';
 import { FilesController } from './controllers/files.controller';
-import { CaslModule } from '../casl/casl.module';
+import { CaslModule } from '../casl-legacy/casl.module';
 
 @Module({
   imports: [
@@ -34,4 +34,4 @@ import { CaslModule } from '../casl/casl.module';
     // Other exports
   ],
 })
-export class FilesModule { }
+export class FilesModule {}

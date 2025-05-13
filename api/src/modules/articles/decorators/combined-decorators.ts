@@ -16,14 +16,14 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import { PoliciesGuard } from 'src/modules/casl/guards/policies.guard';
+import { PoliciesGuard } from 'src/modules/casl-legacy/guards/policies.guard';
 import { CreateArticleDto } from '../dto/create-article.dto';
-import { AppAbility } from 'src/modules/casl/abilities/casl-ability.factory';
+import { AppAbility } from 'src/modules/casl-legacy/abilities/casl-ability.factory';
 import { ResponseArticleDto } from '../dto/response-article.dto';
 import { PaginationApiQuery } from 'src/common/decorators/pagination/pagination-api-query.decorator';
 import { BaseResponseDto } from 'src/common/interceptors/response/response-wraper.dto';
 import { ErrorDto } from 'src/common/interceptors/response/response-wraper.dto';
-import { CheckPolicies } from 'src/modules/casl/decorators/check-policies.decorator';
+import { CheckPolicies } from 'src/modules/casl-legacy/decorators/check-policies.decorator';
 import { ArticlePaginatedResponseDto } from '../dto/article-paginated-response.dto';
 
 // controller

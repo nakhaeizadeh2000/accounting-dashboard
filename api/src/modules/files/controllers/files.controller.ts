@@ -14,18 +14,18 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import { PoliciesGuard } from 'src/modules/casl/guards/policies.guard';
-import { AppAbility } from 'src/modules/casl/abilities/casl-ability.factory';
+import { PoliciesGuard } from 'src/modules/casl-legacy/guards/policies.guard';
+import { AppAbility } from 'src/modules/casl-legacy/abilities/casl-ability.factory';
 import { FileRepositoryService } from '../services/file.repository.service';
 import { ResponseFileDto } from '../dto/response-file.dto';
-import { CheckPolicies } from 'src/modules/casl/decorators/check-policies.decorator';
+import { CheckPolicies } from 'src/modules/casl-legacy/decorators/check-policies.decorator';
 
 @ApiTags('files-db')
 @Controller('files-db')
 @UseGuards(JwtAuthGuard, PoliciesGuard)
 @ApiBearerAuth()
 export class FilesController {
-  constructor(private readonly fileService: FileRepositoryService) { }
+  constructor(private readonly fileService: FileRepositoryService) {}
 
   @Get()
   @ApiOperation({ summary: 'Get all files metadata from database' })

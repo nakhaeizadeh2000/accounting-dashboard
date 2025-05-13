@@ -18,9 +18,9 @@ import {
   ApiConsumes,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import { PoliciesGuard } from 'src/modules/casl/guards/policies.guard';
-import { AppAbility } from 'src/modules/casl/abilities/casl-ability.factory';
-import { CheckPolicies } from 'src/modules/casl/decorators/check-policies.decorator';
+import { PoliciesGuard } from 'src/modules/casl-legacy/guards/policies.guard';
+import { AppAbility } from 'src/modules/casl-legacy/abilities/casl-ability.factory';
+import { CheckPolicies } from 'src/modules/casl-legacy/decorators/check-policies.decorator';
 
 // controller
 export function filesControllerDecorators() {
