@@ -22,8 +22,9 @@
     "ms-azuretools.vscode-docker",
     "mhutchie.git-graph"
   ],
-  "postCreateCommand": "npm install && npm run build",
+  // "postCreateCommand": "npm install && npm run build",
   "remoteUser": "node",
+  "containerUser": "node",
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
   ],
