@@ -7,7 +7,8 @@
       "request": "launch",
       "command": "next dev",
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
+      "remoteRoot": "/home/app/client",
+      "localRoot": "${workspaceFolder}",
       "serverReadyAction": {
         "pattern": "started server on .+, url: (https?://.+)",
         "uriFormat": "%s",

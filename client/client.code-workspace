@@ -1,9 +1,9 @@
 {
-	"folders": [
-		{
-			"path": ".."
-		}
-	],
+  "folders": [
+    {
+      "path": "./",
+    },
+  ],
   "settings": {
     "typescript.tsdk": "node_modules/typescript/lib",
   },
@@ -53,7 +53,7 @@
       "shinriyo.ionic-switch",
       "wayou.vscode-todo-highlight",
       "Gruntfuggly.todo-tree",
-      "PKief.material-icon-theme"
+      "PKief.material-icon-theme",
     ],
   },
 }
