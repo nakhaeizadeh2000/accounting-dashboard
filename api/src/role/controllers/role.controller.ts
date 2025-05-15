@@ -1,11 +1,6 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
   Param,
-  Delete,
 } from '@nestjs/common';
 import { RoleService } from '../services/role.service';
 import { CreateRoleDto } from '../dto/create-role.dto';
@@ -17,11 +12,11 @@ import {
   roleFindAllEndpointDecorators,
   roleFindOneEndpointDecorators,
   roleUpdateEndpointDecorators,
-} from './combined-decorators';
+} from '../decorators/combined-decorators';
 
 @roleControllerDecorators()
 export class RoleController {
-  constructor(private readonly roleService: RoleService) {}
+  constructor(private readonly roleService: RoleService) { }
 
   @roleCreateEndpointDecorators()
   create(@Body() createRoleDto: CreateRoleDto) {

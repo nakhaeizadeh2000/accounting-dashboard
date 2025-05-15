@@ -1,0 +1,33 @@
+version: '3'
+x-template:
+  base-service:
+    &base
+    networks:
+      - main
+    env_file:
+      - .env
+  live-service:
+    &live
+    <<: *base
+    restart: unless-stopped
+services:
+  test : 
+    build:
+      context: ./
+      dockerfile: ./test/Dockerfile
+    image: harbor.hyvatech.com/maskan/test:${BACK_IMAGE_TAG:-latest}
+  back: 
+    build:
+      context: ./
+      dockerfile: ./back/Dockerfile
+    image: harbor.hyvatech.com/maskan/back:${BACK_IMAGE_TAG:-latest}
+  front: 
+    build:
+        context: ./
+        dockerfile: ./front/Dockerfile
+    image: harbor.hyvatech.com/maskan/front:${FRONT_IMAGE_TAG:-latest}
+  nginx: 
+    build:
+      context: ./
+      dockerfile: ./nginx/Dockerfile
+    image: harbor.hyvatech.com/maskan/nginx:${FRONT_IMAGE_TAG:-latest}

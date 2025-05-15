@@ -1,0 +1,23 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+    "streetsidesoftware.code-spell-checker",
+    "bradlc.vscode-tailwindcss",
+    "eamodio.gitlens",
+    "EditorConfig.EditorConfig",
+    "formulahendry.auto-close-tag",
+    "formulahendry.auto-rename-tag",
+    "dsznajder.es7-react-js-snippets",
+    "ms-azuretools.vscode-docker",
+    "mhutchie.git-graph",
+    "ms-vscode.node-debug2",
+    "ms-vscode.vscode-typescript-tslint-plugin",
+    "esbenp.prettier-vscode",
+    "redhat.vscode-yaml",
+    "msjsdiag.debugger-for-chrome",
+    "ms-vsliveshare.vsliveshare",
+    "ms-vscode-remote.remote-containers"
+  ]
+}

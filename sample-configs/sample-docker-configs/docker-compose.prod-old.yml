@@ -1,0 +1,85 @@
+services:
+  minio1: 
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:9000/minio/health/live"
+        ]
+      interval: 15s  
+      timeout: 20s
+      retries: 3
+
+
+  back:
+    image: "harbor.hyvatech.com/maskan/back:${prod_tag:-production}"
+    # user: root
+    healthcheck:
+      test: wget -qO- localhost:3000/api/casl-rule
+      interval: 5s
+      timeout: 15s
+      retries: 50
+      start_period: 20s
+    ports: !override
+      - 127.0.0.1:3000:3000
+      - 127.0.0.1:3001:3001
+    env_file: !override
+      - .env
+      - ./minio/.env.minio
+      - ./redis/.env.redis
+      - .env.secrets
+      - .env.prod
+ 
+
+  front:
+    image: harbor.hyvatech.com/maskan/front:${prod_tag:-production}
+    # user: root
+    healthcheck:
+      test: wget -qO- localhost:4200
+      interval: 5s
+      timeout: 15s
+      retries: 20
+      start_period: 5s
+    ports: !override
+      - 127.0.0.1:4200:4200
+
+  nginx:
+    image: harbor.hyvatech.com/maskan/nginx:${prod_tag:-production}
+    depends_on:
+      back:
+        condition: service_started
+      front:
+        condition: service_started
+      minio1:
+        condition: service_started
+    volumes: !override
+      - ./nginx/config/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/config/prod.conf:/etc/nginx/conf.d/prod.conf:ro
+      - ./nginx/config/security_headers.conf:/etc/nginx/conf.d/security_headers.conf:ro
+      - ./nginx/config/servername.config:/etc/nginx/conf.d/servername.config:ro
+      - ./nginx/config/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
+      - ./nginx/config/ssl_params.conf:/etc/nginx/conf.d/ssl_params.conf:ro
+      - ./nginx/dhparam.pem:/etc/nginx/ssl/dhparam.pem:ro
+      - /etc/letsencrypt/live/hamsazhiva.com/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/hamsazhiva.com/privkey.pem:/etc/nginx/ssl/privkey.pem:ro
+
+
+  postgres:
+    ports: !override
+      - 127.0.0.1:5432:5432
+
+      
+  redis:
+    ports: !override
+      - 127.0.0.1:6379:6379
+
+volumes:
+   minio-data:
+   back-certs:
+# networks:
+#   main:
+#     driver: bridge
+#     name: maskan_network 
+

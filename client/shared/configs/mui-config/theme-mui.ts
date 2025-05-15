@@ -1,28 +1,54 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, ThemeOptions } from '@mui/material/styles';
+import { COLORS } from '../../constants/colors';
 
-// Light theme
-export const lightTheme = createTheme({
-  direction: 'rtl', // Set the direction to RTL
+// Extend the palette color options to include custom properties
+declare module '@mui/material/styles' {
+  interface PaletteColor {
+    'dark-light'?: string;
+  }
+
+  interface SimplePaletteColorOptions {
+    'dark-light'?: string;
+  }
+}
+
+// Common theme options
+const commonThemeOptions: ThemeOptions = {
+  direction: 'rtl',
   typography: {
     fontFamily: 'var(--font-yekan-bakh)',
   },
+};
+
+// Light theme
+export const lightTheme = createTheme({
+  ...commonThemeOptions,
   palette: {
     mode: 'light',
     primary: {
-      main: '#f6f7fa',
+      main: COLORS.primary.DEFAULT,
+      light: COLORS.primary.light,
+      'dark-light': COLORS.primary.darkLight,
+    },
+    error: {
+      main: COLORS.danger.DEFAULT,
     },
     text: {
-      primary: '#000',
+      primary: COLORS.black.DEFAULT,
+    },
+    background: {
+      default: COLORS.white.light,
+      paper: COLORS.white.DEFAULT,
     },
   },
   components: {
     MuiTab: {
       styleOverrides: {
         root: {
-          color: '#121C27',
+          color: COLORS.black.DEFAULT,
 
           '&.Mui-selected': {
-            color: '#6571ff',
+            color: COLORS.primary.DEFAULT,
             backgroundColor: '#eee',
           },
         },
@@ -31,7 +57,7 @@ export const lightTheme = createTheme({
     MuiTabs: {
       styleOverrides: {
         root: {
-          backgroundColor: '#f6f7fa',
+          backgroundColor: COLORS.white.light,
         },
       },
     },
@@ -44,28 +70,89 @@ export const lightTheme = createTheme({
         },
       },
     },
+    // Dropdown component styles
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: COLORS.primary.DEFAULT,
+            borderWidth: '1px',
+          },
+          '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+            borderColor: COLORS.danger.DEFAULT,
+          },
+          '&.Mui-disabled': {
+            opacity: 0.6,
+          },
+        },
+        notchedOutline: {
+          transition: 'border-color 0.2s',
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focused': {
+            color: COLORS.primary.DEFAULT,
+          },
+          '&.Mui-error': {
+            color: COLORS.danger.DEFAULT,
+          },
+          '&.Mui-disabled': {
+            opacity: 0.6,
+          },
+          transition: 'transform 0.2s, font-size 0.2s',
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        select: {
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0.32rem 1rem',
+          lineHeight: 1.6,
+        },
+        icon: {
+          transition: 'transform 0.2s ease-in-out',
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          '&.Mui-selected': {
+            backgroundColor: COLORS.primary.light,
+          },
+          '&.Mui-selected:hover': {
+            backgroundColor: COLORS.primary.darkLight,
+          },
+        },
+      },
+    },
   },
 });
 
 // Dark theme
 export const darkTheme = createTheme({
-  direction: 'rtl', // Set the direction to RTL
-  typography: {
-    fontFamily: 'var(--font-yekan-bakh)',
-  },
+  ...commonThemeOptions,
   palette: {
     mode: 'dark',
     primary: {
-      main: '#101427',
+      main: COLORS.primary.DEFAULT,
+      light: COLORS.primary.light,
+      'dark-light': COLORS.primary.darkLight,
     },
-    //  common:{
-
-    //  },
+    error: {
+      main: COLORS.danger.DEFAULT,
+    },
     background: {
-      default: '#101427',
+      default: COLORS.black.DEFAULT,
+      paper: COLORS.dark.DEFAULT,
     },
     text: {
-      primary: '#eee',
+      primary: COLORS.white.DEFAULT,
       secondary: 'rgba(255, 255, 255, 0.7)',
     },
   },
@@ -76,7 +163,7 @@ export const darkTheme = createTheme({
           color: 'rgba(255, 255, 255, 0.7)',
 
           '&.Mui-selected': {
-            color: '#6571ff',
+            color: COLORS.primary.DEFAULT,
           },
         },
       },
@@ -84,7 +171,69 @@ export const darkTheme = createTheme({
     MuiTabs: {
       styleOverrides: {
         root: {
-          backgroundColor: '#101427',
+          backgroundColor: COLORS.black.DEFAULT,
+        },
+      },
+    },
+    // Dropdown component styles
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: COLORS.primary.DEFAULT,
+            borderWidth: '1px',
+          },
+          '&.Mui-error .MuiOutlinedInput-notchedOutline': {
+            borderColor: COLORS.danger.DEFAULT,
+          },
+          '&.Mui-disabled': {
+            opacity: 0.6,
+          },
+        },
+        notchedOutline: {
+          borderColor: 'rgba(255, 255, 255, 0.23)',
+          transition: 'border-color 0.2s',
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focused': {
+            color: COLORS.primary.DEFAULT,
+          },
+          '&.Mui-error': {
+            color: COLORS.danger.DEFAULT,
+          },
+          '&.Mui-disabled': {
+            opacity: 0.6,
+          },
+          transition: 'transform 0.2s, font-size 0.2s',
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        select: {
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0.32rem 1rem',
+          lineHeight: 1.6,
+        },
+        icon: {
+          transition: 'transform 0.2s ease-in-out',
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          '&.Mui-selected': {
+            backgroundColor: COLORS.primary.darkLight,
+          },
+          '&.Mui-selected:hover': {
+            backgroundColor: COLORS.primary.light,
+          },
         },
       },
     },

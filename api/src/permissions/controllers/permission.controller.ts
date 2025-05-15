@@ -9,11 +9,11 @@ import {
   permissionFindAllEndpointDecorators,
   permissionFindOneEndpointDecorators,
   permissionUpdateEndpointDecorators,
-} from './combined-decorators';
+} from '../decorators/combined-decorators';
 
 @permissionControllerDecorators()
 export class PermissionController {
-  constructor(private readonly permissionService: PermissionService) {}
+  constructor(private readonly permissionService: PermissionService) { }
 
   @permissionCreateEndpointDecorators()
   create(@Body() createPermissionDto: CreatePermissionDto) {

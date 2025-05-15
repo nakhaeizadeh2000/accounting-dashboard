@@ -1,0 +1,31 @@
+version: "3"
+x-template:
+  base-service: &base
+    networks:
+      - main
+    env_file:
+      - .env
+  live-service: &live
+    <<: *base
+    restart: unless-stopped
+
+services: 
+  test:
+    <<: *live
+    image: ${CI_REGISTRY}/maskan/test:${TEST_TAG:-latest}
+    user: root
+
+    command: ["sleep"]
+    volumes:
+      - test-packages:/home/app/test/node_modules
+      - ./test:/home/app/test
+      - ./libs:/home/app/test/libs
+
+
+volumes:
+  test-packages:
+networks:
+  main:
+    driver: bridge
+    name: maskan_network
+    external: true

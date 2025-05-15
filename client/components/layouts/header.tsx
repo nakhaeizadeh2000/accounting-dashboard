@@ -3,7 +3,12 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import Link from 'next/link';
 import { IRootState } from '@/store';
-import { toggleTheme, toggleSidebar, toggleRTL } from '@/store/features/theme/themeConfigSlice';
+import {
+  toggleTheme,
+  toggleSidebar,
+  toggleRTL,
+  toggleCalenderType,
+} from '@/store/features/theme/themeConfigSlice';
 import Dropdown from '@/components/dropdown';
 import IconMenu from '@/components/icon/icon-menu';
 import IconCalendar from '@/components/icon/icon-calendar';
@@ -31,6 +36,7 @@ import IconMenuDatatables from '@/components/icon/menu/icon-menu-datatables';
 import IconMenuForms from '@/components/icon/menu/icon-menu-forms';
 import IconMenuPages from '@/components/icon/menu/icon-menu-pages';
 import IconMenuMore from '@/components/icon/menu/icon-menu-more';
+import { HiOutlineBell } from 'react-icons/hi2';
 import { usePathname, useRouter } from 'next/navigation';
 import { getTranslation } from '@/i18n';
 import { removeAccessTokenCookie } from '@/shared/functions/access-token-cookie';
@@ -78,10 +84,13 @@ const Header = () => {
   const themeConfig = useSelector((state: IRootState) => state.themeConfig);
   const setLocale = (flag: string) => {
     //* set the language for chosen rtl or ltr
+    console.log(flag);
 
     if (flag.toLowerCase() === 'ae' || flag.toLowerCase() === 'ir') {
+      dispatch(toggleCalenderType('jalali'));
       dispatch(toggleRTL('rtl'));
     } else {
+      dispatch(toggleCalenderType('gregorian'));
       dispatch(toggleRTL('ltr'));
     }
     router.refresh();
@@ -405,7 +414,7 @@ const Header = () => {
                 btnClassName="relative block p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:text-primary hover:bg-white-light/90 dark:hover:bg-dark/60"
                 button={
                   <span>
-                    <IconBellBing />
+                    <HiOutlineBell />
                     <span className="absolute top-0 flex h-3 w-3 ltr:right-0 rtl:left-0">
                       <span className="absolute -top-[3px] inline-flex h-full w-full animate-ping rounded-full bg-success/50 opacity-75 ltr:-left-[3px] rtl:-right-[3px]"></span>
                       <span className="relative inline-flex h-[6px] w-[6px] rounded-full bg-success"></span>
@@ -457,7 +466,7 @@ const Header = () => {
                                 </div>
                                 <button
                                   type="button"
-                                  className="text-neutral-300 opacity-0 hover:text-danger group-hover:opacity-100 ltr:ml-auto rtl:mr-auto"
+                                  className="text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-danger ltr:ml-auto rtl:mr-auto"
                                   onClick={() => removeNotification(notification.id)}
                                 >
                                   <IconXCircle />

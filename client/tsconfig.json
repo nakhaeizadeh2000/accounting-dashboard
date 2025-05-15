@@ -1,13 +1,9 @@
 {
   "compilerOptions": {
-    // TODO: because of using ES2015 that is ES6 instead of ES5 we have to use polyfills or additional tools like Babel to ensure compatibility (for limiting older version of browsers)
+    // Targeting ES2015 (ES6); use polyfills for older browsers if needed
     "target": "ES2015",
-    "downlevelIteration": true,
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "downlevelIteration": true, // Optional: remove if not needed for iterators
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -22,18 +18,10 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@/Elements/*": [
-        "./components/Elements/*"
-      ]
+      "@/*": ["./*"],
+      "@/Elements/*": ["./components/Elements/*"]
     },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "plugins": [{ "name": "next" }]
   },
   "include": [
     "next-env.d.ts",
@@ -41,9 +29,79 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "ni18n.config.ts.js"
+    "ni18n.config.ts" // Fixed potential typo from "ni18n.config.ts.js"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
+
+// {
+//   "compilerOptions": {
+//     // TODO: because of using ES2015 that is ES6 instead of ES5 we have to use polyfills or additional tools like Babel to ensure compatibility (for limiting older version of browsers)
+//     "target": "ES2015",
+//     "downlevelIteration": true,
+//     "lib": [
+//       "dom",
+//       "dom.iterable",
+//       "esnext"
+//     ],
+//     "allowJs": true,
+//     "skipLibCheck": true,
+//     "strict": true,
+//     "forceConsistentCasingInFileNames": true,
+//     "noEmit": true,
+//     "esModuleInterop": true,
+//     "module": "esnext",
+//     "moduleResolution": "node",
+//     "resolveJsonModule": true,
+//     "isolatedModules": true,
+//     "jsx": "preserve",
+//     "incremental": true,
+//     "baseUrl": ".",
+//     "paths": {
+//       "@/*": [
+//         "./*"
+//       ],
+//       "@/Elements/*": [
+//         "./components/Elements/*"
+//       ]
+//     },
+//     "plugins": [
+//       {
+//         "name": "next"
+//       }
+//     ]
+//   },
+//   "include": [
+//     "next-env.d.ts",
+//     "shared/types/global.d.ts",
+//     "**/*.ts",
+//     "**/*.tsx",
+//     ".next/types/**/*.ts",
+//     "ni18n.config.ts.js"
+//   ],
+//   "exclude": [
+//     "node_modules"
+//   ]
+// }
+
+// {
+//   "compilerOptions": {
+//     "target": "es5",
+//     "lib": ["dom", "dom.iterable", "esnext"],
+//     "allowJs": true,
+//     "skipLibCheck": true,
+//     "strict": true,
+//     "forceConsistentCasingInFileNames": true,
+//     "noEmit": true,
+//     "esModuleInterop": true,
+//     "module": "esnext",
+//     "moduleResolution": "node",
+//     "resolveJsonModule": true,
+//     "isolatedModules": true,
+//     "jsx": "preserve",
+//     "incremental": true
+//   },
+//   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+//   "exclude": ["node_modules"]
+
+// }

@@ -1,0 +1,414 @@
+// Base Dropdown Container
+.dropdown-container {
+  @apply relative w-full text-gray-800 dark:text-gray-200 font-sans;
+}
+
+// Dropdown Label
+.dropdown-label {
+  @apply block mb-2 text-sm font-medium;
+
+  .required-indicator {
+    @apply text-danger ml-1;
+  }
+}
+
+// Selected Value Display
+.dropdown-selected-value {
+  @apply flex items-center justify-between w-full min-h-[2.5rem] px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded cursor-pointer transition-all duration-200 hover:border-gray-400 dark:hover:border-gray-600;
+
+  &:focus {
+    @apply outline-none ring-2 ring-primary/20 dark:ring-primary/30 border-primary dark:border-primary;
+  }
+
+  &.error {
+    @apply border-danger ring-danger/20 dark:ring-danger/30;
+
+    &:focus {
+      @apply ring-2 ring-danger/20 dark:ring-danger/30;
+    }
+  }
+
+  &.disabled {
+    @apply opacity-60 cursor-not-allowed bg-opacity-80;
+  }
+}
+
+// Dropdown Arrow
+.dropdown-arrow {
+  @apply ml-auto transition-transform duration-200;
+
+  &.open {
+    @apply rotate-180;
+  }
+}
+
+// Dropdown Menu
+.dropdown-menu {
+  @apply absolute top-full left-0 z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-md dark:shadow-lg overflow-hidden transition-all duration-200;
+}
+
+// Dropdown Items Container
+.dropdown-items-container {
+  @apply max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent;
+}
+
+// Dropdown Item
+.dropdown-item {
+  @apply flex items-center px-4 py-2 cursor-pointer transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-700;
+
+  &.selected {
+    @apply bg-primary/10 dark:bg-primary/20;
+  }
+
+  &.disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+}
+
+// Dropdown Checkbox
+.dropdown-checkbox {
+  @apply flex items-center justify-center w-4 h-4 mr-3 border border-gray-300 dark:border-gray-600 rounded;
+
+  &.checked {
+    @apply bg-primary border-primary dark:bg-primary dark:border-primary text-white;
+  }
+}
+
+// Dropdown Item Icon
+.dropdown-item-icon {
+  @apply flex items-center mr-3;
+
+  svg {
+    @apply w-4 h-4;
+  }
+}
+
+// Dropdown Item Content
+.dropdown-item-content {
+  @apply flex-1;
+}
+
+.dropdown-item-label {
+  @apply block text-sm;
+}
+
+.dropdown-item-description {
+  @apply block text-xs text-gray-400 dark:text-gray-500;
+}
+
+// Dropdown Selected Indicator
+.dropdown-selected-indicator {
+  @apply ml-3 text-primary;
+
+  svg {
+    @apply w-4 h-4;
+  }
+}
+
+// Dropdown Search
+.dropdown-search {
+  @apply relative p-2 border-b border-gray-200 dark:border-gray-700;
+
+  &-icon {
+    @apply absolute top-1/2 right-5 -translate-y-1/2 text-gray-400 dark:text-gray-500;
+
+    svg {
+      @apply w-4 h-4;
+    }
+  }
+
+  &-input {
+    @apply w-full py-2 px-3 pr-8 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-gray-800 dark:text-gray-200;
+
+    &:focus {
+      @apply outline-none border-primary dark:border-primary;
+    }
+
+    &::placeholder {
+      @apply text-gray-400 dark:text-gray-500;
+    }
+  }
+}
+
+// Dropdown No Items
+.dropdown-no-items {
+  @apply flex items-center justify-center p-4 text-sm text-gray-400 dark:text-gray-500;
+}
+
+// Dropdown Loading
+.dropdown-loading {
+  @apply flex items-center justify-center p-4;
+
+  .spinner {
+    @apply w-6 h-6 rounded-full animate-spin border-2 border-gray-200 dark:border-gray-700 border-t-primary;
+  }
+}
+
+// Dropdown Placeholder
+.dropdown-placeholder {
+  @apply text-gray-400 dark:text-gray-500;
+}
+
+// Single Value Display
+.dropdown-single-value {
+  @apply block overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.dropdown-value-icon {
+  @apply flex items-center mr-2;
+
+  svg {
+    @apply w-4 h-4;
+  }
+}
+
+// Multi Value Display - Simple
+.dropdown-multi-value-simple {
+  @apply block overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+// Multi Value Display - Chips
+.dropdown-multi-value-chips {
+  @apply flex flex-wrap gap-2 max-w-full;
+
+  &.marquee {
+    @apply flex-nowrap overflow-hidden;
+  }
+}
+
+.dropdown-marquee-container {
+  @apply w-full overflow-hidden;
+}
+
+.dropdown-marquee-content {
+  @apply inline-block whitespace-nowrap;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+// Dropdown Chip
+.dropdown-chip {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary dark:bg-gray-800 dark:text-primary-light;
+
+  &-icon {
+    @apply flex items-center mr-1;
+
+    svg {
+      @apply w-3 h-3;
+    }
+  }
+
+  &-remove {
+    @apply flex items-center ml-1 cursor-pointer hover:text-danger hover:bg-danger/10 dark:hover:bg-danger/20 hover:rounded-full;
+
+    svg {
+      @apply w-3 h-3;
+    }
+  }
+}
+
+// User Avatar Styling
+.user-avatar {
+  @apply flex items-center justify-center w-6 h-6 rounded-full overflow-hidden;
+
+  img {
+    @apply w-full h-full object-cover;
+  }
+}
+
+.user-avatar-placeholder {
+  @apply flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200;
+}
+
+// RTL Support
+[dir="rtl"] {
+
+  .dropdown-checkbox,
+  .dropdown-item-icon {
+    @apply mr-0 ml-3;
+  }
+
+  .dropdown-selected-indicator {
+    @apply ml-0 mr-3;
+  }
+
+  .dropdown-search {
+    &-icon {
+      @apply right-auto left-5;
+    }
+
+    &-input {
+      @apply pl-8 pr-3;
+    }
+  }
+
+  .dropdown-value-icon {
+    @apply mr-0 ml-2;
+  }
+
+  .dropdown-chip {
+    &-icon {
+      @apply mr-0 ml-1;
+    }
+
+    &-remove {
+      @apply ml-0 mr-1;
+    }
+  }
+
+  .dropdown-filter-input {
+    text-align: right;
+  }
+}
+
+// Accessibility focus styles
+.dropdown-selected-value:focus,
+.dropdown-search-input:focus,
+.dropdown-chip-remove:focus {
+  @apply outline-none ring-2 ring-primary/40 dark:ring-primary/40;
+}
+
+// Size variants
+.dropdown-sm {
+  .dropdown-selected-value {
+    @apply px-3 py-1 text-xs min-h-[2rem];
+  }
+
+  .dropdown-item {
+    @apply px-3 py-1 text-xs;
+  }
+
+  .dropdown-chip {
+    @apply px-1.5 py-0.5 text-[0.7rem];
+  }
+}
+
+.dropdown-md {
+  .dropdown-selected-value {
+    @apply px-4 py-2 text-sm min-h-[2.5rem];
+  }
+
+  .dropdown-item {
+    @apply px-4 py-2 text-sm;
+  }
+
+  .dropdown-chip {
+    @apply px-2 py-1 text-xs;
+  }
+}
+
+.dropdown-lg {
+  .dropdown-selected-value {
+    @apply px-5 py-3 text-base min-h-[3rem];
+  }
+
+  .dropdown-item {
+    @apply px-5 py-3 text-base;
+  }
+
+  .dropdown-chip {
+    @apply px-2.5 py-1.5 text-sm;
+  }
+}
+
+// Animation for dropdown menu
+@keyframes slideDown {
+  from {
+    @apply opacity-0 -translate-y-2.5;
+  }
+
+  to {
+    @apply opacity-100 translate-y-0;
+  }
+}
+
+.dropdown-menu {
+  animation: slideDown 0.2s ease;
+}
+
+// Responsive adjustments
+@media (max-width: 640px) {
+  .dropdown-multi-value-chips {
+    @apply max-w-[calc(100%-2rem)];
+  }
+
+  .dropdown-chip {
+    @apply max-w-full overflow-hidden;
+
+    span {
+      @apply overflow-hidden text-ellipsis whitespace-nowrap max-w-[calc(100%-1.5rem)];
+    }
+  }
+}
+
+// High contrast mode support
+@media (forced-colors: active) {
+
+  .dropdown-selected-value,
+  .dropdown-menu,
+  .dropdown-item,
+  .dropdown-checkbox,
+  .dropdown-chip {
+    @apply border border-solid;
+    border-color: ButtonText;
+  }
+
+  .dropdown-item.selected {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  .dropdown-checkbox.checked {
+    background-color: Highlight;
+    border-color: Highlight;
+  }
+}
+
+// Print styles
+@media print {
+  .dropdown-container {
+    @apply border-none shadow-none !important;
+  }
+
+  .dropdown-selected-value {
+    @apply border border-black bg-transparent !important;
+  }
+
+  .dropdown-menu {
+    @apply hidden !important;
+  }
+}
+
+// Dropdown Filter Section
+.dropdown-filter-section {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+// Default Filter Input
+.dropdown-default-filter {
+  width: 100%;
+}
+
+.dropdown-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  
+  &:focus {
+    border-color: var(--primary-color, #3b82f6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  }
+}

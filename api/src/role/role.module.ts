@@ -1,11 +1,10 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { CaslAbilityFactory } from 'src/casl/casl-ability.factory/casl-ability.factory';
 import { RoleService } from './services/role.service';
 import { RoleController } from './controllers/role.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Role } from './entities/role.entity';
-import { CaslModule } from 'src/casl/casl.module';
 import { JwtService } from '@nestjs/jwt';
+import { CaslModule } from 'src/modules/casl-legacy/casl.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Role]), forwardRef(() => CaslModule)],

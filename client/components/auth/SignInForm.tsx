@@ -8,11 +8,12 @@ import { useSignInMutation } from '@/store/features/auth/sign-in/sign-in.api';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import AnimatedInputElement from '@/components/modules/input-elements/AnimatedInputElement';
-import FormButton from '../modules/buttons/FormButton';
 import { FiLogIn } from 'react-icons/fi';
 import { MdOutlineAlternateEmail } from 'react-icons/md';
 import { FaEyeLowVision } from 'react-icons/fa6';
 import AnimatedPasswordInputelement from '../modules/input-elements/AnimatedPasswordInputElement';
+import LoadingButtonComponent from '../modules/button-advanced/components/LoadingButton';
+import FormButton from '../modules/button/components/FormButton';
 
 type SignInErrorState = FormValidationsErrorState<SignInFormData>;
 
@@ -45,7 +46,7 @@ export default function SignInForm() {
 
     try {
       const result = await signIn(data).unwrap();
-      if (result.success) {
+      if (result.success && result.data) {
         setAccessTokenCookie(result.data.access_token, result.data.cookie_expires_in);
         if (window.history.length > 1 && document.referrer.includes('SignUp')) {
           router.back();
@@ -91,16 +92,17 @@ export default function SignInForm() {
 
       {/* Submit button */}
       <div className="pt-3 text-center">
-        <FormButton
-          isLoading={isLoading}
+        <LoadingButtonComponent
+          loading={isLoading}
           className="text-white"
           style={{
             background: 'linear-gradient(to right, #ee7724, #d8363a, #dd3675, #b44593)',
           }}
           label="ورود"
-          Icon={FiLogIn}
-          loadingIconColor="bg-neutral-300"
-        ></FormButton>
+          startIcon={<FiLogIn />}
+          type="submit"
+          variant="contained"
+        ></LoadingButtonComponent>
 
         {/* Form errors */}
         {errors.formErrors.length > 0 && (

@@ -16,6 +16,7 @@ const initialState = {
     { code: 'en', name: 'English' },
     { code: 'ir', name: 'Persian' },
   ],
+  calenderType: themeConfig.calenderType,
 };
 
 const themeConfigSlice = createSlice({
@@ -82,6 +83,18 @@ const themeConfigSlice = createSlice({
     resetToggleSidebar(state) {
       state.sidebar = false;
     },
+    toggleCalenderType(state, { payload }) {
+      payload = payload || state.calenderType;
+      localStorage.setItem('calenderType',  payload);
+      if (payload === 'jalali') {
+        state.calenderType = 'jalali';
+      } else {
+        state.calenderType = 'gregorian';
+      }
+    },
+    toggleLanguage(state,{payload}){
+
+    }
   },
 });
 
@@ -95,6 +108,7 @@ export const {
   toggleSemidark,
   toggleSidebar,
   resetToggleSidebar,
+  toggleCalenderType,
 } = themeConfigSlice.actions;
 
 export default themeConfigSlice.reducer;

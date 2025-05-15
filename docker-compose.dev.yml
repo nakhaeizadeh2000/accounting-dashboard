@@ -3,22 +3,26 @@ version: "3.8"
 services:
   nginx:
     container_name: nginx
+    restart: always
     image: nginx:alpine
     ports:
       - "80:80" # HTTP
       - "443:443" # HTTPS (if needed)
     volumes:
+      - ./:/app
       - ./nginx/default.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro # SSL certificates (optional for dev)
     depends_on:
       - api
       - client
+      - minio1
     networks:
       isatis:
         ipv4_address: "172.20.0.10"
 
   api:
     container_name: api
+    restart: always
     build:
       context: .
       dockerfile: dev-env/api.dev.dockerfile
@@ -26,6 +30,7 @@ services:
         NODE_ENV: development # Set environment to development
     env_file:
       - .env
+      - ./minio/minio.env
     volumes:
       - .:/home/app
       - /home/app/api/node_modules
@@ -37,12 +42,38 @@ services:
     depends_on:
       - postgres
       - redis
+      - minio1
     links:
       - postgres
       - redis
 
+  minio1:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z.fips
+    restart: always
+    hostname: minio1
+    command: server --console-address ":9001" /data
+    container_name: minio
+    env_file:
+      - ./minio/minio.env
+    environment:
+      MINIO_BROWSER_REDIRECT_URL: http://localhost/minio/console
+      # Add environment variable to allow public policy
+      MINIO_BROWSER: "on"
+      MINIO_DOMAIN: localhost
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - ./minio/data:/data
+    networks:
+      isatis:
+        ipv4_address: "172.20.0.30"
+
   client:
     container_name: client
+    restart: always
     build:
       context: .
       dockerfile: dev-env/client.dev.dockerfile
@@ -62,6 +93,7 @@ services:
   postgres:
     container_name: ${POSTGRES_HOST}
     image: postgres:16-alpine
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -70,11 +102,10 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
-    restart: unless-stopped
     tty: true
     volumes:
-      - ./api/database/postgres-db/data:/var/lib/postgresql/data
-      - ./api/database/postgres-db/sql:/docker-entrypoint-initdb.d
+      - ./postgres/data/data:/var/lib/postgresql/data
+      - ./postgres/data/sql:/docker-entrypoint-initdb.d
     networks:
       isatis:
         ipv4_address: "172.20.0.60"
@@ -82,13 +113,13 @@ services:
   redis:
     container_name: ${REDIS_HOST}
     image: redis:7.4.0-alpine
+    restart: always
     env_file:
       - .env
-    restart: always
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
-      - ./api/database/redis-database/:/data
+      - ./redis/data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s

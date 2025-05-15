@@ -1,9 +1,9 @@
 import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Seeder } from './seeder';
-import { RequireAdmin } from 'common/decorators/roles.decorator';
-import { IsAdminGuard } from 'common/guards/roles.guard';
-import { JwtAuthGuard } from 'common/guards/jwt-auth.guard';
+import { RequireAdmin } from 'src/role/decorators/roles.decorator';
+import { IsAdminGuard } from 'src/role/guards/roles.guard';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 
 @ApiTags('seed')
 @UseGuards(JwtAuthGuard, IsAdminGuard)
@@ -12,7 +12,7 @@ export class SeederController {
   constructor(
     private readonly seeder: Seeder,
     private readonly logger: Logger,
-  ) {}
+  ) { }
 
   @Get('demo-data')
   @RequireAdmin(true)

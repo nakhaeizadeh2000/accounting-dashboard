@@ -27,6 +27,7 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'warn',
     'react/react-in-jsx-scope': 'off',
     '@typescript-eslint/no-require-imports': 'warn',
+    'react/prop-types': 'off', // Disable prop-types as we use TypeScript for type checking
   },
   settings: {
     react: {

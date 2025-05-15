@@ -10,6 +10,7 @@ import {
   toggleAnimation,
   toggleNavbar,
   toggleSemidark,
+  toggleCalenderType,
 } from '@/store/features/theme/themeConfigSlice';
 import { getTranslation } from '@/i18n';
 import 'styles/global.scss';
@@ -29,6 +30,7 @@ function App({ children }: PropsWithChildren) {
     dispatch(toggleAnimation(localStorage.getItem('animation') || themeConfig.animation));
     dispatch(toggleNavbar(localStorage.getItem('navbar') || themeConfig.navbar));
     dispatch(toggleSemidark(localStorage.getItem('semidark') || themeConfig.semidark));
+    dispatch(toggleCalenderType(localStorage.getItem('calenderType') || themeConfig.calenderType));
     // locale
     initLocale(themeConfig.locale);
 
@@ -44,6 +46,7 @@ function App({ children }: PropsWithChildren) {
     themeConfig.navbar,
     themeConfig.locale,
     themeConfig.semidark,
+    themeConfig.calenderType,
   ]);
 
   return (

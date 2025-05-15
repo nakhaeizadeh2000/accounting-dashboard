@@ -57,6 +57,6 @@
     }
   },
   "remoteUser": "node",
-  "containerUser": "node",
+  "containerUser": "node"
   // "postStartCommand": "npm run dev"
 }

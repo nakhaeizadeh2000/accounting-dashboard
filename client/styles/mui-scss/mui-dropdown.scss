@@ -1,0 +1,55 @@
+/* RTL label fix */
+.rtl-label.MuiInputLabel-root {
+  /* Position the label on the right side for RTL layouts */
+  right: 14px !important;
+  left: auto !important;
+  /* Set transform origin to top right for proper scaling in RTL mode */
+  transform-origin: top right !important;
+  /* Remove horizontal translation (x-axis) for RTL labels and position vertically */
+  /* The first value (0) is x-axis translation (horizontal) - set to 0 for RTL */
+  /* The second value (6px) is y-axis translation (vertical) - controls label height position */
+  /* IMPORTANT: When changing input height, this y-value must be adjusted to vertically center the label */
+  transform: translate(0, 6px) scale(1) !important;
+
+  /* Responsive adjustments for medium screens */
+  /* Increase vertical position (y-axis) for taller inputs on medium screens */
+  /* NOTE: If you increase the input height, increase this y-value proportionally */
+  @media (max-width: 1024px) {
+    transform: translate(0, 6px) scale(1) !important;
+  }
+
+  /* Responsive adjustments for small screens */
+  /* Further increase vertical position for taller inputs on small screens */
+  @media (max-width: 640px) {
+    transform: translate(0, 8px) scale(1) !important;
+  }
+
+  /* When label is shrunk (after selection or on focus) */
+  /* Move the label to the top of the input while maintaining right alignment */
+  /* The negative y-value (-6px) moves the label upward above the input */
+  /* IMPORTANT: This value should remain negative to position above the input, but may need adjustment if input padding changes */
+  &.MuiInputLabel-shrink {
+    transform: translate(0, -6px) scale(0.75) !important;
+  }
+}
+
+/*
+ * GUIDE FOR CHANGING INPUT HEIGHT:
+ *
+ * 1. To increase input height, modify these elements:
+ *    - In the component: Change the min-height class on the OutlinedInput component
+ *      Example: className="mui-dropdown-input min-h-[40px] md:min-h-[42px]"
+ *
+ * 2. When increasing input height, you must also adjust:
+ *    - The label's vertical position (y-value in transform) to center it within the taller input
+ *    - The padding of the Select component to ensure content is vertically centered
+ *    - The shrunk label position may need adjustment to maintain proper spacing above the input
+ *
+ * 3. For consistent height across different screen sizes:
+ *    - Use media queries to apply different heights and paddings for different screen sizes
+ *    - Ensure the label positioning is adjusted for each screen size
+ *
+ * 4. For multi-select inputs with chips:
+ *    - Additional padding may be needed to accommodate the chips
+ *    - The MuiChip-root height may need adjustment to fit within the input
+ */
