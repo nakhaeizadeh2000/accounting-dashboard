@@ -23,20 +23,20 @@ This documentation provides a detailed reference for the enhanced CASL-based aut
   - [Permission Query Builder](#permission-query-builder)
     - [1. Direct Query Building](#1-direct-query-building)
     - [2. Applying Filters to QueryBuilder](#2-applying-filters-to-querybuilder)
-    - [3. Permission-Filtered Repository](#3-permission-filtered-repository)
+    - [3. Type-Safe Field Selection API](#3-type-safe-field-selection-api)
+    - [4. Permission-Filtered Repository](#4-permission-filtered-repository)
     - [Condition Processing](#condition-processing)
   - [Usage in Controllers](#usage-in-controllers)
     - [1. Using Guards and Decorators](#1-using-guards-and-decorators)
     - [2. Direct Permission Checks](#2-direct-permission-checks)
     - [3. Filtered Data Access](#3-filtered-data-access)
+    - [4. Type-Safe Field Selection](#4-type-safe-field-selection)
   - [Advanced Features](#advanced-features)
     - [Field-Level Permissions](#field-level-permissions)
+    - [Nested Entity Permissions](#nested-entity-permissions)
     - [Condition Variables](#condition-variables)
     - [Custom Policy Handlers](#custom-policy-handlers)
   - [Caching Strategy](#caching-strategy)
-    - [Cache Implementation](#cache-implementation-1)
-    - [Cache Invalidation](#cache-invalidation)
-    - [Cache Performance Tuning](#cache-performance-tuning)
   - [Role Management](#role-management)
   - [Best Practices](#best-practices)
   - [Testing CASL Permissions](#testing-casl-permissions)
@@ -44,15 +44,18 @@ This documentation provides a detailed reference for the enhanced CASL-based aut
   - [Debugging CASL Issues](#debugging-casl-issues)
   - [Integration with JWT Authentication](#integration-with-jwt-authentication)
   - [Appendix: Common Patterns and Recipes](#appendix-common-patterns-and-recipes)
-    - [1. Owner-Based Permissions](#1-owner-based-permissions)
-    - [2. Organization-Based Access](#2-organization-based-access)
-    - [3. Advanced Permission Checks](#3-advanced-permission-checks)
-    - [4. Handling Dynamic Permissions](#4-handling-dynamic-permissions)
-    - [5. API Rate Limiting by Permission Level](#5-api-rate-limiting-by-permission-level)
+    - [1. Global Admin Access](#1-global-admin-access)
+    - [2. Ownership-Based Access](#2-ownership-based-access)
+    - [3. Field-Based Conditions](#3-field-based-conditions)
+    - [4. Type-Safe Field Selection for DTOs](#4-type-safe-field-selection-for-dtos)
+    - [5. Multi-Tenant Permissions](#5-multi-tenant-permissions)
+    - [6. Using Ability with Repository Pattern](#6-using-ability-with-repository-pattern)
+    - [7. Handling Dynamic Resources](#7-handling-dynamic-resources)
+    - [8. Permission-Based UI Adaptation](#8-permission-based-ui-adaptation)
 
 ## Overview
 
-The authorization system uses CASL to provide attribute-based access control (ABAC) with fine-grained permissions. It integrates with NestJS, TypeORM, and Redis for a complete, high-performance authorization solution.
+The authorization system uses CASL to provide attribute-based access control (ABAC) with fine-grained permissions. It integrates with NestJS, TypeORM, and Redis for a complete, high-performance authorization solution with enhanced field-level permissions and type-safe field selection.
 
 ```mermaid
 graph TD
@@ -60,8 +63,9 @@ graph TD
     B -->|Have| C[Permissions]
     C -->|Define| D[Abilities]
     D -->|Control| E[Access to Resources]
-    D -->|Filter| F[Data Access]
-    G[Redis] -->|Cache| D
+    D -->|Filter Fields| F[Data Access]
+    D -->|Filter Joins| G[Nested Relations]
+    H[Redis] -->|Cache| D
 ```
 
 ## Module Structure
@@ -81,7 +85,8 @@ src/
         ├── guards/                 # Authorization guards
         │   └── abilities.guard.ts
         ├── services/               # Core services
-        │   └── permission-query-builder.service.ts
+        │   ├── permission-query-builder.service.ts
+        │   └── entity-field-selector.ts  # NEW! Type-safe field selection
         ├── casl-ability.factory.ts # Creates ability objects
         ├── casl.service.ts         # Main service with caching
         └── casl.module.ts          # Module definition
@@ -96,9 +101,10 @@ sequenceDiagram
     participant AbilitiesGuard
     participant CaslService
     participant CaslAbilityFactory
+    participant PermissionQueryBuilder
+    participant EntityFieldSelector
     participant Redis
     participant Database
-    participant PermissionQueryBuilder
 
     Client->>Controller: Request protected resource
     Controller->>AbilitiesGuard: @CheckPolicies() decorator triggers guard
@@ -124,13 +130,18 @@ sequenceDiagram
 
         alt Direct data retrieval
             Controller->>Database: Direct retrieval
-        else Permission-filtered retrieval
-            Controller->>PermissionQueryBuilder: buildPermissionQuery() or applyPermissionFilters()
+        else Basic permission-filtered retrieval
+            Controller->>PermissionQueryBuilder: applyPermissionFilters()
             PermissionQueryBuilder->>PermissionQueryBuilder: Convert CASL rules to TypeORM conditions
             PermissionQueryBuilder-->>Controller: Return filtered query/builder
-            Controller->>Database: Execute filtered query
+        else Type-Safe field selection
+            Controller->>EntityFieldSelector: queryBuilder.withPermissions()
+            Controller->>EntityFieldSelector: selectFields<Entity>()
+            EntityFieldSelector->>PermissionQueryBuilder: Apply field-specific filters
+            PermissionQueryBuilder-->>Controller: Return filtered query with selected fields
         end
 
+        Controller->>Database: Execute filtered query
         Database-->>Controller: Return data
         Controller->>Client: Return requested resource
     else Unauthorized
@@ -147,6 +158,8 @@ sequenceDiagram
 - **Abilities**: Determined by a user's roles and their associated permissions
 - **Policies**: Functions that check if a user can perform an action on a resource
 - **Conditions**: Dynamic rules that filter resources based on user context
+- **Field-Level Permissions**: Control which fields a user can access on an entity
+- **Type-Safe Field Selection**: Use TypeScript to ensure field names are valid at compile-time
 
 ## Subject Types
 
@@ -191,18 +204,6 @@ export enum Action {
 }
 ```
 
-Each action has a specific purpose:
-
-| Action              | Description                            |
-| ------------------- | -------------------------------------- |
-| `SUPER_MODIFY`      | Full system access                     |
-| `MANAGE`            | Full access to a specific resource     |
-| `CREATE`            | Create new instances of a resource     |
-| `READ`              | View or list resources                 |
-| `UPDATE`            | Modify existing resources              |
-| `DELETE`            | Remove resources                       |
-| `UPDATE_USER_ROLES` | Special permission for assigning roles |
-
 ## Defining Permissions
 
 Permissions are created through the API and stored in the database. Each permission defines:
@@ -222,34 +223,6 @@ Example permission configuration:
   "fields": ["title", "content", "createdAt"],
   "conditions": { "authorId": "${user.id}" },
   "inverted": false
-}
-```
-
-The permission entity structure:
-
-```typescript
-@Entity('permissions')
-export class Permission {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column()
-  action: string;
-
-  @Column()
-  subject: string;
-
-  @Column({ type: 'jsonb', nullable: true })
-  fields: string[];
-
-  @Column({ type: 'jsonb', nullable: true })
-  conditions: Record<string, any>;
-
-  @Column({ default: false })
-  inverted: boolean;
-
-  @ManyToMany(() => Role, (role) => role.permissions)
-  roles: Role[];
 }
 ```
 
@@ -316,8 +289,6 @@ export class CaslAbilityFactory {
         can(action, subject, fields || undefined, conditions || undefined);
       }
     }
-
-    // Default permissions (if any)
 
     return build({
       detectSubjectType: (item) => {
@@ -420,33 +391,20 @@ async cannot(
 
 ## Permission Query Builder
 
-The PermissionQueryBuilder provides three ways to apply permissions to data access:
+The PermissionQueryBuilder provides several ways to apply permissions to data access:
 
 ### 1. Direct Query Building
 
 Builds TypeORM `FindOptionsWhere` objects from CASL rules:
 
 ```typescript
-async buildPermissionQuery<T>(
-  userId: string,
-  action: Action | string,
-  entityName: string,
-): Promise<FindOptionsWhere<T> | FindOptionsWhere<T>[]> {
-  const ability = await this.caslService.getUserAbility(userId);
-
-  // Get all rules that apply to this entity and action
-  const rules = ability.rulesFor(action, entityName);
-
-  // Process rules and return TypeORM conditions
-  // ...
-}
-
-// Usage
-const whereConditions = await permissionQueryBuilder.buildPermissionQuery<Article>(
-  userId,
-  Action.READ,
-  'Article'
-);
+// In your service
+const whereConditions =
+  await permissionQueryBuilder.buildPermissionQuery<Article>(
+    userId,
+    Action.READ,
+    'Article',
+  );
 
 const articles = await articleRepository.find({ where: whereConditions });
 ```
@@ -456,135 +414,101 @@ const articles = await articleRepository.find({ where: whereConditions });
 Adds WHERE conditions to an existing QueryBuilder:
 
 ```typescript
-async applyPermissionFilters<T>(
-  queryBuilder: SelectQueryBuilder<T>,
-  userId: string,
-  action: Action | string,
-): Promise<SelectQueryBuilder<T>> {
-  const ability = await this.caslService.getUserAbility(userId);
-  const entityName = queryBuilder.expressionMap.mainAlias?.metadata?.name;
-  const alias = queryBuilder.expressionMap.mainAlias?.name;
-
-  // Process rules and add WHERE conditions
-  // ...
-
-  return queryBuilder;
-}
-
-// Usage
 const queryBuilder = articleRepository.createQueryBuilder('article');
-await permissionQueryBuilder.applyPermissionFilters(queryBuilder, userId, Action.READ);
+await permissionQueryBuilder.applyPermissionFilters(
+  queryBuilder,
+  userId,
+  Action.READ,
+);
 const articles = await queryBuilder.getMany();
 ```
 
-### 3. Permission-Filtered Repository
+### 3. Type-Safe Field Selection API
+
+The new type-safe field selection API:
+
+```typescript
+const queryBuilder = articleRepository
+  .createQueryBuilder('article')
+  .leftJoinAndSelect('article.author', 'author')
+  .leftJoinAndSelect('article.tags', 'tags');
+
+// Type-safe field selection with permissions
+await queryBuilder
+  .withPermissions(permissionQueryBuilder, userId, 'read')
+  .selectFields<Article>('article', ['id', 'title', 'content', 'createdAt'])
+  .selectFields<User>('author', ['id', 'firstName', 'lastName'])
+  .selectFields<Tag>('tags', ['id', 'name'])
+  .apply();
+
+const articles = await queryBuilder.getMany();
+```
+
+### 4. Permission-Filtered Repository
 
 Creates a proxy repository that automatically applies permission filters:
 
 ```typescript
-async createPermissionFilteredRepository<T>(
-  repository: Repository<T>,
-  userId: string,
-  action: Action | string,
-): Promise<Repository<T>> {
-  // Create a proxy around the repository to intercept calls
-  return new Proxy(repository, {
-    get: (target, prop, receiver) => {
-      // Intercept methods that need permission filtering
-      if (prop === 'find' || prop === 'findOne' || prop === 'findAndCount') {
-        return async (...args: any[]) => {
-          const queryBuilder = repository.createQueryBuilder();
-          await this.applyPermissionFilters(queryBuilder, userId, action);
+// Basic usage
+const filteredRepo =
+  await permissionQueryBuilder.createPermissionFilteredRepository(
+    articleRepository,
+    userId,
+    Action.READ,
+  );
 
-          // Add conditions, pagination, ordering from original call
-          // ...
-
-          // Call the appropriate method
-          if (prop === 'find') return queryBuilder.getMany();
-          if (prop === 'findOne') return queryBuilder.getOne();
-          if (prop === 'findAndCount') return queryBuilder.getManyAndCount();
-        };
-      }
-
-      // For createQueryBuilder, return a function that applies permissions
-      if (prop === 'createQueryBuilder') {
-        return (...args: any[]) => {
-          const qb = target[prop](...args);
-          return this.applyPermissionFilters(qb, userId, action);
-        };
-      }
-
-      // For all other methods, use the original
-      return Reflect.get(target, prop, receiver);
+// With field selection
+const filteredRepo =
+  await permissionQueryBuilder.createPermissionFilteredRepository(
+    articleRepository,
+    userId,
+    Action.READ,
+    {
+      article: ['id', 'title', 'content'],
+      author: ['id', 'firstName'],
     },
-  });
-}
+  );
 
-// Usage
-const filteredRepo = await permissionQueryBuilder.createPermissionFilteredRepository(
-  articleRepository,
-  userId,
-  Action.READ
-);
-
-// Automatically applies permission filters
-const articles = await filteredRepo.find();
+// Use like a regular repository
+const articles = await filteredRepo.find({
+  where: { isPublished: true },
+  order: { createdAt: 'DESC' },
+  take: 10,
+  skip: 0,
+});
 ```
 
 ### Condition Processing
 
-The service handles complex conditions with operators:
+The PermissionQueryBuilder converts CASL conditions to SQL conditions:
 
 ```typescript
-private processConditions(conditions: any, alias: string): string {
-  const clauses: string[] = [];
+// Example of CASL conditions
+const conditions = {
+  authorId: '${user.id}',
+  isPublished: true,
+  viewCount: { $gt: 100 },
+};
 
-  for (const [key, value] of Object.entries(conditions)) {
-    if (value === null) {
-      clauses.push(`${alias}.${key} IS NULL`);
-    } else if (typeof value === 'object' && !Array.isArray(value)) {
-      // Handle operators like $eq, $ne, $in, etc.
-      for (const [op, opValue] of Object.entries(value)) {
-        switch (op) {
-          case '$eq':
-            clauses.push(`${alias}.${key} = ${this.formatValue(opValue)}`);
-            break;
-          case '$ne':
-            clauses.push(`${alias}.${key} != ${this.formatValue(opValue)}`);
-            break;
-          case '$gt':
-            clauses.push(`${alias}.${key} > ${this.formatValue(opValue)}`);
-            break;
-          // ... other operators
-        }
-      }
-    } else {
-      // Simple equality
-      clauses.push(`${alias}.${key} = ${this.formatValue(value)}`);
-    }
-  }
-
-  return clauses.join(' AND ');
-}
+// Processed into SQL like:
+// WHERE article.authorId = '123' AND article.isPublished = TRUE AND article.viewCount > 100
 ```
 
-Supports these operators:
+The system supports these operators:
 
-| Operator | Meaning               | SQL Equivalent |
-| -------- | --------------------- | -------------- |
-| $eq      | Equal                 | =              |
-| $ne      | Not equal             | !=             |
-| $gt      | Greater than          | >              |
-| $gte     | Greater than or equal | >=             |
-| $lt      | Less than             | <              |
-| $lte     | Less than or equal    | <=             |
-| $in      | In array              | IN (values)    |
+- `$eq` - Equal to
+- `$ne` - Not equal to
+- `$gt` - Greater than
+- `$gte` - Greater than or equal to
+- `$lt` - Less than
+- `$lte` - Less than or equal to
+- `$in` - In array
 
 ## Usage in Controllers
 
 ### 1. Using Guards and Decorators
 
-The simplest way to protect endpoints is using guards and decorators:
+Protect controllers or endpoints with the `@CheckPolicies()` decorator:
 
 ```typescript
 @Controller('articles')
@@ -595,106 +519,134 @@ export class ArticleController {
     private caslService: CaslService,
   ) {}
 
-  @Post()
-  @CheckPolicies((ability: AppAbility) => ability.can(Action.CREATE, 'Article'))
-  create(@Body() createArticleDto: CreateArticleDto, @Request() req) {
-    return this.articlesService.create(createArticleDto, req.user.id);
-  }
-
-  @Get(':id')
+  @Get()
   @CheckPolicies((ability: AppAbility) => ability.can(Action.READ, 'Article'))
-  findOne(@Param('id') id: string) {
-    return this.articlesService.findOne(+id);
+  findAll(): Promise<Article[]> {
+    return this.articlesService.findAll();
   }
-}
-```
 
-For convenience, you can create custom decorators:
+  @Patch(':id')
+  @CheckPolicies((ability: AppAbility) => ability.can(Action.UPDATE, 'Article'))
+  async update(
+    @Param('id') id: string,
+    @Body() updateArticleDto: UpdateArticleDto,
+    @Request() req,
+  ) {
+    // Get the article
+    const article = await this.articlesService.findOne(id);
 
-```typescript
-export const CanRead = (subject: SubjectString) =>
-  CheckPolicies((ability: AppAbility) => ability.can(Action.READ, subject));
+    // Check field-level permissions
+    const ability = await this.caslService.getUserAbility(req.user.id);
+    if (ability.cannot(Action.UPDATE, article)) {
+      throw new ForbiddenException('You cannot update this article');
+    }
 
-export const CanCreate = (subject: SubjectString) =>
-  CheckPolicies((ability: AppAbility) => ability.can(Action.CREATE, subject));
-
-// Using them in controllers
-@Get()
-@CanRead('Article')
-findAll() {
-  // ...
+    return this.articlesService.update(id, updateArticleDto);
+  }
 }
 ```
 
 ### 2. Direct Permission Checks
 
-For more complex scenarios, check permissions directly in services:
+Use the CASL service for direct permission checks:
 
 ```typescript
-async updateArticle(id: number, updateDto: UpdateArticleDto, userId: string) {
-  const article = await this.articleRepository.findOne({
-    where: { id },
-    relations: ['author'],
-  });
+@Controller('articles')
+@UseGuards(JwtAuthGuard)
+export class ArticleController {
+  constructor(
+    private articlesService: ArticleService,
+    private caslService: CaslService,
+  ) {}
 
-  if (!article) {
-    throw new NotFoundException('Article not found');
+  @Get(':id')
+  async findOne(@Param('id') id: string, @Request() req) {
+    const article = await this.articlesService.findOne(id);
+
+    // Check permission directly
+    const canRead = await this.caslService.can(
+      req.user.id,
+      Action.READ,
+      article,
+    );
+
+    if (!canRead) {
+      throw new ForbiddenException('Cannot access this article');
+    }
+
+    return article;
   }
-
-  // Check permissions
-  const canUpdate = await this.caslService.can(
-    userId,
-    Action.UPDATE,
-    article
-  );
-
-  if (!canUpdate) {
-    throw new ForbiddenException('You cannot update this article');
-  }
-
-  // Proceed with update
-  Object.assign(article, updateDto);
-  return this.articleRepository.save(article);
 }
 ```
 
 ### 3. Filtered Data Access
 
-For listing operations, use the PermissionQueryBuilder:
+Apply permission filters to queries:
 
 ```typescript
-async findAll(
-  pagination: PaginationDto,
-  userId: string
-): Promise<PaginatedResponse<Article>> {
-  const { page, limit } = pagination;
+@Controller('articles')
+@UseGuards(JwtAuthGuard, AbilitiesGuard)
+export class ArticleController {
+  constructor(
+    private articlesService: ArticleService,
+    private permissionQueryBuilder: PermissionQueryBuilder,
+  ) {}
 
-  // Build query with permission filters
-  const queryBuilder = this.articleRepository.createQueryBuilder('article');
-  await this.permissionQueryBuilder.applyPermissionFilters(
-    queryBuilder,
-    userId,
-    Action.READ
-  );
+  @Get()
+  @CheckPolicies((ability: AppAbility) => ability.can(Action.READ, 'Article'))
+  async findAll(@Request() req, @Query() paginationQuery) {
+    const { page = 1, limit = 10 } = paginationQuery;
 
-  // Add additional filters, pagination, etc.
-  queryBuilder
-    .leftJoinAndSelect('article.author', 'author')
-    .skip((page - 1) * limit)
-    .take(limit)
-    .orderBy('article.createdAt', 'DESC');
+    // Get permission-filtered repository
+    const filteredRepo =
+      await this.permissionQueryBuilder.createPermissionFilteredRepository(
+        this.articlesService.repository,
+        req.user.id,
+        Action.READ,
+      );
 
-  const [articles, total] = await queryBuilder.getManyAndCount();
+    // Use standard repository methods with automatic filtering
+    return filteredRepo.find({
+      take: limit,
+      skip: (page - 1) * limit,
+      order: { createdAt: 'DESC' },
+    });
+  }
+}
+```
 
-  return {
-    data: articles,
-    meta: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    }
-  };
+### 4. Type-Safe Field Selection
+
+Using the new type-safe field selection API:
+
+```typescript
+@Controller('articles')
+@UseGuards(JwtAuthGuard, AbilitiesGuard)
+export class ArticleController {
+  constructor(
+    private articlesService: ArticleService,
+    private permissionQueryBuilder: PermissionQueryBuilder,
+  ) {}
+
+  @Get()
+  @CheckPolicies((ability: AppAbility) => ability.can(Action.READ, 'Article'))
+  async findAll(@Request() req) {
+    // Create query builder with joins
+    const queryBuilder = this.articlesService.repository
+      .createQueryBuilder('article')
+      .leftJoinAndSelect('article.author', 'author')
+      .leftJoinAndSelect('article.categories', 'categories');
+
+    // Apply type-safe field selection with permissions
+    await queryBuilder
+      .withPermissions(this.permissionQueryBuilder, req.user.id, Action.READ)
+      .selectFields<Article>('article', ['id', 'title', 'content', 'createdAt'])
+      .selectFields<User>('author', ['id', 'firstName', 'lastName'])
+      .selectFields<Category>('categories', ['id', 'name'])
+      .apply();
+
+    return queryBuilder.getMany();
+  }
 }
 ```
 
@@ -702,186 +654,166 @@ async findAll(
 
 ### Field-Level Permissions
 
-Control access to specific fields:
+Control which fields of an entity a user can access:
 
 ```typescript
-// Permission definition
+// Permission definition with field restrictions
 {
   "action": "read",
   "subject": "User",
   "fields": ["id", "firstName", "lastName", "email"]
 }
 
-// Service implementation
-async getUserProfile(userId: string, requesterId: string) {
-  const user = await this.userRepository.findOne({ where: { id: userId } });
-
-  if (!user) {
-    throw new NotFoundException('User not found');
-  }
-
-  // Get the ability object
-  const ability = await this.caslService.getUserAbility(requesterId);
-
-  // Get allowed fields
-  const readableFields = this.extractAllowedFields(ability, Action.READ, 'User');
-
-  // Return only allowed fields
-  return this.filterFields(user, readableFields);
+// Permission with all fields allowed
+{
+  "action": "read",
+  "subject": "Article",
+  "fields": ["*"]  // Wildcard allows all fields
 }
+```
 
-private extractAllowedFields(ability: AppAbility, action: Action, subject: string): string[] {
-  const rules = ability.rulesFor(action, subject);
-  return rules
-    .filter(rule => !rule.inverted && rule.fields)
-    .flatMap(rule => rule.fields || [])
-    .filter(field => field !== '*');
-}
+The field-level permissions are enforced in queries. To retrieve only allowed fields manually:
 
-private filterFields<T>(object: T, allowedFields: string[]): Partial<T> {
-  if (allowedFields.includes('*')) {
-    return object;
-  }
+```typescript
+const ability = await caslService.getUserAbility(userId);
+const allowedFields = extractFieldsFromRules(ability, Action.READ, 'User');
 
-  return Object.fromEntries(
-    Object.entries(object)
-      .filter(([key]) => allowedFields.includes(key))
-  ) as Partial<T>;
-}
+// Only select allowed fields
+const userFields = await userRepository
+  .createQueryBuilder('user')
+  .select(allowedFields.map((field) => `user.${field}`))
+  .where({ id: userId })
+  .getOne();
+```
+
+### Nested Entity Permissions
+
+The enhanced system now supports permissions for nested entities in relations:
+
+```typescript
+// Get an article with author and comments, respecting permissions for each entity
+const queryBuilder = articleRepository
+  .createQueryBuilder('article')
+  .leftJoinAndSelect('article.author', 'author')
+  .leftJoinAndSelect('article.comments', 'comments')
+  .leftJoinAndSelect('comments.user', 'commentUser');
+
+// Apply field permissions for each entity
+await permissionQueryBuilder.applyPermissionFilters(
+  queryBuilder,
+  userId,
+  Action.READ,
+  {
+    article: ['id', 'title', 'content'],
+    author: ['id', 'firstName', 'lastName'],
+    comments: ['id', 'text', 'createdAt'],
+    commentUser: ['id', 'firstName'],
+  },
+);
 ```
 
 ### Condition Variables
 
-Use variables in conditions for dynamic filtering:
+Use variables in conditions that are replaced at runtime:
 
 ```typescript
-// Permission with a variable
+// Permission with a condition variable
 {
-  "action": "read",
+  "action": "update",
   "subject": "Article",
   "conditions": { "authorId": "${user.id}" }
 }
 
-// The processVariables function in PermissionQueryBuilder replaces these
-private processVariables(obj: Record<string, any>, user: User): void {
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'object' && value !== null) {
-      this.processVariables(value, user);
-    } else if (typeof value === 'string' && value.includes('${user.')) {
-      const match = value.match(/\${(.*?)}/);
-      if (match) {
-        const path = match[1];
-        obj[key] = _.get({ user }, path);
-      }
-    }
-  }
-}
+// The variable ${user.id} is replaced with the actual user ID at runtime
 ```
-
-Available variables:
-
-- `${user.id}` - The current user's ID
-- `${user.email}` - The current user's email
-- `${user.roleIds}` - Array of the user's role IDs
-- Any user property can be accessed with `${user.propertyName}`
 
 ### Custom Policy Handlers
 
-Define complex permission logic with custom policy handlers:
+Create reusable policy handlers:
 
 ```typescript
 // Define a policy handler class
-export class ArticleOwnerPolicy implements PolicyHandler {
-  handle(ability: AppAbility): boolean {
-    return ability.can(Action.UPDATE, 'Article') ||
-           ability.can(Action.MANAGE, 'Article');
+export class ArticleOwnerPolicy implements IPolicyHandler {
+  handle(ability: AppAbility) {
+    return ability.can(Action.UPDATE, 'Article', { authorId: '${user.id}' });
   }
 }
 
-// Using class-based policy handlers
-@Put(':id')
+// Use in controller
+@Patch(':id')
 @CheckPolicies(new ArticleOwnerPolicy())
 update(@Param('id') id: string, @Body() updateArticleDto: UpdateArticleDto) {
-  return this.articlesService.update(+id, updateArticleDto);
-}
-
-// Or combine multiple handlers
-@Delete(':id')
-@CheckPolicies(
-  (ability: AppAbility) => ability.can(Action.DELETE, 'Article'),
-  new ArticleOwnerPolicy()
-)
-remove(@Param('id') id: string) {
-  return this.articlesService.remove(+id);
+  return this.articlesService.update(id, updateArticleDto);
 }
 ```
 
 ## Caching Strategy
 
-### Cache Implementation
-
-The system uses Redis for caching user abilities:
+For performance optimization, user abilities are cached in Redis:
 
 ```typescript
-// In CaslService
-async getUserAbility(userId: string): Promise<AppAbility> {
-  const cacheKey = `user_abilities_${userId}`;
+// CaslService caching logic
+const cacheKey = `user_abilities_${userId}`;
+let userAbility = await this.cacheManager.get<AppAbility>(cacheKey);
 
-  // Try cache first
-  let userAbility = await this.cacheManager.get<AppAbility>(cacheKey);
+if (userAbility) {
+  return userAbility; // Return from cache if available
+}
 
-  if (!userAbility) {
-    // Cache miss logic
-    // ...
+// Otherwise build and cache
+userAbility = this.buildAbilityForUser(user, permissions);
+await this.cacheManager.set(cacheKey, userAbility, this.CACHE_TTL);
+```
 
-    // Store in cache
-    await this.cacheManager.set(cacheKey, userAbility, this.CACHE_TTL);
-  }
+Key caching considerations:
 
-  return userAbility;
+1. **TTL**: The default cache TTL is 1 hour
+2. **Invalidation**: Cache is invalidated when:
+   - User roles change
+   - Role permissions change
+   - User information changes
+3. **Cache Key**: Based on user ID for easy lookup
+
+## Role Management
+
+Roles can be managed through the API. Each role has associated permissions.
+
+Example role creation:
+
+```json
+{
+  "name": "Editor",
+  "description": "Can manage content",
+  "permissions": [
+    {
+      "action": "read",
+      "subject": "Article",
+      "fields": ["*"]
+    },
+    {
+      "action": "update",
+      "subject": "Article",
+      "conditions": { "authorId": "${user.id}" }
+    },
+    {
+      "action": "create",
+      "subject": "Article"
+    }
+  ]
 }
 ```
 
-Cache configuration in your module:
+When updating roles or permissions, the related cache must be invalidated:
 
 ```typescript
-@Module({
-  imports: [
-    CacheModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        store: redisStore,
-        host: configService.get('REDIS_HOST'),
-        port: configService.get('REDIS_PORT'),
-        ttl: 3600, // 1 hour in seconds
-      }),
-    }),
-    // Other imports
-  ],
-  // ...
-})
-export class AppModule {}
-```
-
-### Cache Invalidation
-
-Invalidate cache when permissions change:
-
-```typescript
-// In RoleService
-async updateRole(id: number, updateRoleDto: UpdateRoleDto): Promise<Role> {
+// After updating a role's permissions
+async updateRolePermissions(roleId: number, permissions: Permission[]): Promise<Role> {
   const role = await this.roleRepository.findOne({
-    where: { id },
+    where: { id: roleId },
     relations: ['users'],
   });
 
-  if (!role) {
-    throw new NotFoundException(`Role with ID ${id} not found`);
-  }
-
-  // Update role
-  Object.assign(role, updateRoleDto);
+  role.permissions = permissions;
   const updatedRole = await this.roleRepository.save(role);
 
   // Invalidate cache for all affected users
@@ -891,983 +823,472 @@ async updateRole(id: number, updateRoleDto: UpdateRoleDto): Promise<Role> {
 
   return updatedRole;
 }
-
-// In UserService when roles change
-async updateUserRoles(userId: string, roleIds: number[]): Promise<User> {
-  // Update user roles logic
-  // ...
-
-  // Invalidate cache
-  await this.caslService.invalidateUserAbilitiesCache(userId);
-
-  return user;
-}
-```
-
-### Cache Performance Tuning
-
-Tips for optimizing the cache:
-
-1. **Adjustable TTL**: Configure different TTL values based on user types:
-
-```typescript
-// For admins, use a shorter TTL since their permissions are more critical
-const ttl = user.hasRole('admin') ? 1800000 : 3600000; // 30 min vs 60 min
-await this.cacheManager.set(cacheKey, userAbility, ttl);
-```
-
-2. **Batch Invalidation**: For operations affecting many users:
-
-```typescript
-async invalidateRoleCaches(roleId: number): Promise<void> {
-  const users = await this.userRepository
-    .createQueryBuilder('user')
-    .innerJoin('user.roles', 'role', 'role.id = :roleId', { roleId })
-    .getMany();
-
-  const promises = users.map(user =>
-    this.invalidateUserAbilitiesCache(user.id)
-  );
-
-  await Promise.all(promises);
-}
-```
-
-3. **Cache Versioning**: Add version to cache keys for global invalidation:
-
-```typescript
-// Add to your ConfigService
-private cacheVersion = 1;
-
-getCacheVersion(): number {
-  return this.cacheVersion;
-}
-
-incrementCacheVersion(): void {
-  this.cacheVersion++;
-}
-
-// In CaslService
-async getUserAbility(userId: string): Promise<AppAbility> {
-  const version = this.configService.getCacheVersion();
-  const cacheKey = `user_abilities_v${version}_${userId}`;
-  // ...
-}
-
-// To invalidate all caches at once
-async invalidateAllCaches(): Promise<void> {
-  this.configService.incrementCacheVersion();
-}
-```
-
-## Role Management
-
-Roles are assigned through the API, with each role containing permissions:
-
-```typescript
-@Entity('roles')
-export class Role {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: true })
-  name: string;
-
-  @Column({ nullable: true })
-  description: string;
-
-  @ManyToMany(() => Permission, (permission) => permission.roles, {
-    cascade: true,
-  })
-  @JoinTable()
-  permissions: Permission[];
-
-  @ManyToMany(() => User, (user) => user.roles)
-  users: User[];
-}
-```
-
-Creating a new role with permissions:
-
-```typescript
-// In RoleService
-async create(createRoleDto: CreateRoleDto): Promise<Role> {
-  // Extract permission IDs from DTO
-  const { name, description, permissionIds } = createRoleDto;
-
-  // Create new role entity
-  const role = new Role();
-  role.name = name;
-  role.description = description;
-
-  // Find permissions if provided
-  if (permissionIds && permissionIds.length > 0) {
-    role.permissions = await this.permissionRepository.findBy({
-      id: In(permissionIds),
-    });
-  } else {
-    role.permissions = [];
-  }
-
-  // Save the role
-  return this.roleRepository.save(role);
-}
-```
-
-Assigning roles to users:
-
-```typescript
-// In UserService
-async assignRolesToUser(userId: string, roleIds: number[]): Promise<User> {
-  const user = await this.userRepository.findOne({
-    where: { id: userId },
-    relations: ['roles'],
-  });
-
-  if (!user) {
-    throw new NotFoundException(`User with ID ${userId} not found`);
-  }
-
-  // Find roles by IDs
-  const roles = await this.roleRepository.findBy({
-    id: In(roleIds),
-  });
-
-  // Assign roles to user
-  user.roles = roles;
-  const updatedUser = await this.userRepository.save(user);
-
-  // Invalidate the user's ability cache
-  await this.caslService.invalidateUserAbilitiesCache(userId);
-
-  return updatedUser;
-}
 ```
 
 ## Best Practices
 
-1. **Layer Your Authorization**:
+1. **Default to Denial**: Set up the system to deny all access by default.
 
-   - API layer: Use `@CheckPolicies()` decorator
-   - Service layer: Use `caslService.can()` for explicit checks
-   - Data layer: Use `permissionQueryBuilder` to filter data automatically
-
-2. **Use Custom Decorators** for common permission patterns:
+2. **Field-Level Granularity**: Use field-level permissions for sensitive data:
 
    ```typescript
-   export const CanManage = (subject: SubjectString) =>
-     CheckPolicies((ability: AppAbility) =>
-       ability.can(Action.MANAGE, subject),
-     );
+   // Permission that only allows reading specific fields
+   {
+     "action": "read",
+     "subject": "User",
+     "fields": ["id", "firstName", "lastName"]
+   }
 
-   export const AdminOnly = () =>
-     CheckPolicies((ability: AppAbility) =>
-       ability.can(Action.SUPER_MODIFY, 'all'),
-     );
+   // For admins, allow all fields
+   {
+     "action": "read",
+     "subject": "User",
+     "fields": ["*"]
+   }
    ```
 
-3. **Prefer Class-Based Subjects** over string literals when possible:
+3. **Type-Safe Field Selection**: Use the type-safe field selection API:
 
    ```typescript
-   // Better - allows TypeScript to help with property names
-   ability.can(Action.UPDATE, Article);
+   await queryBuilder
+     .withPermissions(permissionQueryBuilder, userId, Action.READ)
+     .selectFields<Article>('article', ['id', 'title'])
+     .apply();
+   ```
 
-   // Instead of
+4. **Performance Optimization**:
+
+   - Use caching for user abilities
+   - Be mindful of deep relation chains in permission-filtered queries
+   - Consider precalculating permissions for high-traffic operations
+
+5. **Policy Hierarchies**: Model policies from least to most privileged:
+
+   ```
+   // Order of precedence
+   1. Base permissions for all users
+   2. Role-specific permissions
+   3. User-specific permissions
+   4. Admin override
+   ```
+
+6. **Repository-Level Security**: For consistent enforcement, use permission-filtered repositories:
+
+   ```typescript
+   // Protected service method pattern
+   async findAll(userId: string): Promise<Article[]> {
+     const filteredRepo = await this.permissionQueryBuilder
+       .createPermissionFilteredRepository(
+         this.articleRepository,
+         userId,
+         Action.READ
+       );
+
+     return filteredRepo.find();
+   }
+   ```
+
+7. **Check Actions Explicitly**: Be specific about actions rather than relying on `manage`:
+
+   ```typescript
+   // Less ideal - too broad
+   ability.can('manage', 'Article');
+
+   // Better - explicit action
    ability.can(Action.UPDATE, 'Article');
    ```
 
-4. **Field-Level Validation** in services:
-
-   ```typescript
-   // Check if user can update specific fields
-   for (const field of Object.keys(updateUserDto)) {
-     if (await this.caslService.cannot(userId, Action.UPDATE, 'User', field)) {
-       throw new ForbiddenException(`You cannot update the ${field} field`);
-     }
-   }
-   ```
-
-5. **Combine with DTO Validation**:
-
-   ```typescript
-   // Filter DTO based on permissions
-   async filterUpdateUserDto(
-     dto: UpdateUserDto,
-     userId: string
-   ): Promise<Partial<UpdateUserDto>> {
-     const ability = await this.caslService.getUserAbility(userId);
-
-     return Object.fromEntries(
-       Object.entries(dto).filter(([key]) =>
-         ability.can(Action.UPDATE, 'User', key)
-       )
-     ) as Partial<UpdateUserDto>;
-   }
-   ```
-
-6. **Default to Denial**: System denies by default; explicitly allow actions.
-
-7. **Hierarchical Permissions**: Use permissions hierarchy:
-
-   ```
-   super-modify > manage > [create, read, update, delete]
-   ```
-
-   Checking for higher permission first:
-
-   ```typescript
-   // In a policy handler
-   handle(ability: AppAbility): boolean {
-     return ability.can(Action.SUPER_MODIFY, 'all') ||
-            ability.can(Action.MANAGE, 'Article') ||
-            ability.can(Action.UPDATE, 'Article');
-   }
-   ```
-
-8. **Avoid Over-Complicated Conditions**:
-
-   ```typescript
-   // Too complex - hard to maintain
-   {
-     "action": "read",
-     "subject": "Article",
-     "conditions": {
-       "$or": [
-         { "authorId": "${user.id}" },
-         {
-           "status": "published",
-           "visibility": "public"
-         }
-       ]
-     }
-   }
-
-   // Better - split into separate permissions
-   [
-     {
-       "action": "read",
-       "subject": "Article",
-       "conditions": { "authorId": "${user.id}" }
-     },
-     {
-       "action": "read",
-       "subject": "Article",
-       "conditions": { "status": "published", "visibility": "public" }
-     }
-   ]
-   ```
-
-9. **Cache Invalidation Strategy**: Plan when to invalidate:
-
-   - When user roles change
-   - When roles' permissions change
-   - When user attributes referenced in conditions change
-
-10. **Transaction Safety**:
-
-    ```typescript
-    // Ensure role updates and cache invalidation happen atomically
-    async updateRolePermissions(
-      roleId: number,
-      permissionIds: number[]
-    ): Promise<Role> {
-      return this.dataSource.transaction(async manager => {
-        const roleRepo = manager.getRepository(Role);
-        const permissionRepo = manager.getRepository(Permission);
-
-        const role = await roleRepo.findOne({
-          where: { id: roleId },
-          relations: ['permissions', 'users'],
-        });
-
-        const permissions = await permissionRepo.findBy({
-          id: In(permissionIds)
-        });
-
-        role.permissions = permissions;
-        const updatedRole = await roleRepo.save(role);
-
-        // Invalidate all affected user caches
-        for (const user of role.users) {
-          await this.caslService.invalidateUserAbilitiesCache(user.id);
-        }
-
-        return updatedRole;
-      });
-    }
-    ```
-
 ## Testing CASL Permissions
 
-Unit testing permission rules:
+Example tests for CASL permissions:
 
 ```typescript
-describe('ArticlePolicies', () => {
-  let caslAbilityFactory: CaslAbilityFactory;
-  let permissionRepository: Repository<Permission>;
+describe('Article Permissions', () => {
+  let caslService: CaslService;
+  let userService: UserService;
+  let author: User;
+  let reader: User;
+  let adminUser: User;
+  let article: Article;
 
   beforeEach(async () => {
-    // Test module setup
-    const module = await Test.createTestingModule({
-      imports: [TypeOrmModule.forFeature([Permission])],
-      providers: [CaslAbilityFactory],
-    }).compile();
-
-    caslAbilityFactory = module.get<CaslAbilityFactory>(CaslAbilityFactory);
-    permissionRepository = module.get<Repository<Permission>>(
-      getRepositoryToken(Permission),
-    );
+    // Setup test data...
   });
 
   it('should allow authors to update their own articles', async () => {
-    // Create test user and permissions
-    const user = { id: '123', roles: [] };
-    const permissions = [
-      {
-        id: 1,
-        action: Action.UPDATE,
-        subject: 'Article',
-        conditions: { authorId: '${user.id}' },
-        inverted: false,
-      },
-    ];
+    // Article belongs to author
+    article.authorId = author.id;
 
-    // Create ability
-    const ability = caslAbilityFactory.createForUser(
-      user,
-      permissions as Permission[],
-    );
-
-    // Test with an article the user owns
-    const ownArticle = { id: 1, authorId: '123', title: 'My Article' };
-    expect(ability.can(Action.UPDATE, ownArticle)).toBe(true);
-
-    // Test with an article the user doesn't own
-    const otherArticle = { id: 2, authorId: '456', title: 'Other Article' };
-    expect(ability.can(Action.UPDATE, otherArticle)).toBe(false);
-  });
-});
-```
-
-Integration testing with E2E tests:
-
-```typescript
-describe('Articles Controller (e2e)', () => {
-  let app: INestApplication;
-  let authToken: string;
-
-  beforeAll(async () => {
-    const moduleFixture = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    // Login to get auth token
-    const response = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: 'author@example.com', password: 'password' })
-      .expect(200);
-
-    authToken = response.body.accessToken;
+    const ability = await caslService.getUserAbility(author.id);
+    expect(ability.can(Action.UPDATE, article)).toBe(true);
   });
 
-  it('should create an article when authorized', () => {
-    return request(app.getHttpServer())
-      .post('/articles')
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({
-        title: 'Test Article',
-        content: 'This is a test article',
-      })
-      .expect(201);
+  it('should not allow authors to update others articles', async () => {
+    // Article belongs to someone else
+    article.authorId = 'another-user-id';
+
+    const ability = await caslService.getUserAbility(author.id);
+    expect(ability.can(Action.UPDATE, article)).toBe(false);
   });
 
-  it("should return 403 when updating another user's article", async () => {
-    // Create an article as a different user first
-    // ...
+  it('should allow admin to update any article', async () => {
+    const ability = await caslService.getUserAbility(adminUser.id);
+    expect(ability.can(Action.UPDATE, article)).toBe(true);
+  });
 
-    return request(app.getHttpServer())
-      .put(`/articles/${otherUserArticleId}`)
-      .set('Authorization', `Bearer ${authToken}`)
-      .send({
-        title: 'Updated Title',
-      })
-      .expect(403);
+  it('should allow reader to view published articles only', async () => {
+    const ability = await caslService.getUserAbility(reader.id);
+
+    article.isPublished = true;
+    expect(ability.can(Action.READ, article)).toBe(true);
+
+    article.isPublished = false;
+    expect(ability.can(Action.READ, article)).toBe(false);
   });
 });
 ```
 
 ## Future Enhancements
 
-Potential improvements to the CASL system:
-
-1. **GraphQL Integration**: Extend to work with GraphQL resolvers:
-
-   ```typescript
-   // Example future implementation
-   @Resolver(() => Article)
-   export class ArticleResolver {
-     @Query(() => [Article])
-     @CheckPolicies((ability: AppAbility) =>
-       ability.can(Action.READ, 'Article'),
-     )
-     async articles(@CurrentUser() user: User) {
-       const filteredRepo =
-         await this.permissionQueryBuilder.createPermissionFilteredRepository(
-           this.articleRepository,
-           user.id,
-           Action.READ,
-         );
-
-       return filteredRepo.find();
-     }
-   }
-   ```
-
-2. **Role Inheritance**: Implement role hierarchy:
-
-   ```typescript
-   // Future Role entity enhancement
-   @Entity('roles')
-   export class Role {
-     // ... existing fields
-
-     @ManyToOne(() => Role, { nullable: true })
-     parent: Role;
-
-     @OneToMany(() => Role, (role) => role.parent)
-     children: Role[];
-   }
-   ```
-
-3. **Permission Templates**: Create reusable permission sets:
-
-   ```typescript
-   // Example future implementation
-   interface PermissionTemplate {
-     name: string;
-     description: string;
-     permissions: Partial<Permission>[];
-   }
-
-   const contentEditorTemplate: PermissionTemplate = {
-     name: 'Content Editor',
-     description: 'Standard permissions for content editors',
-     permissions: [
-       { action: Action.CREATE, subject: 'Article' },
-       { action: Action.READ, subject: 'Article' },
-       {
-         action: Action.UPDATE,
-         subject: 'Article',
-         conditions: { authorId: '${user.id}' },
-       },
-       {
-         action: Action.DELETE,
-         subject: 'Article',
-         conditions: { authorId: '${user.id}' },
-       },
-     ],
-   };
-   ```
-
-4. **Permission Impact Analysis**: Tool to analyze permission changes:
-
-   ```typescript
-   // Example future implementation
-   async analyzePermissionImpact(permissionId: number): Promise<{
-     rolesAffected: number;
-     usersAffected: number;
-     endpoints: string[];
-   }> {
-     // Query to find all roles using this permission
-     // Count users with these roles
-     // Analyze API endpoints affected
-   }
-   ```
-
-5. **Condition Builder UI**: Frontend tool to build conditions visually.
-
-6. **Advanced Condition Variables**: Support more dynamic variables:
-
-   ```typescript
-   // Future enhancement examples
-   {
-     "conditions": {
-       "organizationId": "${user.organizationId}",
-       "createdAt": { "$gt": "${now - 30d}" },
-       "status": "${context.status}"
-     }
-   }
-   ```
-
-7. **Real-time Permission Updates**: Using WebSockets for immediate updates:
-
-   ```typescript
-   // Future implementation
-   @WebSocketGateway()
-   export class PermissionGateway {
-     @WebSocketServer()
-     server: Server;
-
-     notifyPermissionChange(userId: string) {
-       this.server.to(`user_${userId}`).emit('permissions_changed');
-     }
-   }
-   ```
-
-8. **Permission Auditing**: Log permission checks for compliance:
-
-   ```typescript
-   // Future implementation in CaslService
-   async can(userId: string, action: Action, subject: any, field?: string): Promise<boolean> {
-     const result = await super.can(userId, action, subject, field);
-
-     await this.auditLogger.log({
-       userId,
-       action,
-       subject: typeof subject === 'string' ? subject : subject.constructor.name,
-       targetId: subject.id,
-       field,
-       allowed: result,
-       timestamp: new Date(),
-     });
-
-     return result;
-   }
-   ```
+- **GraphQL Integration**: Apply permissions to GraphQL resolvers and field-level directives
+- **Real-Time Permission Updates**: Use WebSockets to notify clients when permissions change
+- **Permission Groups**: Allow grouping permissions for easier management
+- **Permission Inheritance**: Support permission inheritance between subjects
+- **Query Performance Optimization**: Improve handling of complex permission filters
 
 ## Debugging CASL Issues
 
-Troubleshooting permission problems:
+Common debugging techniques:
 
-1. **Enable Debug Logging**:
+1. **Logging Abilities**: Log the ability rules for a user:
 
    ```typescript
-   // In CaslService
-   @Injectable()
-   export class CaslService {
-     private readonly logger = new Logger(CaslService.name);
-
-     constructor() {
-       this.logger.setLogLevels(['debug']);
-     }
-
-     async can(userId: string, action: Action, subject: any): Promise<boolean> {
-       const ability = await this.getUserAbility(userId);
-       const result = ability.can(action, subject);
-
-       this.logger.debug(
-         `Permission check: User ${userId} | Action: ${action} | ` +
-           `Subject: ${typeof subject === 'string' ? subject : subject.constructor.name} | ` +
-           `Result: ${result}`,
-       );
-
-       return result;
-     }
-   }
+   const ability = await caslService.getUserAbility(userId);
+   console.log(JSON.stringify(ability.rules, null, 2));
    ```
 
-2. **Debug Rules Manually**:
+2. **Test Individual Permissions**:
 
    ```typescript
-   // Helper method to debug why permission was denied
-   async explainPermission(
+   const ability = await caslService.getUserAbility(userId);
+   console.log(`Can read article? ${ability.can(Action.READ, article)}`);
+   console.log(`Can update article? ${ability.can(Action.UPDATE, article)}`);
+   ```
+
+3. **Check Conditions**:
+
+   ```typescript
+   // Check why a condition might not be matching
+   const rule = ability.relevantRuleFor(Action.UPDATE, article);
+   console.log(rule);
+   console.log(`Rule conditions: ${JSON.stringify(rule.conditions, null, 2)}`);
+   console.log(`Entity values: ${JSON.stringify(article, null, 2)}`);
+   ```
+
+4. **SQL Logging**: Enable SQL logging to see actual queries:
+
+   ```typescript
+   // In your app module configuration
+   TypeOrmModule.forRoot({
+     // other options
+     logging: ['query', 'error'],
+   });
+   ```
+
+5. **Permission Query Builder Debug**: Add a debug method to check generated queries:
+
+   ```typescript
+   // Add this to your service
+   async debugPermissionQuery<T>(
      userId: string,
-     action: Action,
-     subject: any
-   ): Promise<string> {
-     const ability = await this.getUserAbility(userId);
-     const rules = ability.rulesFor(action, typeof subject === 'string' ? subject : subject.constructor.name);
+     action: string,
+     entity: string
+   ): Promise<void> {
+     const ability = await this.caslService.getUserAbility(userId);
+     console.log(`User ability rules:`, ability.rules);
 
-     if (rules.length === 0) {
-       return `No rules found for ${action} on ${typeof subject === 'string' ? subject : subject.constructor.name}`;
-     }
+     const queryBuilder = this.repository.createQueryBuilder('entity');
+     await this.permissionQueryBuilder.applyPermissionFilters(
+       queryBuilder,
+       userId,
+       action
+     );
 
-     const relevantRules = rules.map(rule => ({
-       inverted: rule.inverted,
-       conditions: rule.conditions,
-       fields: rule.fields,
-       matches: this.checkConditions(rule, subject),
-     }));
-
-     return JSON.stringify(relevantRules, null, 2);
-   }
-
-   private checkConditions(rule: any, subject: any): boolean {
-     if (!rule.conditions || typeof subject === 'string') {
-       return true;
-     }
-
-     // Check if each condition matches the subject
-     for (const [key, value] of Object.entries(rule.conditions)) {
-       if (subject[key] !== value) {
-         return false;
-       }
-     }
-
-     return true;
+     console.log(`Generated SQL:`, queryBuilder.getSql());
+     console.log(`Query parameters:`, queryBuilder.getParameters());
    }
    ```
-
-3. **Test Permission Matrix**:
-
-```typescript
-// Utility to check all permissions for a user
-async generatePermissionMatrix(userId: string): Promise<Record<string, Record<string, boolean>>> {
-  const ability = await this.getUserAbility(userId);
-  const allSubjects = [
-    'User', 'Article', 'Permission', 'Role', 'File', 'all'
-  ];
-  const allActions = Object.values(Action);
-
-  const matrix: Record<string, Record<string, boolean>> = {};
-
-  for (const subject of allSubjects) {
-    matrix[subject] = {};
-
-    for (const action of allActions) {
-      matrix[subject][action] = ability.can(action, subject);
-    }
-  }
-
-  return matrix;
-}
-```
-
-1. **Permission Health Check Endpoint**:
-
-```typescript
-@Controller('debug')
-@UseGuards(JwtAuthGuard)
-@ApiTags('debug')
-export class DebugController {
-  constructor(private caslService: CaslService) {}
-
-  @Get('permissions')
-  @AdminOnly()
-  async checkPermissions(@Request() req) {
-    const userId = req.user.id;
-
-    return {
-      matrix: await this.caslService.generatePermissionMatrix(userId),
-      cacheStatus: await this.caslService.getCacheStatus(userId),
-      userRoles: await this.getUserRoles(userId),
-    };
-  }
-
-  @Get('explain-permission')
-  @AdminOnly()
-  async explainPermission(
-    @Query('action') action: Action,
-    @Query('subject') subject: string,
-    @Query('userId') userId: string,
-  ) {
-    return this.caslService.explainPermission(userId, action, subject);
-  }
-
-  private async getUserRoles(userId: string) {
-    // Fetch and return user roles with their permissions
-  }
-}
-```
 
 ## Integration with JWT Authentication
 
-The CASL system integrates with JWT authentication through guards:
+The CASL module integrates with JWT authentication:
 
-```typescript
-// JWT strategy extracts and validates the user
-@Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    private configService: ConfigService,
-    @InjectRepository(User) private userRepository: Repository<User>,
-  ) {
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
-    });
-  }
+```mermaid
+sequenceDiagram
+    participant Client
+    participant JwtAuthGuard
+    participant AbilitiesGuard
+    participant Controller
 
-  async validate(payload: any) {
-    const user = await this.userRepository.findOne({
-      where: { id: payload.sub },
-    });
+    Client->>JwtAuthGuard: Request with JWT
+    JwtAuthGuard->>JwtAuthGuard: Validate JWT
+    JwtAuthGuard->>JwtAuthGuard: Extract user from token
+    JwtAuthGuard->>AbilitiesGuard: Pass request with user
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    return user;
-  }
-}
-
-// AbilitiesGuard uses the authenticated user from JWT
-@Injectable()
-export class AbilitiesGuard implements CanActivate {
-  constructor(
-    private reflector: Reflector,
-    private caslService: CaslService,
-  ) {}
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const policyHandlers =
-      this.reflector.get<PolicyHandler[]>(
-        CHECK_POLICIES_KEY,
-        context.getHandler(),
-      ) || [];
-
-    if (policyHandlers.length === 0) {
-      return true; // No policies to check
-    }
-
-    const { user } = context.switchToHttp().getRequest();
-    if (!user) {
-      return false; // No user, no access
-    }
-
-    const ability = await this.caslService.getUserAbility(user.id);
-
-    return policyHandlers.every((handler) =>
-      this.execPolicyHandler(handler, ability),
-    );
-  }
-
-  private execPolicyHandler(handler: PolicyHandler, ability: AppAbility) {
-    if (typeof handler === 'function') {
-      return handler(ability);
-    }
-    return handler.handle(ability);
-  }
-}
+    AbilitiesGuard->>AbilitiesGuard: Check policies using user
+    AbilitiesGuard->>Controller: Allow/deny request
+    Controller->>Client: Return response
 ```
 
-Using both guards together:
+To use both JWT authentication and CASL authorization:
 
 ```typescript
 @Controller('articles')
-@UseGuards(JwtAuthGuard, AbilitiesGuard) // Order matters
+@UseGuards(JwtAuthGuard, AbilitiesGuard) // Order matters - JWT first, then Policies
 export class ArticleController {
-  // Protected endpoints
+  @Get()
+  @CheckPolicies((ability: AppAbility) => ability.can(Action.READ, 'Article'))
+  findAll() {
+    return this.articlesService.findAll();
+  }
 }
 ```
 
-Creating a combined authentication/authorization decorator:
+For more complex scenarios, combine guards with custom decorators:
 
 ```typescript
-export function SecureResource(subject: SubjectString, action: Action) {
+export function RequireAuth(...roles: string[]) {
   return applyDecorators(
     UseGuards(JwtAuthGuard, AbilitiesGuard),
-    CheckPolicies((ability: AppAbility) => ability.can(action, subject)),
-    ApiBearerAuth(),
-    ApiUnauthorizedResponse({ description: 'Unauthorized' }),
-    ApiForbiddenResponse({ description: 'Forbidden resource' }),
+    CheckPolicies((ability: AppAbility) => {
+      // Check if user has any of the required roles
+      if (roles.length === 0) return true;
+      return roles.some(role =>
+        ability.can(Action.READ, 'Role', { name: role })
+      );
+    }),
   );
 }
 
 // Usage
-@Post()
-@SecureResource('Article', Action.CREATE)
-create(@Body() createArticleDto: CreateArticleDto) {
-  // ...
+@Get('protected')
+@RequireAuth('admin', 'editor')
+getProtectedResource() {
+  // Only accessible to admins and editors
 }
 ```
 
 ## Appendix: Common Patterns and Recipes
 
-### 1. Owner-Based Permissions
+### 1. Global Admin Access
 
-Allow users to manage only their own resources:
+Create a permission that grants full access:
+
+```json
+{
+  "action": "super-modify",
+  "subject": "all",
+  "fields": ["*"]
+}
+```
+
+Then check for it in your policy handlers:
 
 ```typescript
-// Permission definition
+function canManageArticles(ability: AppAbility) {
+  return (
+    ability.can(Action.SUPER_MODIFY, 'all') ||
+    ability.can(Action.MANAGE, 'Article')
+  );
+}
+```
+
+### 2. Ownership-Based Access
+
+Create permissions that check user ownership:
+
+```json
 {
-  "action": "manage",
+  "action": "update",
   "subject": "Article",
   "conditions": { "authorId": "${user.id}" }
 }
-
-// DTO for creating resources that includes ownership
-@Injectable()
-export class ArticleService {
-  async create(createArticleDto: CreateArticleDto, userId: string): Promise<Article> {
-    const article = new Article();
-    Object.assign(article, createArticleDto);
-    article.authorId = userId; // Assign ownership
-
-    return this.articleRepository.save(article);
-  }
-}
 ```
 
-### 2. Organization-Based Access
+### 3. Field-Based Conditions
 
-Restrict access to resources within the same organization:
+Restrict access based on field values:
 
-```typescript
-// Permission definition
+```json
 {
   "action": "read",
-  "subject": "User",
-  "conditions": { "organizationId": "${user.organizationId}" }
-}
-
-// In service
-async findUsersInSameOrganization(userId: string) {
-  const filteredRepo = await this.permissionQueryBuilder.createPermissionFilteredRepository(
-    this.userRepository,
-    userId,
-    Action.READ
-  );
-
-  return filteredRepo.find();
+  "subject": "Article",
+  "conditions": { "isPublished": true }
 }
 ```
 
-### 3. Advanced Permission Checks
+### 4. Type-Safe Field Selection for DTOs
 
-For complex permission scenarios:
+Use type-safe field selection with DTOs:
 
 ```typescript
-// Service with combined rules
-async createCommentOnArticle(
-  articleId: number,
-  createCommentDto: CreateCommentDto,
-  userId: string
-): Promise<Comment> {
-  // First check if article exists
-  const article = await this.articleRepository.findOne({
-    where: { id: articleId }
-  });
+interface ArticleDto {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: Date;
+  authorName?: string;
+}
+
+// In your service
+async getArticleDto(id: string, userId: string): Promise<ArticleDto> {
+  const queryBuilder = this.articleRepository
+    .createQueryBuilder('article')
+    .leftJoin('article.author', 'author');
+
+  // Apply field selection matching your DTO
+  await queryBuilder
+    .withPermissions(this.permissionQueryBuilder, userId, Action.READ)
+    .selectFields<Article>('article', ['id', 'title', 'content', 'createdAt'])
+    .selectFields<User>('author', ['firstName', 'lastName'])
+    .apply();
+
+  const article = await queryBuilder.getOne();
 
   if (!article) {
     throw new NotFoundException('Article not found');
   }
 
-  // Multiple permission checks
-  const ability = await this.caslService.getUserAbility(userId);
-
-  // 1. Can user read the article?
-  if (ability.cannot(Action.READ, article)) {
-    throw new ForbiddenException('You cannot view this article');
-  }
-
-  // 2. Can user create comments?
-  if (ability.cannot(Action.CREATE, 'Comment')) {
-    throw new ForbiddenException('You cannot create comments');
-  }
-
-  // 3. Is the article open for comments?
-  if (!article.allowComments) {
-    throw new ForbiddenException('This article does not allow comments');
-  }
-
-  // If all checks pass, create the comment
-  const comment = new Comment();
-  comment.content = createCommentDto.content;
-  comment.articleId = articleId;
-  comment.authorId = userId;
-
-  return this.commentRepository.save(comment);
+  // Transform to DTO
+  return {
+    id: article.id,
+    title: article.title,
+    content: article.content,
+    createdAt: article.createdAt,
+    authorName: article.author
+      ? `${article.author.firstName} ${article.author.lastName}`
+      : undefined
+  };
 }
 ```
 
-### 4. Handling Dynamic Permissions
+### 5. Multi-Tenant Permissions
 
-For permissions that depend on resource state:
+For multi-tenant applications, include tenant in conditions:
 
-```typescript
-// Create a custom ability helper
-export class ArticleAbilityHelper {
-  static canPublish(user: User, article: Article): boolean {
-    // Check if article is in draft state
-    if (article.status !== 'draft') {
-      return false;
-    }
-
-    // Only author can publish their own drafts
-    if (article.authorId !== user.id) {
-      return false;
-    }
-
-    // Check minimum word count
-    if (article.wordCount < 100) {
-      return false;
-    }
-
-    return true;
-  }
-}
-
-// Use in a policy handler
-@Put(':id/publish')
-@CheckPolicies(
-  (ability: AppAbility) => ability.can(Action.UPDATE, 'Article'),
-  async (ability: AppAbility, context: ExecutionContext) => {
-    const request = context.switchToHttp().getRequest();
-    const { user } = request;
-    const articleId = request.params.id;
-
-    // Get article from database
-    const articleService = context.getContextByKey('ArticleService');
-    const article = await articleService.findOne(articleId);
-
-    if (!article) return false;
-
-    // Check dynamic publishing rules
-    return ArticleAbilityHelper.canPublish(user, article);
-  }
-)
-publish(@Param('id') id: string) {
-  return this.articlesService.publish(+id);
+```json
+{
+  "action": "read",
+  "subject": "Invoice",
+  "conditions": { "tenantId": "${user.tenantId}" }
 }
 ```
 
-### 5. API Rate Limiting by Permission Level
-
-Integrate permissions with rate limiting:
+### 6. Using Ability with Repository Pattern
 
 ```typescript
 @Injectable()
-export class PermissionBasedThrottlerGuard extends ThrottlerGuard {
+export class BaseRepository<T> {
   constructor(
-    throttlerService: ThrottlerService,
+    @InjectRepository(/* entity class */)
+    private repository: Repository<T>,
+    private permissionQueryBuilder: PermissionQueryBuilder,
     private caslService: CaslService,
-  ) {
-    super(throttlerService);
+  ) {}
+
+  async findWithPermissions(
+    options: FindManyOptions<T>,
+    userId: string,
+    action: string = Action.READ,
+  ): Promise<T[]> {
+    const filteredRepo =
+      await this.permissionQueryBuilder.createPermissionFilteredRepository(
+        this.repository,
+        userId,
+        action,
+      );
+
+    return filteredRepo.find(options);
   }
 
-  async handleRequest(
-    context: ExecutionContext,
-    limit: number,
-    ttl: number,
-  ): Promise<boolean> {
-    const { user } = context.switchToHttp().getRequest();
+  async findOneWithPermissions(
+    id: string,
+    userId: string,
+    action: string = Action.READ,
+  ): Promise<T> {
+    const entity = await this.repository.findOne(id);
 
-    if (user) {
-      const ability = await this.caslService.getUserAbility(user.id);
-
-      // Different rate limits based on permissions
-      if (ability.can(Action.SUPER_MODIFY, 'all')) {
-        // Admins get higher limits
-        limit = limit * 5;
-      } else if (ability.can(Action.MANAGE, 'Article')) {
-        // Editors get medium limits
-        limit = limit * 2;
-      }
+    if (!entity) {
+      throw new NotFoundException('Entity not found');
     }
 
-    // Use adjusted limit
-    return super.handleRequest(context, limit, ttl);
+    const ability = await this.caslService.getUserAbility(userId);
+
+    if (ability.cannot(action, entity)) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    return entity;
   }
 }
 ```
 
----
+### 7. Handling Dynamic Resources
 
-This documentation provides a comprehensive guide to the enhanced CASL authorization system. By leveraging these features and following the best practices, you can implement a secure, performant, and maintainable permission system that scales with your application's needs.
+For resources that don't have a direct entity mapping:
 
-For future development, consider the enhancements described in the [Future Enhancements](#future-enhancements) section, especially role inheritance and permission templates which would make the system even more flexible and powerful.
+```typescript
+// In ability factory
+defineAbilitiesFor(user: User) {
+  const { can, build } = new AbilityBuilder(createMongoAbility);
+
+  // For entities with class references
+  can('read', 'Article');
+
+  // For string-based resources
+  can('read', 'Dashboard');
+  can('read', 'Reports');
+
+  return build();
+}
+
+// In controller
+@Get('dashboard')
+@CheckPolicies((ability: AppAbility) => ability.can(Action.READ, 'Dashboard'))
+getDashboard() {
+  return this.dashboardService.getData();
+}
+```
+
+### 8. Permission-Based UI Adaptation
+
+Send relevant permissions to the frontend to adapt the UI:
+
+```typescript
+@Controller('auth')
+export class AuthController {
+  constructor(private caslService: CaslService) {}
+
+  @Get('my-permissions')
+  @UseGuards(JwtAuthGuard)
+  async getMyPermissions(@Request() req) {
+    const ability = await this.caslService.getUserAbility(req.user.id);
+
+    // Create a simplified permission map for the frontend
+    return {
+      canCreateArticle: ability.can(Action.CREATE, 'Article'),
+      canManageUsers: ability.can(Action.MANAGE, 'User'),
+      canAccessDashboard: ability.can(Action.READ, 'Dashboard'),
+      canAccessReports: ability.can(Action.READ, 'Reports'),
+      // Add other permissions as needed
+    };
+  }
+}
+```
+
+By implementing the patterns and practices described in this documentation, you'll have a robust, type-safe permission system that integrates seamlessly with your NestJS application while providing the flexibility needed for complex authorization scenarios.
+
+```
+
+This comprehensive guide covers all aspects of the enhanced CASL authorization system, including the new field-level permissions and type-safe field selection features. It provides detailed examples, best practices, and common patterns to help developers effectively implement and use the system.
+```
