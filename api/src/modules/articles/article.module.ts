@@ -2,7 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { FilesModule } from 'src/modules/files/files.module';
-import { CaslModule } from 'src/modules/casl-legacy/casl.module';
+import { CaslLegacyModule } from 'src/modules/casl-legacy/casl.module';
 import { Article } from './entities/article.entity';
 import { ArticleController } from './controllers/article.controller';
 import { ArticleService } from './services/article.service';
@@ -10,7 +10,7 @@ import { ArticleService } from './services/article.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Article]),
-    forwardRef(() => CaslModule),
+    forwardRef(() => CaslLegacyModule),
     forwardRef(() => FilesModule),
   ],
   controllers: [ArticleController],
