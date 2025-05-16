@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { CaslAbilityFactory, AppAbility } from './casl-ability.factory';
+import { Action } from './types/actions';
 
 @Injectable()
 export class CaslService {
@@ -84,7 +85,7 @@ export class CaslService {
    */
   async can(
     userId: string,
-    action: string,
+    action: Action | string,
     subject: any,
     field?: string,
   ): Promise<boolean> {
@@ -99,7 +100,7 @@ export class CaslService {
    */
   async cannot(
     userId: string,
-    action: string,
+    action: Action | string,
     subject: any,
     field?: string,
   ): Promise<boolean> {

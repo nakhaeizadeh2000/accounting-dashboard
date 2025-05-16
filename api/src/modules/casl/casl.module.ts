@@ -9,11 +9,11 @@ import { AbilitiesGuard } from './guards/abilities.guard';
 import { PermissionQueryBuilder } from './services/permission-query-builder.service';
 
 @Module({})
-export class CaslNewModule {
+export class CaslModule {
   static register(): DynamicModule {
     return {
       global: true,
-      module: CaslNewModule,
+      module: CaslModule,
       imports: [TypeOrmModule.forFeature([Permission, Role, User])],
       providers: [
         CaslAbilityFactory,

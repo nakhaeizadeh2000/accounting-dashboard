@@ -4,13 +4,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Permission } from './entities/permission.entity';
 import { PermissionService } from './services/permission.service';
 import { JwtService } from '@nestjs/jwt';
-import { CaslModule } from 'src/modules/casl-legacy/casl.module';
+import { CaslLegacyModule } from 'src/modules/casl-legacy/casl.module';
 import { PermissionController } from './controllers/permission.controller';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Permission]),
-    forwardRef(() => CaslModule),
+    forwardRef(() => CaslLegacyModule),
   ],
   controllers: [PermissionController],
   providers: [PermissionService, JwtService],

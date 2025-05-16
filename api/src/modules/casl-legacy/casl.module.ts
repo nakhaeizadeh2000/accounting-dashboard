@@ -8,4 +8,4 @@ import { PoliciesGuard } from './guards/policies.guard';
   providers: [CaslAbilityFactory, PoliciesGuard],
   exports: [CaslAbilityFactory, PoliciesGuard],
 })
-export class CaslModule { }
+export class CaslLegacyModule {}

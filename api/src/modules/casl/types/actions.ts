@@ -1,17 +1,16 @@
-// export enum Actions {
-//   SuperAccess = 'super-modify',
-//   Manage = 'manage',
-//   Create = 'create',
-//   Read = 'read',
-//   Update = 'update',
-//   Delete = 'delete',
-// }
+/**
+ * Defines all possible actions for permission-based authorization
+ * Using enum for better type safety
+ */
+export enum Action {
+  SUPER_MODIFY = 'super-modify',
+  MANAGE = 'manage',
+  READ = 'read',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  CREATE = 'create',
+  UPDATE_USER_ROLES = 'update-user-roles',
+}
 
-export type Actions =
-  | 'super-modify'
-  | 'manage'
-  | 'read'
-  | 'update'
-  | 'delete'
-  | 'create'
-  | 'update-user-roles';
+// For backward compatibility
+export type Actions = Action | string;

@@ -1,52 +1,56 @@
-import { Injectable } from '@nestjs/common';
 import {
-  Ability,
   AbilityBuilder,
   AbilityClass,
   ExtractSubjectType,
-  InferSubjects,
+  PureAbility,
+  subject,
 } from '@casl/ability';
+import { Injectable } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
+import { Action } from './types/actions';
 import { Permission } from '../../permissions/entities/permission.entity';
+import { Subjects, SubjectString } from './types/subjects';
 
-// Define the subject types your app will use
-type Subjects = InferSubjects<any> | 'all';
-
-// Define the actions
-export type Action =
-  | 'manage'
-  | 'create'
-  | 'read'
-  | 'update'
-  | 'delete'
-  | string;
-
-// Define the AppAbility type
-export type AppAbility = Ability<[Action, Subjects]>;
+// This is the key change - defining the ability type more precisely
+export type AppAbility = PureAbility<[Action | string, any]>;
 
 @Injectable()
 export class CaslAbilityFactory {
+  /**
+   * Creates an ability object for a user based on their permissions
+   */
   createForUser(user: User, permissions: Permission[]): AppAbility {
     const { can, cannot, build } = new AbilityBuilder<AppAbility>(
-      Ability as AbilityClass<AppAbility>,
+      PureAbility as AbilityClass<AppAbility>,
     );
 
-    // Process permissions
+    // Process all permissions
     for (const permission of permissions) {
-      const { action, subject, fields, conditions, inverted } = permission;
+      const {
+        action,
+        subject: subjectName,
+        conditions,
+        fields,
+        inverted,
+      } = permission;
 
       if (inverted) {
-        cannot(action, subject, conditions);
+        cannot(
+          action,
+          subjectName,
+          fields || undefined,
+          conditions || undefined,
+        );
       } else {
-        can(action, subject, fields, conditions);
+        can(action, subjectName, fields || undefined, conditions || undefined);
       }
     }
 
-    // Add default permissions - user can always read their own data
-    can('read', 'User', { id: user.id });
+    // Add any default permissions
+    can(Action.READ, 'all');
 
     return build({
-      // Use type detection
+      // Ensure subject types are correctly detected
       detectSubjectType: (item) => {
         if (typeof item === 'string') {
           return item;
