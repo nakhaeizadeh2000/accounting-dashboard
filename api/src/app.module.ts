@@ -34,7 +34,7 @@ import { CaslModule } from './modules/casl/casl.module';
     PermissionModule,
     RoleModule,
     CaslLegacyModule,
-    CaslModule,
+    CaslModule.register(),
     FilesModule,
     ArticleModule,
   ],

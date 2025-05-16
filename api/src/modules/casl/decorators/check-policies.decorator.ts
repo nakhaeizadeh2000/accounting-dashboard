@@ -36,16 +36,31 @@ export const createPolicyHandler = (
 };
 
 /**
- * Pre-defined policy decorators for common operations
+ * Pre-defined policy decorators for 'create' permission on a subject
  */
-export const CanRead = (subject: SubjectString) =>
-  CheckPolicies(createPolicyHandler(Action.READ, subject));
+export const CanCreate = (subject: string) =>
+  CheckPolicies((ability: AppAbility) => ability.can(Action.CREATE, subject));
 
-export const CanCreate = (subject: SubjectString) =>
-  CheckPolicies(createPolicyHandler(Action.CREATE, subject));
+/**
+ * Pre-defined policy decorators for 'read' permission on a subject
+ */
+export const CanRead = (subject: string) =>
+  CheckPolicies((ability: AppAbility) => ability.can(Action.READ, subject));
 
-export const CanUpdate = (subject: SubjectString) =>
-  CheckPolicies(createPolicyHandler(Action.UPDATE, subject));
+/**
+ * Pre-defined policy decorators for 'update' permission on a subject
+ */
+export const CanUpdate = (subject: string) =>
+  CheckPolicies((ability: AppAbility) => ability.can(Action.UPDATE, subject));
 
-export const CanDelete = (subject: SubjectString) =>
-  CheckPolicies(createPolicyHandler(Action.DELETE, subject));
+/**
+ * Pre-defined policy decorators for 'delete' permission on a subject
+ */
+export const CanDelete = (subject: string) =>
+  CheckPolicies((ability: AppAbility) => ability.can(Action.DELETE, subject));
+
+/**
+ * Pre-defined policy decorators for 'manage' permission on a subject
+ */
+export const CanManage = (subject: string) =>
+  CheckPolicies((ability: AppAbility) => ability.can(Action.MANAGE, subject));

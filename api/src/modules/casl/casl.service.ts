@@ -25,11 +25,13 @@ export class CaslService {
     const cacheKey = `user_abilities_${userId}`;
 
     try {
-      // Try to get from cache first
-      let userAbility = await this.cacheManager.get<AppAbility>(cacheKey);
+      this.logger.debug(`[CASL] Getting abilities for user ${userId}`);
 
-      if (!userAbility) {
-        this.logger.debug(`Cache miss for user abilities: ${userId}`);
+      // Try to get from cache first
+      let cacheData = await this.cacheManager.get<{ rules: any[] }>(cacheKey);
+
+      if (!cacheData) {
+        this.logger.debug(`[CASL] Cache miss for user abilities: ${userId}`);
 
         // If not in cache, fetch from database
         const user = await this.userRepository.findOne({
@@ -38,28 +40,74 @@ export class CaslService {
         });
 
         if (!user) {
+          this.logger.error(`[CASL] User not found: ${userId}`);
           throw new Error(`User not found: ${userId}`);
         }
 
+        this.logger.debug(
+          `[CASL] User ${userId} has ${user.roles.length} roles`,
+        );
+
         // Get all permissions from user's roles
         const permissions = user.roles.flatMap((role) => role.permissions);
+        this.logger.debug(
+          `[CASL] User ${userId} has ${permissions.length} permissions`,
+        );
+
+        // Log detailed permissions
+        permissions.forEach((permission, index) => {
+          this.logger.debug(
+            `[CASL] Permission ${index + 1}: ${permission.action} ${permission.subject}`,
+          );
+        });
 
         // Build ability object
-        userAbility = this.caslAbilityFactory.createForUser(user, permissions);
+        const userAbility = this.caslAbilityFactory.createForUser(
+          user,
+          permissions,
+        );
+        this.logger.debug(`[CASL] Created ability for user ${userId}`);
 
-        // Store in cache for future requests
-        await this.cacheManager.set(cacheKey, userAbility, this.CACHE_TTL);
-        this.logger.debug(`Cached user abilities for: ${userId}`);
+        // Store only the rules in cache, not the whole ability object
+        const rulesToCache = { rules: userAbility.rules };
+        await this.cacheManager.set(cacheKey, rulesToCache, this.CACHE_TTL);
+        this.logger.debug(`[CASL] Cached user abilities rules for: ${userId}`);
+
+        return userAbility;
       } else {
-        this.logger.debug(`Cache hit for user abilities: ${userId}`);
-      }
+        this.logger.debug(`[CASL] Cache hit for user abilities: ${userId}`);
 
-      return userAbility;
+        // Recreate the ability object from cached rules
+        if (!cacheData.rules) {
+          this.logger.warn(`[CASL] Invalid cache format, rebuilding ability`);
+          await this.cacheManager.del(cacheKey);
+          return this.getUserAbility(userId);
+        }
+
+        // Recreate the ability using the factory
+        const ability = this.caslAbilityFactory.createFromRules(
+          cacheData.rules,
+        );
+        this.logger.debug(`[CASL] Recreated ability from cached rules`);
+        return ability;
+      }
     } catch (error) {
       this.logger.error(
-        `Error getting user abilities: ${error.message}`,
+        `[CASL] Error getting user abilities: ${error.message}`,
         error.stack,
       );
+
+      // If there's an error with cached data, invalidate and try again
+      if (error.message.includes('not a function')) {
+        this.logger.warn(
+          `[CASL] Invalid ability object in cache, clearing and rebuilding`,
+        );
+        await this.cacheManager.del(cacheKey);
+
+        // Recursive call after clearing cache - need to be careful about infinite loops
+        return this.getUserAbility(userId);
+      }
+
       throw error;
     }
   }

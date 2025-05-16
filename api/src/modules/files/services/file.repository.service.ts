@@ -16,7 +16,7 @@ export class FileRepositoryService {
     private fileRepository: Repository<File>,
     @Inject(forwardRef(() => MinioFilesService))
     private minioFilesService: MinioFilesService,
-  ) { }
+  ) {}
 
   async createFile(createFileDto: CreateFileDto): Promise<ResponseFileDto> {
     const file = this.fileRepository.create(createFileDto);
@@ -144,11 +144,24 @@ export class FileRepositoryService {
   }
 
   /**
+   * Update multiple files as used
+   * Convenience method to mark multiple files as used
+   * @param fileIds Array of file IDs to mark as used
+   */
+  async markFilesAsUsed(fileIds: string[]): Promise<void> {
+    if (!fileIds || fileIds.length === 0) return;
+    await this.fileRepository.update(fileIds, { isUsed: true });
+  }
+
+  /**
    * Update the usage status of multiple files
    * @param fileIds Array of file IDs to update
    * @param isUsed New usage status
    */
-  async updateMultipleUsageStatus(fileIds: string[], isUsed: boolean): Promise<void> {
+  async updateMultipleUsageStatus(
+    fileIds: string[],
+    isUsed: boolean,
+  ): Promise<void> {
     if (!fileIds || fileIds.length === 0) return;
     await this.fileRepository.update(fileIds, { isUsed });
   }
@@ -165,6 +178,26 @@ export class FileRepositoryService {
   }
 
   /**
+   * Check if a file is used by any entities and update its status accordingly
+   *
+   * This method examines if a file is referenced by any entities (like articles)
+   * and updates its isUsed flag to reflect the current status.
+   *
+   * @param fileId ID of the file to check
+   * @returns True if the file is used by at least one entity, false otherwise
+   */
+  async checkFileUsageAndUpdate(fileId: string): Promise<boolean> {
+    // Check if the file is used by any entities
+    const isInUse = await this.isFileInUse(fileId);
+
+    // Update the file's isUsed status to match reality
+    await this.updateUsageStatus(fileId, isInUse);
+
+    this.logger.debug(`Updated file ${fileId} usage status to: ${isInUse}`);
+    return isInUse;
+  }
+
+  /**
    * Remove a file completely - from database and storage
    * This method handles:
    * 1. Checking if the file is used by other entities
@@ -175,11 +208,14 @@ export class FileRepositoryService {
    * @param forceDelete If true, delete even if used by other entities
    * @returns True if file was deleted, false if it's still in use and not force deleted
    */
-  async removeCompletely(id: string, forceDelete: boolean = false): Promise<boolean> {
+  async removeCompletely(
+    id: string,
+    forceDelete: boolean = false,
+  ): Promise<boolean> {
     // Find the file with its relations
     const file = await this.fileRepository.findOne({
       where: { id },
-      relations: ['articles'] // Add other relations as needed
+      relations: ['articles'], // Add other relations as needed
     });
 
     if (!file) {
@@ -193,7 +229,7 @@ export class FileRepositoryService {
     // If the file is used and we're not forcing deletion, don't delete
     if (isUsedByArticles && !forceDelete) {
       this.logger.log(
-        `File ${id} is used by ${file.articles.length} articles, not deleting`
+        `File ${id} is used by ${file.articles.length} articles, not deleting`,
       );
       return false;
     }
@@ -205,7 +241,10 @@ export class FileRepositoryService {
       // If there's a thumbnail, delete that too
       if (file.thumbnailName) {
         try {
-          await this.minioFilesService.deleteFile(file.bucket, file.thumbnailName);
+          await this.minioFilesService.deleteFile(
+            file.bucket,
+            file.thumbnailName,
+          );
         } catch (err) {
           this.logger.warn(`Error deleting thumbnail: ${err.message}`);
           // Continue even if thumbnail deletion fails
@@ -231,7 +270,7 @@ export class FileRepositoryService {
   async isFileInUse(id: string): Promise<boolean> {
     const file = await this.fileRepository.findOne({
       where: { id },
-      relations: ['articles'] // Add other relations as needed
+      relations: ['articles'], // Add other relations as needed
     });
 
     if (!file) return false;

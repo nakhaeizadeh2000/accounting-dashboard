@@ -2,7 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { Repository, SelectQueryBuilder, EntityMetadata } from 'typeorm';
 import { CaslService } from '../casl.service';
 
-// Create our own interface to replace the internal TypeORM JoinAttribute
+// Define our own interface to match TypeORM's join attributes structure
 interface JoinInfo {
   alias: {
     name: string;
@@ -11,11 +11,58 @@ interface JoinInfo {
   parentAlias?: string;
 }
 
+// EntityFieldSelector provides the fluent API for field selection
+export class EntityFieldSelector<T> {
+  private fieldMap: Record<string, string[]> = {};
+
+  constructor(
+    private queryBuilder: SelectQueryBuilder<T>,
+    private permissionQueryBuilder: PermissionQueryBuilder,
+    private userId: string,
+    private action: string,
+  ) {}
+
+  /**
+   * Select specific fields for an entity alias
+   */
+  selectFields<E>(alias: string, fields: string[]): EntityFieldSelector<T> {
+    this.fieldMap[alias] = fields;
+    return this;
+  }
+
+  /**
+   * Apply the field selection with permission filtering
+   */
+  async apply(): Promise<SelectQueryBuilder<T>> {
+    return this.permissionQueryBuilder.applyPermissionFilters(
+      this.queryBuilder,
+      this.userId,
+      this.action,
+      this.fieldMap,
+    );
+  }
+}
+
 @Injectable()
 export class PermissionQueryBuilder {
   private readonly logger = new Logger(PermissionQueryBuilder.name);
 
   constructor(private caslService: CaslService) {}
+
+  /**
+   * Create a field selector builder to use the fluent API
+   * This is the entry point for the fluent interface in article.service.ts
+   */
+  withPermissions<T>(
+    queryBuilder: SelectQueryBuilder<T>,
+    userId: string,
+    action: string,
+  ): EntityFieldSelector<T> {
+    this.logger.debug(
+      `[CASL] withPermissions called for user ${userId}, action ${action}`,
+    );
+    return new EntityFieldSelector(queryBuilder, this, userId, action);
+  }
 
   /**
    * Apply permission filters to a query builder including field-level permissions
@@ -29,10 +76,17 @@ export class PermissionQueryBuilder {
     specificFields?: Record<string, string[]>,
   ): Promise<SelectQueryBuilder<T>> {
     try {
+      this.logger.debug(
+        `[CASL] Starting permission filtering for user ${userId}, action: ${action}`,
+      );
+
       const ability = await this.caslService.getUserAbility(userId);
+      this.logger.debug(`[CASL] Retrieved ability for user ${userId}`);
+
       const mainAlias = queryBuilder.expressionMap.mainAlias;
 
       if (!mainAlias) {
+        this.logger.error(`[CASL] Query builder missing main alias`);
         throw new BadRequestException('Query builder must have a main alias');
       }
 
@@ -40,27 +94,62 @@ export class PermissionQueryBuilder {
       const alias = mainAlias.name;
 
       if (!entityName || !alias) {
+        this.logger.error(
+          `[CASL] Invalid query builder configuration - missing entity name or alias`,
+        );
         throw new BadRequestException('Invalid query builder configuration');
       }
 
+      this.logger.debug(
+        `[CASL] Checking permissions for entity: ${entityName}, alias: ${alias}`,
+      );
+
       // Get all rules that apply to this entity and action
-      const rules = ability.rulesFor(action, entityName);
+      // Check if rulesFor method exists
+      let rules = [];
+
+      if (typeof ability.rulesFor === 'function') {
+        rules = ability.rulesFor(action, entityName);
+        this.logger.debug(
+          `[CASL] Found ${rules.length} rules using rulesFor method`,
+        );
+      } else {
+        // Fallback: manually filter rules
+        rules = ability.rules.filter(
+          (rule) =>
+            (rule.action === action || rule.action === 'manage') &&
+            (rule.subject === entityName || rule.subject === 'all'),
+        );
+        this.logger.debug(
+          `[CASL] Found ${rules.length} rules using manual filtering`,
+        );
+      }
+
+      this.logger.debug(`[CASL] Rules: ${JSON.stringify(rules, null, 2)}`);
 
       // If no rules allow this action, return empty result
       if (rules.length === 0 || rules.every((rule) => rule.inverted)) {
+        this.logger.warn(
+          `[CASL] User ${userId} has no permission for ${action} on ${entityName}`,
+        );
         // Force empty result by adding impossible condition
         return queryBuilder.andWhere('1 = 0');
       }
 
       // Get only the "allow" rules (not inverted)
       const allowRules = rules.filter((rule) => !rule.inverted);
+      this.logger.debug(`[CASL] Found ${allowRules.length} allow rules`);
 
       if (allowRules.length === 0) {
+        this.logger.warn(
+          `[CASL] User ${userId} has no allow rules for ${action} on ${entityName}`,
+        );
         // If no allow rules, return empty result
         return queryBuilder.andWhere('1 = 0');
       }
 
       // Apply field-level permissions to main entity and joined entities
+      this.logger.debug(`[CASL] Applying field permissions with joins`);
       await this.applyFieldPermissionsWithJoins(
         queryBuilder,
         ability,
@@ -75,20 +164,31 @@ export class PermissionQueryBuilder {
       // Process each rule's conditions
       const conditions = allowRules
         .filter((rule) => rule.conditions)
-        .map((rule) => this.processConditions(rule.conditions, alias));
+        .map((rule) => {
+          this.logger.debug(
+            `[CASL] Processing conditions: ${JSON.stringify(rule.conditions)}`,
+          );
+          return this.processConditions(rule.conditions, alias);
+        });
 
       if (conditions.length > 0) {
         // Combine all conditions with OR (any matching condition grants access)
         const whereCondition = conditions
           .map((cond) => `(${cond})`)
           .join(' OR ');
+        this.logger.debug(`[CASL] Applying WHERE condition: ${whereCondition}`);
         queryBuilder.andWhere(whereCondition);
+      } else {
+        this.logger.debug(
+          `[CASL] No conditions to apply - user has full access to this entity`,
+        );
       }
 
+      this.logger.debug(`[CASL] Final query SQL: ${queryBuilder.getSql()}`);
       return queryBuilder;
     } catch (error) {
       this.logger.error(
-        `Error applying permission filters: ${error.message}`,
+        `[CASL] Error applying permission filters: ${error.message}`,
         error.stack,
       );
       // Don't expose internal errors, but make sure query returns nothing on error
@@ -112,13 +212,20 @@ export class PermissionQueryBuilder {
   ): Promise<void> {
     try {
       // First, handle the main entity fields
+      this.logger.debug(
+        `[CASL] Getting allowed fields for entity ${entityMetadata.name}`,
+      );
       const allowedMainEntityFields = this.getEntityAllowedFields(
         mainEntityRules,
         entityMetadata,
       );
+      this.logger.debug(
+        `[CASL] Allowed fields: ${allowedMainEntityFields.join(', ')}`,
+      );
 
       // Start with a clean slate - clear all selections
       queryBuilder.select([]);
+      this.logger.debug(`[CASL] Cleared all field selections`);
 
       // If specific fields requested for main entity, narrow down allowed fields
       const mainEntityFieldsToSelect =
@@ -126,42 +233,59 @@ export class PermissionQueryBuilder {
           ? this.narrowFields(allowedMainEntityFields, specificFields[alias])
           : allowedMainEntityFields;
 
+      this.logger.debug(
+        `[CASL] Fields to select for ${alias}: ${mainEntityFieldsToSelect.join(', ')}`,
+      );
+
       // Add the main entity fields
       if (mainEntityFieldsToSelect.length > 0) {
         for (const field of mainEntityFieldsToSelect) {
           queryBuilder.addSelect(`${alias}.${field}`);
+          this.logger.debug(`[CASL] Added select: ${alias}.${field}`);
         }
+      } else {
+        this.logger.warn(
+          `[CASL] No fields to select for ${alias} - this may cause empty results`,
+        );
       }
 
       // Handle all joined entities
-      if (queryBuilder.expressionMap.joinAttributes.length > 0) {
+      const joinCount = queryBuilder.expressionMap.joinAttributes.length;
+      this.logger.debug(`[CASL] Processing ${joinCount} joins`);
+
+      if (joinCount > 0) {
         await Promise.all(
-          queryBuilder.expressionMap.joinAttributes.map(
-            async (join: JoinInfo) => {
-              await this.applyJoinEntityFieldPermissions(
-                queryBuilder,
-                join,
-                ability,
-                action,
-                userId,
-                specificFields,
-              );
-            },
-          ),
+          queryBuilder.expressionMap.joinAttributes.map(async (join) => {
+            this.logger.debug(
+              `[CASL] Processing join for alias: ${join.alias.name}`,
+            );
+            await this.applyJoinEntityFieldPermissions(
+              queryBuilder,
+              join,
+              ability,
+              action,
+              userId,
+              specificFields,
+            );
+          }),
         );
       }
     } catch (error) {
       this.logger.error(
-        `Error applying field permissions: ${error.message}`,
+        `[CASL] Error applying field permissions: ${error.message}`,
         error.stack,
       );
       // On error, default to minimal field selection for security
       queryBuilder.select([]);
+      this.logger.debug(`[CASL] Cleared selections due to error`);
 
       // Only select primary key of main entity
       const primaryColumn = entityMetadata.primaryColumns[0]?.propertyName;
       if (primaryColumn) {
         queryBuilder.addSelect(`${alias}.${primaryColumn}`);
+        this.logger.debug(
+          `[CASL] Added only primary key: ${alias}.${primaryColumn}`,
+        );
       }
     }
   }
@@ -400,7 +524,8 @@ export class PermissionQueryBuilder {
         if (prop === 'createQueryBuilder') {
           return (...args: any[]) => {
             const qb = target[prop](...args);
-            return qb;
+            // Return our own function to apply permissions later
+            return this.withPermissions(qb, userId, action);
           };
         }
 
