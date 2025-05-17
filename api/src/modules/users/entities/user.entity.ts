@@ -32,7 +32,7 @@ export class User {
   @Column()
   lastName: string;
 
-  @Column()
+  @Column({ default: false })
   isAdmin: boolean;
 
   @CreateDateColumn()

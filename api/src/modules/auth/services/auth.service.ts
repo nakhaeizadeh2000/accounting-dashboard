@@ -23,7 +23,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) { }
+  ) {}
 
   async login(user: User, response: FastifyReply): Promise<ResponseLoginDto> {
     const cacheKey = `refresh_tokens_by_user_id_${user.id}`;

@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { Action } from '../casl-ability.factory';
+import { Action } from '../types/actions';
 
 export const ABILITY_METADATA_KEY = 'required_ability';
 

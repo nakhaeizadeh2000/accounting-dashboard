@@ -4,13 +4,13 @@ import { User } from './entities/user.entity';
 import { UsersController } from './controllers/user.controller';
 import { RoleModule } from 'src/role/role.module';
 import { JwtService } from '@nestjs/jwt';
-import { CaslModule } from '../casl-legacy/casl.module';
+import { CaslLegacyModule } from '../casl-legacy/casl.module';
 import { UsersService } from './services/user.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
-    forwardRef(() => CaslModule),
+    forwardRef(() => CaslLegacyModule),
     RoleModule,
   ],
   providers: [UsersService, JwtService],

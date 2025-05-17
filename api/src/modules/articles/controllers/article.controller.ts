@@ -1,4 +1,10 @@
-import { Body, Param, Request } from '@nestjs/common';
+import {
+  Body,
+  Param,
+  Request,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   Pagination,
   PaginationParams,
@@ -15,10 +21,15 @@ import {
 } from '../decorators/combined-decorators';
 import { ArticleService } from '../services/article.service';
 import { CreateArticleDto } from '../dto/create-article.dto';
+import { CaslService } from 'src/modules/casl/casl.service';
+import { Action } from 'src/modules/casl/types/actions';
 
 @articleControllerDecorators()
 export class ArticleController {
-  constructor(private readonly articlesService: ArticleService) { }
+  constructor(
+    private readonly articlesService: ArticleService,
+    private readonly caslService: CaslService, // Inject the CASL service
+  ) {}
 
   @articleCreateEndpointDecorators()
   create(@Body() createArticleDto: CreateArticleDto, @Request() req) {
@@ -26,30 +37,84 @@ export class ArticleController {
   }
 
   @articleFindAllEndpointDecorators()
-  findAll(@PaginationParams() paginationParams: Pagination) {
-    return this.articlesService.findAll(paginationParams);
+  findAll(@PaginationParams() paginationParams: Pagination, @Request() req) {
+    // Now using the user ID for permission-filtered queries
+    return this.articlesService.findAll(paginationParams, req.user.id);
   }
 
   @articleFindOneEndpointDecorators()
-  findOne(@Param('id') id: string) {
-    return this.articlesService.findOne(+id);
+  async findOne(@Param('id') id: string, @Request() req) {
+    const article = await this.articlesService.findOne(+id, req.user.id);
+
+    // Additional explicit permission check for specific article instance
+    const canRead = await this.caslService.can(
+      req.user.id,
+      Action.READ,
+      article,
+    );
+
+    if (!canRead) {
+      throw new ForbiddenException(
+        'You do not have permission to view this article',
+      );
+    }
+
+    return article;
   }
 
   @articleUpdateEndpointDecorators()
-  update(@Param('id') id: string, @Body() updateArticleDto: UpdateArticleDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateArticleDto: UpdateArticleDto,
+    @Request() req,
+  ) {
+    // First get the article to check ownership
+    const article = await this.articlesService.findOne(+id);
+
+    // Check permissions on the specific article instance
+    const ability = await this.caslService.getUserAbility(req.user.id);
+    if (ability.cannot(Action.UPDATE, article)) {
+      throw new ForbiddenException(
+        'You do not have permission to update this article',
+      );
+    }
+
     return this.articlesService.update(+id, updateArticleDto);
   }
 
   @articleDeleteEndpointDecorators()
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Request() req) {
+    // First get the article to check ownership
+    const article = await this.articlesService.findOne(+id);
+
+    // Check permissions on the specific article instance
+    const ability = await this.caslService.getUserAbility(req.user.id);
+    if (ability.cannot(Action.DELETE, article)) {
+      throw new ForbiddenException(
+        'You do not have permission to delete this article',
+      );
+    }
+
     return this.articlesService.remove(+id);
   }
 
   @articleRemoveFileEndpointDecorators()
-  removeFileFromArticle(
+  async removeFileFromArticle(
     @Param('id') articleId: string,
-    @Param('fileId') fileId: string
+    @Param('fileId') fileId: string,
+    @Request() req,
   ) {
+    // First get the article to check ownership
+    const article = await this.articlesService.findOne(+articleId);
+
+    // Check permissions on the specific article instance
+    const ability = await this.caslService.getUserAbility(req.user.id);
+    if (ability.cannot(Action.UPDATE, article)) {
+      throw new ForbiddenException(
+        'You do not have permission to modify this article',
+      );
+    }
+
     return this.articlesService.removeFileFromArticle(+articleId, fileId);
   }
 }

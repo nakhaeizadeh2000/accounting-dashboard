@@ -1,52 +1,92 @@
-import { Injectable } from '@nestjs/common';
 import {
-  Ability,
   AbilityBuilder,
   AbilityClass,
   ExtractSubjectType,
-  InferSubjects,
+  PureAbility,
+  subject,
 } from '@casl/ability';
+import { Injectable, Logger } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
+import { Action } from './types/actions';
 import { Permission } from '../../permissions/entities/permission.entity';
+import { Subjects, SubjectString } from './types/subjects';
 
-// Define the subject types your app will use
-type Subjects = InferSubjects<any> | 'all';
-
-// Define the actions
-export type Action =
-  | 'manage'
-  | 'create'
-  | 'read'
-  | 'update'
-  | 'delete'
-  | string;
-
-// Define the AppAbility type
-export type AppAbility = Ability<[Action, Subjects]>;
+// This is the key change - defining the ability type more precisely
+export type AppAbility = PureAbility<[Action | string, any]>;
 
 @Injectable()
 export class CaslAbilityFactory {
+  private readonly logger = new Logger(CaslAbilityFactory.name);
+
+  /**
+   * Creates an ability object for a user based on their permissions
+   */
   createForUser(user: User, permissions: Permission[]): AppAbility {
-    const { can, cannot, build } = new AbilityBuilder<AppAbility>(
-      Ability as AbilityClass<AppAbility>,
+    this.logger.debug(
+      `[CASL] Creating ability for user ${user.id} with ${permissions.length} permissions`,
     );
 
-    // Process permissions
+    const { can, cannot, build } = new AbilityBuilder<AppAbility>(
+      PureAbility as AbilityClass<AppAbility>,
+    );
+
+    // Process all permissions
     for (const permission of permissions) {
-      const { action, subject, fields, conditions, inverted } = permission;
+      const {
+        action,
+        subject: subjectName,
+        conditions,
+        fields,
+        inverted,
+      } = permission;
+
+      this.logger.debug(
+        `[CASL] Adding permission: ${action} ${subjectName} (inverted: ${inverted})`,
+      );
 
       if (inverted) {
-        cannot(action, subject, conditions);
+        cannot(
+          action,
+          subjectName,
+          fields || undefined,
+          conditions || undefined,
+        );
       } else {
-        can(action, subject, fields, conditions);
+        can(action, subjectName, fields || undefined, conditions || undefined);
       }
     }
 
-    // Add default permissions - user can always read their own data
-    can('read', 'User', { id: user.id });
+    // Add any default permissions
+    this.logger.debug(`[CASL] Adding default read permission for 'all'`);
+    if (user.isAdmin) {
+      can(Action.MANAGE, 'all');
+    }
 
-    return build({
-      // Use type detection
+    const ability = build({
+      // Ensure subject types are correctly detected
+      detectSubjectType: (item) => {
+        if (typeof item === 'string') {
+          return item;
+        }
+        return item.constructor as ExtractSubjectType<Subjects>;
+      },
+    });
+
+    this.logger.debug(
+      `[CASL] Built ability with ${ability.rules.length} rules`,
+    );
+    return ability;
+  }
+
+  /**
+   * Creates an ability object from cached rules
+   */
+  createFromRules(rules: any[]): AppAbility {
+    this.logger.debug(
+      `[CASL] Recreating ability from ${rules.length} cached rules`,
+    );
+
+    return new PureAbility(rules, {
       detectSubjectType: (item) => {
         if (typeof item === 'string') {
           return item;

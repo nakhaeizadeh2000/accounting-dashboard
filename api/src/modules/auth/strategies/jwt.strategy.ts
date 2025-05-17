@@ -38,8 +38,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const refreshTokens = cachedRefreshTokens
       ? plainToInstance(RefreshTokenDto, JSON.parse(cachedRefreshTokens), {
-        excludeExtraneousValues: true,
-      })
+          excludeExtraneousValues: true,
+        })
       : null;
 
     if (refreshTokens) {

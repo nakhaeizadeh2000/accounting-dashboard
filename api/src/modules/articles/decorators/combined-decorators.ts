@@ -16,22 +16,29 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import { PoliciesGuard } from 'src/modules/casl-legacy/guards/policies.guard';
+import { AbilitiesGuard } from 'src/modules/casl/guards/abilities.guard';
 import { CreateArticleDto } from '../dto/create-article.dto';
-import { AppAbility } from 'src/modules/casl-legacy/abilities/casl-ability.factory';
+import { AppAbility } from 'src/modules/casl/casl-ability.factory';
 import { ResponseArticleDto } from '../dto/response-article.dto';
 import { PaginationApiQuery } from 'src/common/decorators/pagination/pagination-api-query.decorator';
 import { BaseResponseDto } from 'src/common/interceptors/response/response-wraper.dto';
 import { ErrorDto } from 'src/common/interceptors/response/response-wraper.dto';
-import { CheckPolicies } from 'src/modules/casl-legacy/decorators/check-policies.decorator';
+import {
+  CheckPolicies,
+  CanCreate,
+  CanRead,
+  CanUpdate,
+  CanDelete,
+} from 'src/modules/casl/decorators/check-policies.decorator';
 import { ArticlePaginatedResponseDto } from '../dto/article-paginated-response.dto';
+import { Action } from 'src/modules/casl/types/actions';
 
 // controller
 export function articleControllerDecorators() {
   return applyDecorators(
     ApiTags('article'),
     Controller('article'),
-    UseGuards(JwtAuthGuard, PoliciesGuard),
+    UseGuards(JwtAuthGuard, AbilitiesGuard),
     ApiBearerAuth(),
   );
 }
@@ -47,11 +54,7 @@ export function articleCreateEndpointDecorators() {
       type: ResponseArticleDto,
     }),
     ApiBody({ type: CreateArticleDto }),
-    CheckPolicies(
-      (ability: AppAbility) =>
-        ability.can('create', 'Article') ||
-        ability.can('super-modify', 'Article'),
-    ),
+    CanCreate('Article'), // Using the new simplified decorator
   );
 }
 
@@ -66,11 +69,7 @@ export function articleFindAllEndpointDecorators() {
       type: [ArticlePaginatedResponseDto],
     }),
     PaginationApiQuery(),
-    CheckPolicies((ability: AppAbility) => {
-      return (
-        ability.can('read', 'Article') || ability.can('super-modify', 'Article')
-      );
-    }),
+    CanRead('Article'), // Using the new simplified decorator
   );
 }
 
@@ -85,11 +84,7 @@ export function articleFindOneEndpointDecorators() {
       type: ResponseArticleDto,
     }),
     ApiResponse({ status: 404, description: 'Article not found.' }),
-    CheckPolicies(
-      (ability: AppAbility) =>
-        ability.can('read', 'Article') ||
-        ability.can('super-modify', 'Article'),
-    ),
+    CanRead('Article'), // Using the new simplified decorator
   );
 }
 
@@ -103,11 +98,7 @@ export function articleUpdateEndpointDecorators() {
       description: 'The article has been successfully updated.',
       type: ResponseArticleDto,
     }),
-    CheckPolicies(
-      (ability: AppAbility) =>
-        ability.can('update', 'Article') ||
-        ability.can('super-modify', 'Article'),
-    ),
+    CanUpdate('Article'), // Using the new simplified decorator
   );
 }
 
@@ -120,19 +111,14 @@ export function articleDeleteEndpointDecorators() {
       status: 200,
       description: 'The article has been successfully deleted.',
     }),
-    CheckPolicies(
-      (ability: AppAbility) =>
-        ability.can('delete', 'Article') ||
-        ability.can('super-modify', 'Article'),
-    ),
+    CanDelete('Article'), // Using the new simplified decorator
   );
 }
 
-// Add this new decorator function for the removeFileFromArticle endpoint
+// removeFileFromArticle
 export function articleRemoveFileEndpointDecorators() {
   return applyDecorators(
     Delete(':id/files/:fileId'),
-    UseGuards(JwtAuthGuard),
     ApiOperation({ summary: 'Remove a file from an article' }),
     ApiParam({ name: 'id', description: 'Article ID' }),
     ApiParam({ name: 'fileId', description: 'File ID to remove' }),
@@ -151,10 +137,8 @@ export function articleRemoveFileEndpointDecorators() {
       description: 'Unauthorized',
       type: ErrorDto,
     }),
-    CheckPolicies(
-      (ability: AppAbility) =>
-        ability.can('update', 'Article') ||
-        ability.can('super-modify', 'Article'),
+    CheckPolicies((ability: AppAbility) =>
+      ability.can(Action.UPDATE, 'Article'),
     ),
   );
 }

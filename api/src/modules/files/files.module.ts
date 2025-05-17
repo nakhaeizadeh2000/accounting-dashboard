@@ -8,11 +8,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { File } from './entities/file.entity';
 import { FileRepositoryService } from './services/file.repository.service';
 import { FilesController } from './controllers/files.controller';
-import { CaslModule } from '../casl-legacy/casl.module';
+import { CaslLegacyModule } from '../casl-legacy/casl.module';
 
 @Module({
   imports: [
-    forwardRef(() => CaslModule),
+    forwardRef(() => CaslLegacyModule),
     ConfigModule,
     TypeOrmModule.forFeature([File]),
     // If there's another module that imports FilesModule and is also imported by FilesModule,

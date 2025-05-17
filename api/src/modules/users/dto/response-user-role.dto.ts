@@ -32,7 +32,8 @@ export class ResponseUserRoleDto {
   lastName?: string;
 
   @IsBoolean()
-  @Exclude({ toClassOnly: true })
+  @ApiProperty()
+  @Expose()
   isAdmin: boolean;
 
   @IsOptional()

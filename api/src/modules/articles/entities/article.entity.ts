@@ -14,7 +14,7 @@ import { File } from 'src/modules/files/entities/file.entity';
 
 @Entity('articles')
 export class Article {
-  kind: 'Article';
+  kind = 'Article';
 
   @PrimaryGeneratedColumn()
   id: number;
@@ -40,7 +40,7 @@ export class Article {
 
   // Relationship with File (many articles can have many files)
   @ManyToMany(() => File, (file) => file.articles, {
-    onDelete: 'CASCADE'
+    onDelete: 'CASCADE',
   })
   @JoinTable({
     name: 'article_files',
