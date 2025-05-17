@@ -4,6 +4,7 @@ import {
   ExtractSubjectType,
   PureAbility,
   subject,
+  FieldMatcher,
 } from '@casl/ability';
 import { Injectable, Logger } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
@@ -57,10 +58,15 @@ export class CaslAbilityFactory {
     }
 
     // Add any default permissions
-    this.logger.debug(`[CASL] Adding default read permission for 'all'`);
+    this.logger.debug(`[CASL] Adding default permissions`);
     if (user.isAdmin) {
-      can(Action.MANAGE, 'all');
+      // can(Action.MANAGE, 'all');
     }
+    // can('update', 'Article', ['title']);
+
+    // Define the fieldMatcher function
+    const fieldMatcher: FieldMatcher = (fields) => (field) =>
+      fields.includes(field);
 
     const ability = build({
       // Ensure subject types are correctly detected
@@ -68,10 +74,22 @@ export class CaslAbilityFactory {
         if (typeof item === 'string') {
           return item;
         }
+
+        // For subject() wrapped objects
+        if (item && item.__caslSubjectType__) {
+          return item.__caslSubjectType__;
+        }
+
+        // Check for entity discriminator
+        if (item && item.kind) {
+          return item.kind;
+        }
+
+        // Last resort, use constructor
         return item.constructor as ExtractSubjectType<Subjects>;
       },
+      fieldMatcher, // Keep this
     });
-
     this.logger.debug(
       `[CASL] Built ability with ${ability.rules.length} rules`,
     );
@@ -86,13 +104,29 @@ export class CaslAbilityFactory {
       `[CASL] Recreating ability from ${rules.length} cached rules`,
     );
 
+    // Define the fieldMatcher function here too
+    const fieldMatcher: FieldMatcher = (fields) => (field) =>
+      fields.includes(field);
+
     return new PureAbility(rules, {
       detectSubjectType: (item) => {
         if (typeof item === 'string') {
           return item;
         }
+
+        // For subject() wrapped objects
+        if (item && item.__caslSubjectType__) {
+          return item.__caslSubjectType__;
+        }
+
+        // Check for entity discriminator
+        if (item && item.kind) {
+          return item.kind;
+        }
+
         return item.constructor as ExtractSubjectType<Subjects>;
       },
+      fieldMatcher, // Add it here as well for consistency
     });
   }
 }

@@ -26,8 +26,13 @@ export class Permission {
     nullable: true,
     type: 'text',
     transformer: {
-      to: (value: string[]) => (value ? JSON.stringify(value) : null), // Convert array to JSON string when saving
-      from: (value: string) => (value ? JSON.parse(value) : []), // Convert JSON string back to array when retrieving
+      to: function (value: string[]) {
+        return value ? JSON.stringify(value) : null; // Convert array to JSON string when saving
+      },
+      from: function (value: string) {
+        const a = JSON.parse(value);
+        return value ? JSON.parse(value) : ['*']; // Convert JSON string back to array when retrieving
+      },
     },
   })
   fields: string[];

@@ -1,4 +1,10 @@
-import { Injectable, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
@@ -10,11 +16,12 @@ import { ResponseRoleDto } from '../dto/response-role.dto';
 
 @Injectable()
 export class RoleService {
+  private readonly logger = new Logger(RoleService.name);
   constructor(
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) { }
+  ) {}
 
   async create(createRoleDto: CreateRoleDto): Promise<ResponseRoleDto> {
     const role = this.roleRepository.create(createRoleDto);
@@ -49,40 +56,86 @@ export class RoleService {
   ): Promise<ResponseRoleDto> {
     const role = await this.roleRepository.findOne({
       where: { id },
+      relations: { users: true },
     });
+
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${id} not found`);
+    }
+
     // Use Object.entries to only update the fields that are provided
     Object.entries(updateRoleDto).forEach(([key, value]) => {
       if (value !== undefined) {
         role[key] = value;
       }
     });
-    const savedRole = await this.roleRepository.save(role);
-    const response = plainToInstance(ResponseRoleDto, savedRole, {
-      excludeExtraneousValues: true,
-    });
 
-    // TODO: must test to check if role.users exists and this works
-    role.users.forEach(async (user) => {
-      const refreshTokenCacheKey = `refresh_tokens_by_user_id_${user.id}`;
-      await this.cacheManager.del(refreshTokenCacheKey);
-      await this.cacheManager.del(`ability_rules_by_user_id_${user.id}`);
-    });
+    try {
+      const savedRole = await this.roleRepository.save(role);
+      const response = plainToInstance(ResponseRoleDto, savedRole, {
+        excludeExtraneousValues: true,
+      });
 
-    return response;
+      // Properly await all cache invalidation
+      if (role.users && role.users.length > 0) {
+        await Promise.all(
+          role.users.map(async (user) => {
+            try {
+              await this.cacheManager.del(
+                `refresh_tokens_by_user_id_${user.id}`,
+              );
+              await this.cacheManager.del(
+                `ability_rules_by_user_id_${user.id}`,
+              );
+            } catch (error) {
+              this.logger.warn(
+                `Failed to invalidate cache for user ${user.id}: ${error.message}`,
+              );
+            }
+          }),
+        );
+      }
+
+      return response;
+    } catch (error) {
+      this.logger.error(`Failed to update role: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to update role');
+    }
   }
 
   async remove(id: number): Promise<void> {
-    await this.roleRepository.delete(id);
-    const { users, ...roles } = await this.roleRepository.findOne({
+    const role = await this.roleRepository.findOne({
       where: { id },
-      relations: {
-        users: true,
-      },
+      relations: { users: true },
     });
-    users.forEach(async (user) => {
-      await this.cacheManager.del(`ability_rules_by_user_id_${user.id}`);
-      const refreshTokenCacheKey = `refresh_tokens_by_user_id_${user.id}`;
-      await this.cacheManager.del(refreshTokenCacheKey);
-    });
+
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${id} not found`);
+    }
+
+    try {
+      await this.roleRepository.delete(id);
+
+      if (role.users && role.users.length > 0) {
+        await Promise.all(
+          role.users.map(async (user) => {
+            try {
+              await this.cacheManager.del(
+                `ability_rules_by_user_id_${user.id}`,
+              );
+              const refreshTokenCacheKey = `refresh_tokens_by_user_id_${user.id}`;
+              await this.cacheManager.del(refreshTokenCacheKey);
+            } catch (error) {
+              this.logger.warn(
+                `Failed to invalidate cache for user ${user.id}: ${error.message}`,
+              );
+            }
+          }),
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Failed to remove role: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to remove role');
+    }
   }
 }

@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { CreateUserDto } from 'src/modules/users/dto/create-user.dto';
@@ -18,24 +24,28 @@ import { UsersService } from 'src/modules/users/services/user.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private readonly refreshTokenExpirationTimeInSeconds: number;
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+  ) {
+    this.refreshTokenExpirationTimeInSeconds =
+      +this.configService.get<string>('REFRESH_TOKEN_TTL');
+  }
 
   async login(user: User, response: FastifyReply): Promise<ResponseLoginDto> {
     const cacheKey = `refresh_tokens_by_user_id_${user.id}`;
-    const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
 
     const refreshTokenExpirationTimeInSeconds =
       +this.configService.get<string>('REFRESH_TOKEN_TTL');
     const accessTokenExpirationTimeInSeconds =
       +this.configService.get<string>('ACCESS_TOKEN_TTL');
 
-    // TODO: should add device and browser informations to each generated RT in each login proccess.
-
+    // Create new refresh token
     const newRefreshTokenPayload: RefreshTokenPayloadDto = {
       id: randomUUID(),
       userId: user.id,
@@ -47,38 +57,100 @@ export class AuthService {
         Date.now() + refreshTokenExpirationTimeInSeconds * 1000,
       ).toISOString(),
     };
-    const newRefreshTokens: RefreshTokenDto = {
-      refreshTokens: [newRefreshTokenPayload],
-    };
 
-    if (cachedRefreshTokens) {
-      await this.cacheManager.del(cacheKey);
-      const oldRefreshTokens = plainToInstance(
-        RefreshTokenDto,
-        JSON.parse(cachedRefreshTokens),
-        { excludeExtraneousValues: true },
+    try {
+      // Atomic update using a Redis-like pattern (if your cache supports it)
+      await this.updateRefreshTokensAtomically(
+        cacheKey,
+        newRefreshTokenPayload,
       );
-      newRefreshTokens.refreshTokens.push(...oldRefreshTokens.refreshTokens);
+
+      // Generate access token
+      const accessTokenPayload: AccessTokenPayloadDto = {
+        user_id: user.id,
+        refresh_token_id: newRefreshTokenPayload.id,
+      };
+
+      const access_token = this.jwtService.sign(accessTokenPayload, {
+        expiresIn: accessTokenExpirationTimeInSeconds,
+      });
+
+      response.setCookie('access_token', access_token, {
+        signed: false,
+        maxAge: refreshTokenExpirationTimeInSeconds,
+      });
+
+      return {
+        access_token,
+        cookie_expires_in: refreshTokenExpirationTimeInSeconds,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to login user: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Authentication failed');
     }
-    await this.cacheManager.set(cacheKey, JSON.stringify(newRefreshTokens));
+  }
 
-    const accessTokenPayload: AccessTokenPayloadDto = {
-      user_id: user.id,
-      refresh_token_id: newRefreshTokenPayload.id,
-    };
+  // Helper method for atomic update
+  private async updateRefreshTokensAtomically(
+    cacheKey: string,
+    newToken: RefreshTokenPayloadDto,
+  ): Promise<void> {
+    let retries = 3;
 
-    const access_token = this.jwtService.sign(accessTokenPayload, {
-      expiresIn: accessTokenExpirationTimeInSeconds,
-    });
-    // TODO: test this in production mode
-    response.setCookie('access_token', access_token, {
-      signed: false,
-      maxAge: refreshTokenExpirationTimeInSeconds,
-    });
-    return {
-      access_token,
-      cookie_expires_in: refreshTokenExpirationTimeInSeconds,
-    };
+    while (retries > 0) {
+      try {
+        const cachedRefreshTokens =
+          await this.cacheManager.get<string>(cacheKey);
+
+        const newRefreshTokens: RefreshTokenDto = {
+          refreshTokens: [newToken],
+        };
+
+        if (cachedRefreshTokens) {
+          const oldRefreshTokens = plainToInstance(
+            RefreshTokenDto,
+            JSON.parse(cachedRefreshTokens),
+            { excludeExtraneousValues: true },
+          );
+
+          // Clean up expired tokens
+          const validOldTokens = oldRefreshTokens.refreshTokens.filter(
+            (token) => !this.isTokenExpired(token.expiresAt),
+          );
+
+          // Add valid old tokens
+          newRefreshTokens.refreshTokens.push(...validOldTokens);
+
+          // Limit to max 10 active sessions per user
+          if (newRefreshTokens.refreshTokens.length > 10) {
+            // Sort by creation date and remove oldest
+            newRefreshTokens.refreshTokens.sort(
+              (a, b) =>
+                new Date(a.createdAt).getTime() -
+                new Date(b.createdAt).getTime(),
+            );
+            newRefreshTokens.refreshTokens =
+              newRefreshTokens.refreshTokens.slice(-10);
+          }
+        }
+
+        await this.cacheManager.set(
+          cacheKey,
+          JSON.stringify(newRefreshTokens),
+          this.refreshTokenExpirationTimeInSeconds,
+        );
+
+        return;
+      } catch (error) {
+        retries--;
+        if (retries === 0) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 100)); // Small delay before retry
+      }
+    }
+  }
+
+  private isTokenExpired(expiresAt: string): boolean {
+    return new Date() > new Date(expiresAt);
   }
 
   async register(user: CreateUserDto): Promise<ResponseUserDto> {
@@ -117,6 +189,110 @@ export class AuthService {
       await this.cacheManager.del(cacheKey);
       await this.cacheManager.set(cacheKey, JSON.stringify(newRefreshTokens));
       response.clearCookie('access_token');
+    }
+  }
+
+  async cleanupExpiredTokens(userId: string): Promise<void> {
+    const cacheKey = `refresh_tokens_by_user_id_${userId}`;
+
+    try {
+      const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
+      if (!cachedRefreshTokens) return;
+
+      const refreshTokens = plainToInstance(
+        RefreshTokenDto,
+        JSON.parse(cachedRefreshTokens),
+        { excludeExtraneousValues: true },
+      );
+
+      const now = new Date();
+      const validTokens = refreshTokens.refreshTokens.filter(
+        (token) => new Date(token.expiresAt) > now,
+      );
+
+      // If no change in token count, return early
+      if (validTokens.length === refreshTokens.refreshTokens.length) return;
+
+      // Update cache with valid tokens only
+      await this.cacheManager.set(
+        cacheKey,
+        JSON.stringify({ refreshTokens: validTokens }),
+        this.refreshTokenExpirationTimeInSeconds,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to cleanup tokens for user ${userId}: ${error.message}`,
+      );
+    }
+  }
+
+  async getActiveSessions(userId: string) {
+    const cacheKey = `refresh_tokens_by_user_id_${userId}`;
+
+    try {
+      await this.cleanupExpiredTokens(userId);
+
+      const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
+      if (!cachedRefreshTokens) return { sessions: [] };
+
+      const refreshTokens = plainToInstance(
+        RefreshTokenDto,
+        JSON.parse(cachedRefreshTokens),
+        { excludeExtraneousValues: true },
+      );
+
+      // Return sanitized session data
+      return {
+        sessions: refreshTokens.refreshTokens.map((token) => ({
+          id: token.id,
+          createdAt: token.createdAt,
+          expiresAt: token.expiresAt,
+        })),
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to get sessions for user ${userId}: ${error.message}`,
+      );
+      throw new InternalServerErrorException(
+        'Failed to retrieve active sessions',
+      );
+    }
+  }
+
+  async terminateSession(userId: string, sessionId: string) {
+    const cacheKey = `refresh_tokens_by_user_id_${userId}`;
+
+    try {
+      const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
+      if (!cachedRefreshTokens)
+        return { success: false, message: 'No active sessions' };
+
+      const refreshTokens = plainToInstance(
+        RefreshTokenDto,
+        JSON.parse(cachedRefreshTokens),
+        { excludeExtraneousValues: true },
+      );
+
+      const filteredTokens = refreshTokens.refreshTokens.filter(
+        (token) => token.id !== sessionId,
+      );
+
+      if (filteredTokens.length === refreshTokens.refreshTokens.length) {
+        return { success: false, message: 'Session not found' };
+      }
+
+      await this.cacheManager.set(
+        cacheKey,
+        JSON.stringify({ refreshTokens: filteredTokens }),
+        this.refreshTokenExpirationTimeInSeconds,
+      );
+
+      return { success: true, message: 'Session terminated successfully' };
+    } catch (error) {
+      this.logger.error(
+        `Failed to terminate session for user ${userId}: ${error.message}`,
+      );
+      throw new InternalServerErrorException('Failed to terminate session');
     }
   }
 }

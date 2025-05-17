@@ -14,7 +14,7 @@ import { File } from 'src/modules/files/entities/file.entity';
 
 @Entity('articles')
 export class Article {
-  kind = 'Article';
+  kind: 'Article' = 'Article';
 
   @PrimaryGeneratedColumn()
   id: number;

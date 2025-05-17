@@ -23,6 +23,7 @@ import { ArticleService } from '../services/article.service';
 import { CreateArticleDto } from '../dto/create-article.dto';
 import { CaslService } from 'src/modules/casl/casl.service';
 import { Action } from 'src/modules/casl/types/actions';
+import { subject } from '@casl/ability';
 
 @articleControllerDecorators()
 export class ArticleController {
@@ -68,17 +69,44 @@ export class ArticleController {
     @Body() updateArticleDto: UpdateArticleDto,
     @Request() req,
   ) {
-    // First get the article to check ownership
+    // Get the article
     const article = await this.articlesService.findOne(+id);
 
-    // Check permissions on the specific article instance
+    // Get user ability
     const ability = await this.caslService.getUserAbility(req.user.id);
-    if (ability.cannot(Action.UPDATE, article)) {
-      throw new ForbiddenException(
-        'You do not have permission to update this article',
-      );
+
+    // Debug CASL subject detection
+    console.log('Article object:', article);
+    console.log('Article constructor:', article.constructor?.name);
+    console.log('Object keys:', Object.keys(article));
+
+    // Use CASL's subject helper for explicit subject type declaration
+    const articleSubject = subject('Article', article);
+
+    console.log(
+      'Using string check:',
+      ability.can(Action.UPDATE, 'Article', 'title'),
+    );
+    console.log(
+      'Using direct object check:',
+      ability.can(Action.UPDATE, article, 'title'),
+    );
+    console.log(
+      'Using subject helper:',
+      ability.can(Action.UPDATE, articleSubject, 'title'),
+    );
+
+    // Try both approaches
+    const canUpdateWithSubject = ability.can(
+      Action.UPDATE,
+      articleSubject,
+      'title',
+    );
+    if (!canUpdateWithSubject) {
+      throw new ForbiddenException('You cannot update this article title');
     }
 
+    // Continue with update if authorized
     return this.articlesService.update(+id, updateArticleDto);
   }
 

@@ -1,6 +1,12 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AccessTokenPayloadDto } from 'src/modules/auth/dto/access-token-payload.dto';
 import { ResponseUserDto } from 'src/modules/users/dto/response-user.dto';
@@ -12,6 +18,8 @@ import { cookieExtractor } from 'src/common/utils/cookie-extractor';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
+  private readonly logger = new Logger(JwtStrategy.name);
+
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     configService: ConfigService,
@@ -34,33 +42,41 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     payload: AccessTokenPayloadDto,
   ): Promise<ResponseUserDto | null> {
     const cacheKey = `refresh_tokens_by_user_id_${payload.user_id}`;
-    const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
 
-    const refreshTokens = cachedRefreshTokens
-      ? plainToInstance(RefreshTokenDto, JSON.parse(cachedRefreshTokens), {
-          excludeExtraneousValues: true,
-        })
-      : null;
+    try {
+      const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
 
-    if (refreshTokens) {
-      const rt = refreshTokens.refreshTokens.filter(
-        (rt) => rt.id === payload.refresh_token_id,
-      );
+      const refreshTokens = cachedRefreshTokens
+        ? plainToInstance(RefreshTokenDto, JSON.parse(cachedRefreshTokens), {
+            excludeExtraneousValues: true,
+          })
+        : null;
 
-      if (rt.length === 1) {
-        const currentDate = new Date();
-        const expirationDate = new Date(rt[0].expiresAt);
+      if (refreshTokens) {
+        const rt = refreshTokens.refreshTokens.filter(
+          (rt) => rt.id === payload.refresh_token_id,
+        );
 
-        if (currentDate < expirationDate) {
-          const { roles, ...pureUser } = rt[0].user;
-          return pureUser; //  Return the user object cause both user and refreshToken found and refreshToken is valid
+        if (rt.length === 1) {
+          const currentDate = new Date();
+          const expirationDate = new Date(rt[0].expiresAt);
+
+          if (currentDate < expirationDate) {
+            // Return the entire user object WITH roles
+            return rt[0].user;
+          }
+        } else {
+          throw new UnauthorizedException('Invalid RefreshToken');
         }
-      } else {
-        // TODO: if RT was valid but AT was expired, should remove previous AT cookie and set new generated AT and AT must be at first place set as cookie at the end of login (instead of returning AT to user that right now happens)
-        throw new UnauthorizedException('Invalid RefreshToken');
       }
+    } catch (error) {
+      this.logger.error(
+        `Failed to validate user: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException('Authentication system error');
     }
 
-    return null; // Return the null cause user or refreshToken is not found or refreshToken is not valid
+    return null;
   }
 }
