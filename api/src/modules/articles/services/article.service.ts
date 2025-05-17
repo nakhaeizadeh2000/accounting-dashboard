@@ -141,22 +141,13 @@ export class ArticleService {
   ): Promise<PaginatedResponse<ResponseArticleDto>> {
     try {
       const { page, limit } = pagination;
-      this.logger.debug(
-        `[CASL] findAll called for user ${userId} with page ${page}, limit ${limit}`,
-      );
-
       // Create a query builder with joins
       const queryBuilder = this.articleRepository
         .createQueryBuilder('article')
         .leftJoinAndSelect('article.author', 'author')
         .leftJoinAndSelect('article.files', 'files');
 
-      this.logger.debug(`[CASL] Created query builder for findAll`);
-
       // Apply type-safe field selection with permissions
-      this.logger.debug(
-        `[CASL] Applying permission filters for user ${userId}`,
-      );
       const permissionQueryWrapper =
         this.permissionQueryBuilder.withPermissions(
           queryBuilder,
@@ -165,7 +156,6 @@ export class ArticleService {
         );
 
       // Continue using the fluent API as before
-      this.logger.debug(`[CASL] Selecting fields for permissionWrapper`);
       const permissionFilteredQuery = await permissionQueryWrapper
         .selectFields<Article>('article', [
           'id',
@@ -192,13 +182,16 @@ export class ArticleService {
         ])
         .apply();
 
-      this.logger.debug(`[CASL] Permission filters applied, adding pagination`);
+      // Check if user has permission to see createdAt before ordering by it
+      const ability = await this.caslService.getUserAbility(userId);
+      const canSeeCreatedAt = ability.can(Action.READ, 'Article', 'createdAt');
 
-      // Apply pagination to the filtered query, not the original
-      permissionFilteredQuery
-        .orderBy('article.createdAt', 'DESC')
-        .skip((page - 1) * limit)
-        .take(limit);
+      // Apply pagination to the filtered query, with conditional ordering
+      if (canSeeCreatedAt) {
+        permissionFilteredQuery.orderBy('article.createdAt', 'DESC');
+      }
+
+      permissionFilteredQuery.skip((page - 1) * limit).take(limit);
 
       // Log the SQL for debugging
       this.logger.debug(
@@ -206,7 +199,6 @@ export class ArticleService {
       );
 
       // Execute the query
-      this.logger.debug(`[CASL] Executing query`);
       const [articles, total] = await permissionFilteredQuery.getManyAndCount();
       this.logger.debug(
         `[CASL] Query returned ${articles.length} articles out of ${total} total`,
@@ -221,10 +213,6 @@ export class ArticleService {
 
       return paginateResponse(responseArticles, total, page, limit);
     } catch (error) {
-      this.logger.error(
-        `[CASL] Error finding articles: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }
@@ -436,8 +424,6 @@ export class ArticleService {
         await this.fileRepositoryService.removeCompletely(fileId, false);
       }
     }
-
-    this.logger.log(`Successfully deleted article ${id}`);
   }
 
   /**
@@ -517,10 +503,6 @@ export class ArticleService {
 
       return paginateResponse(responseArticles, total, page, limit);
     } catch (error) {
-      this.logger.error(
-        `Error finding articles by author: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }
@@ -608,10 +590,6 @@ export class ArticleService {
 
       return paginateResponse(responseArticles, total, page, limit);
     } catch (error) {
-      this.logger.error(
-        `Error searching articles: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }
@@ -790,9 +768,6 @@ export class ArticleService {
     // Now check if the file is still used by other entities
     // If not, we can delete it completely (from storage and database)
     await this.fileRepositoryService.removeCompletely(fileId, false);
-
-    this.logger.log(`Removed file ${fileId} from article ${articleId}`);
-
     return plainToInstance(ResponseArticleDto, savedArticle, {
       excludeExtraneousValues: true,
     });

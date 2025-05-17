@@ -211,14 +211,16 @@ export class PermissionQueryBuilder {
     specificFields?: Record<string, string[]>,
   ): Promise<void> {
     try {
-      // First, handle the main entity fields
-      this.logger.debug(
-        `[CASL] Getting allowed fields for entity ${entityMetadata.name}`,
-      );
-      const allowedMainEntityFields = this.getEntityAllowedFields(
-        mainEntityRules,
+      const entityName = entityMetadata.name;
+
+      // Use the new method for getting allowed fields
+      const allowedMainEntityFields = this.getFieldsFromAbility(
+        ability,
+        entityName,
+        action,
         entityMetadata,
       );
+
       this.logger.debug(
         `[CASL] Allowed fields: ${allowedMainEntityFields.join(', ')}`,
       );
@@ -330,10 +332,12 @@ export class PermissionQueryBuilder {
     const joinRules = ability.rulesFor(action, joinEntityName);
     const joinAllowRules = joinRules.filter((rule) => !rule.inverted);
 
-    // Get allowed fields for this joined entity
+    // Get allowed fields with enhanced method
     const allowedJoinFields = this.getEntityAllowedFields(
       joinAllowRules,
       joinMetadata,
+      ability,
+      joinEntityName,
     );
 
     // Always include primary key for proper joining
@@ -379,52 +383,107 @@ export class PermissionQueryBuilder {
       );
     }
   }
-
   /**
-   * Get allowed fields for an entity based on permission rules
+   * Get allowed fields for an entity based on permission rules with proper rule merging
+   * Enhanced to handle mixed permissions (specific field rules + general permissions)
    */
   private getEntityAllowedFields(
     rules: any[],
     entityMetadata: EntityMetadata,
+    ability?: any,
+    entityName?: string,
   ): string[] {
-    // Extract all allowed fields from rules
-    const fieldRules = rules.filter(
-      (rule) => rule.fields && Array.isArray(rule.fields),
+    this.logger.debug(
+      `[CASL] Computing allowed fields for ${entityName || entityMetadata.name}`,
     );
 
-    // If no field rules or contains wildcard, return all valid fields
-    if (
-      fieldRules.length === 0 ||
-      fieldRules.some((rule) => rule.fields.includes('*'))
-    ) {
-      return entityMetadata.columns
-        .map((column) => column.propertyName)
-        .filter((name) => !!name);
+    // Get all possible fields from entity metadata
+    const allEntityFields = entityMetadata.columns
+      .map((column) => column.propertyName)
+      .filter((name) => !!name);
+
+    // Always ensure primary key is included
+    const primaryKey = entityMetadata.primaryColumns[0]?.propertyName;
+    if (primaryKey && !allEntityFields.includes(primaryKey)) {
+      allEntityFields.push(primaryKey);
     }
 
-    // Collect all allowed fields
+    // If no specific rules or if any rule allows all fields, return all fields
+    const hasWildcardRule = rules.some(
+      (rule) =>
+        !rule.fields ||
+        (Array.isArray(rule.fields) && rule.fields.includes('*')),
+    );
+
+    // If there's a "manage all" type rule, we should check per-field permissions
+    const hasManageAll =
+      ability &&
+      rules.some(
+        (rule) =>
+          rule.action === 'manage' &&
+          (rule.subject === 'all' || rule.subject === entityName),
+      );
+
+    // If we have wildcard permission and no ability to check, return all fields
+    if (hasWildcardRule && !hasManageAll) {
+      this.logger.debug(`[CASL] Using wildcard rule, allowing all fields`);
+      return allEntityFields;
+    }
+
+    // Initialize allowed fields set
     const allowedFieldsSet = new Set<string>();
 
+    // First, add fields from explicit field rules
+    const fieldRules = rules.filter(
+      (rule) => rule.fields && Array.isArray(rule.fields) && !rule.inverted,
+    );
+
     for (const rule of fieldRules) {
-      // Add each field to our allowed set
       for (const field of rule.fields) {
-        const sanitizedField = this.sanitizeFieldName(field);
-        if (sanitizedField) {
-          allowedFieldsSet.add(sanitizedField);
+        if (field === '*') {
+          // Wildcard - add all fields
+          allEntityFields.forEach((f) => allowedFieldsSet.add(f));
+        } else {
+          const sanitizedField = this.sanitizeFieldName(field);
+          if (sanitizedField) {
+            allowedFieldsSet.add(sanitizedField);
+          }
         }
       }
     }
 
-    // Make sure we include primary key
-    if (entityMetadata.primaryColumns.length > 0) {
-      const primaryKey = entityMetadata.primaryColumns[0].propertyName;
+    // If we have the ability object, perform per-field permission check for completeness
+    if (ability && entityName) {
+      this.logger.debug(
+        `[CASL] Performing per-field permission checks for ${entityName}`,
+      );
+
+      for (const field of allEntityFields) {
+        // Check if this specific field is permitted by any rule
+        if (ability.can('read', entityName, field)) {
+          allowedFieldsSet.add(field);
+          this.logger.debug(
+            `[CASL] Field ${field} is permitted by ability check`,
+          );
+        }
+      }
+    }
+
+    // Always ensure primary key is included for proper record retrieval
+    if (primaryKey) {
       allowedFieldsSet.add(primaryKey);
     }
 
-    // Validate fields against entity schema
-    return Array.from(allowedFieldsSet).filter((field) =>
+    // Convert set to array and filter for valid fields
+    const allowedFields = Array.from(allowedFieldsSet).filter((field) =>
       this.isValidEntityField(field, entityMetadata),
     );
+
+    this.logger.debug(
+      `[CASL] Final allowed fields for ${entityName || entityMetadata.name}: ${allowedFields.join(', ')}`,
+    );
+
+    return allowedFields;
   }
 
   /**
@@ -617,5 +676,113 @@ export class PermissionQueryBuilder {
     // For anything else, convert to string but limit length
     const stringValue = String(value).substring(0, 1000);
     return `'${stringValue.replace(/'/g, "''")}'`;
+  }
+
+  /**
+   * Advanced method to determine allowed fields by directly analyzing the CASL ability object
+   */
+  private getFieldsFromAbility(
+    ability: any,
+    entityName: string,
+    action: string,
+    entityMetadata: EntityMetadata,
+  ): string[] {
+    this.logger.debug(
+      `[CASL] Analyzing ability object for ${entityName} fields`,
+    );
+
+    // Get all possible fields from the entity
+    const allEntityFields = entityMetadata.columns
+      .map((column) => column.propertyName)
+      .filter((name) => !!name);
+
+    // Primary key should always be included
+    const primaryKey = entityMetadata.primaryColumns[0]?.propertyName;
+    if (primaryKey && !allEntityFields.includes(primaryKey)) {
+      allEntityFields.push(primaryKey);
+    }
+
+    // Set to collect all allowed fields
+    const allowedFields = new Set<string>();
+
+    // Extract relevant rules from the ability object
+    const relevantRules = ability.M.filter(
+      (rule) =>
+        (rule.action === action || rule.action === 'manage') &&
+        (rule.subject === entityName || rule.subject === 'all') &&
+        !rule.inverted,
+    );
+
+    this.logger.debug(
+      `[CASL] Found ${relevantRules.length} relevant rules for ${action} ${entityName}`,
+    );
+
+    // Enhanced wildcard detection - check for undefined, null or wildcard in fields
+    const hasUnrestrictedAccess = relevantRules.some(
+      (rule) =>
+        !rule.fields || // No fields property = all fields
+        (Array.isArray(rule.fields) && rule.fields.length === 0) || // Empty array = all fields
+        (Array.isArray(rule.fields) && rule.fields.includes('*')), // Wildcard = all fields
+    );
+
+    if (hasUnrestrictedAccess) {
+      this.logger.debug(
+        `[CASL] Unrestricted access found, allowing all fields`,
+      );
+      // Add all entity fields since we have unrestricted access
+      allEntityFields.forEach((field) => allowedFields.add(field));
+    } else {
+      // No wildcard, so we need to check each rule for specific fields
+      for (const rule of relevantRules) {
+        if (rule.fields && Array.isArray(rule.fields)) {
+          for (const field of rule.fields) {
+            const sanitizedField = this.sanitizeFieldName(field);
+            if (sanitizedField) {
+              allowedFields.add(sanitizedField);
+            }
+          }
+        }
+      }
+    }
+
+    // As a final safeguard, explicitly check each field using ability.can
+    for (const field of allEntityFields) {
+      try {
+        // If any check passes, add the field
+        if (
+          // First check without direct ability.can for performance
+          hasUnrestrictedAccess ||
+          // Then try explicit rule checks
+          relevantRules.some(
+            (rule) =>
+              rule.fields &&
+              Array.isArray(rule.fields) &&
+              rule.fields.includes(field),
+          ) ||
+          // Finally fall back to the CASL API
+          ability.can(action, entityName, field)
+        ) {
+          allowedFields.add(field);
+          this.logger.debug(`[CASL] Field ${field} allowed for ${entityName}`);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `[CASL] Error checking permission for field ${field}: ${error.message}`,
+        );
+      }
+    }
+
+    // Always ensure primary key is included
+    if (primaryKey) {
+      allowedFields.add(primaryKey);
+    }
+
+    // Convert to array and filter for valid fields
+    const result = Array.from(allowedFields).filter((field) =>
+      this.isValidEntityField(field, entityMetadata),
+    );
+
+    this.logger.debug(`[CASL] Final allowed fields: ${result.join(', ')}`);
+    return result;
   }
 }

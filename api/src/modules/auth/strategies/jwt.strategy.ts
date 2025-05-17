@@ -31,52 +31,92 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: AccessTokenPayloadDto) {
-    const pureUser = await this.validateUserByRT(payload);
-    if (!pureUser) {
-      throw new UnauthorizedException('Invalid AccessToken');
+    try {
+      const user = await this.validateUserByRT(payload);
+      return user; // returned value will be set as user metadata in request
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('Invalid access token');
     }
-    return pureUser; //returned value will be set as user metadata in request
   }
 
+  /**
+   * Validates user by refresh token
+   * @param payload JWT token payload
+   * @returns User data or throws UnauthorizedException
+   */
   async validateUserByRT(
     payload: AccessTokenPayloadDto,
-  ): Promise<ResponseUserDto | null> {
+  ): Promise<ResponseUserDto> {
+    if (!payload || !payload.user_id || !payload.refresh_token_id) {
+      throw new UnauthorizedException('Invalid token payload');
+    }
+
     const cacheKey = `refresh_tokens_by_user_id_${payload.user_id}`;
 
     try {
       const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
 
-      const refreshTokens = cachedRefreshTokens
-        ? plainToInstance(RefreshTokenDto, JSON.parse(cachedRefreshTokens), {
-            excludeExtraneousValues: true,
-          })
-        : null;
-
-      if (refreshTokens) {
-        const rt = refreshTokens.refreshTokens.filter(
-          (rt) => rt.id === payload.refresh_token_id,
-        );
-
-        if (rt.length === 1) {
-          const currentDate = new Date();
-          const expirationDate = new Date(rt[0].expiresAt);
-
-          if (currentDate < expirationDate) {
-            // Return the entire user object WITH roles
-            return rt[0].user;
-          }
-        } else {
-          throw new UnauthorizedException('Invalid RefreshToken');
-        }
+      // Handle case when no cached tokens found
+      if (!cachedRefreshTokens) {
+        throw new UnauthorizedException('No active sessions found');
       }
+
+      const refreshTokens = plainToInstance(
+        RefreshTokenDto,
+        JSON.parse(cachedRefreshTokens),
+        { excludeExtraneousValues: true },
+      );
+
+      // Handle case when refreshTokens is missing or empty
+      if (
+        !refreshTokens ||
+        !refreshTokens.refreshTokens ||
+        refreshTokens.refreshTokens.length === 0
+      ) {
+        throw new UnauthorizedException('No active sessions found');
+      }
+
+      // Find matching refresh token
+      const matchedTokens = refreshTokens.refreshTokens.filter(
+        (rt) => rt.id === payload.refresh_token_id,
+      );
+
+      // Handle case when no matching token found
+      if (matchedTokens.length === 0) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const refreshToken = matchedTokens[0];
+
+      // Handle case when token is expired
+      const currentDate = new Date();
+      const expirationDate = new Date(refreshToken.expiresAt);
+
+      if (currentDate >= expirationDate) {
+        throw new UnauthorizedException('Session expired');
+      }
+
+      // User validation successful
+      if (!refreshToken.user) {
+        throw new UnauthorizedException('Invalid user data');
+      }
+
+      return refreshToken.user;
     } catch (error) {
+      // Pass through unauthorized exceptions
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      // Handle unexpected errors
       this.logger.error(
         `Failed to validate user: ${error.message}`,
         error.stack,
       );
       throw new InternalServerErrorException('Authentication system error');
     }
-
-    return null;
   }
 }

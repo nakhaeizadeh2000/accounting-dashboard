@@ -48,11 +48,8 @@ export class ArticleController {
     const article = await this.articlesService.findOne(+id, req.user.id);
 
     // Additional explicit permission check for specific article instance
-    const canRead = await this.caslService.can(
-      req.user.id,
-      Action.READ,
-      article,
-    );
+    const ability = await this.caslService.getUserAbility(req.user.id);
+    const canRead = ability.can(Action.READ, article);
 
     if (!canRead) {
       throw new ForbiddenException(
