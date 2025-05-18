@@ -1,0 +1,80 @@
+  |  |-api
+  |  |  |-.devcontainer
+  |  |  |-dist
+  |  |  |-docs
+  |  |  |-node_modules
+  |  |  |-src
+  |  |  |  |-common
+  |  |  |  |  |-decorators
+  |  |  |  |  |  |-cookie
+  |  |  |  |  |  |-pagination
+  |  |  |  |  |  |-validators
+  |  |  |  |  |-dto
+  |  |  |  |  |-exceptions
+  |  |  |  |  |-interceptors
+  |  |  |  |  |  |-response
+  |  |  |  |  |-pipes
+  |  |  |  |  |-utils
+  |  |  |  |-config
+  |  |  |  |  |-database
+  |  |  |  |  |  |-postgres
+  |  |  |  |  |-fastify
+  |  |  |  |  |-minio
+  |  |  |  |  |-swagger
+  |  |  |  |-db
+  |  |  |  |  |-migrations
+  |  |  |  |  |-seeders
+  |  |  |  |-modules
+  |  |  |  |  |-articles
+  |  |  |  |  |  |-controllers
+  |  |  |  |  |  |-decorators
+  |  |  |  |  |  |-dto
+  |  |  |  |  |  |-entities
+  |  |  |  |  |  |-seeders
+  |  |  |  |  |  |-services
+  |  |  |  |  |-auth
+  |  |  |  |  |  |-controllers
+  |  |  |  |  |  |-decorators
+  |  |  |  |  |  |-dto
+  |  |  |  |  |  |-guards
+  |  |  |  |  |  |-services
+  |  |  |  |  |  |-strategies
+  |  |  |  |  |-casl
+  |  |  |  |  |  |-decorators
+  |  |  |  |  |  |-guards
+  |  |  |  |  |-casl-legacy
+  |  |  |  |  |  |-abilities
+  |  |  |  |  |  |  |-build-query-for-entities
+  |  |  |  |  |  |-decorators
+  |  |  |  |  |  |-guards
+  |  |  |  |  |  |-services
+  |  |  |  |  |  |-types
+  |  |  |  |  |-files
+  |  |  |  |  |  |-controllers
+  |  |  |  |  |  |-decorators
+  |  |  |  |  |  |-dto
+  |  |  |  |  |  |-entities
+  |  |  |  |  |  |-services
+  |  |  |  |  |-users
+  |  |  |  |  |  |-controllers
+  |  |  |  |  |  |-decorators
+  |  |  |  |  |  |-dto
+  |  |  |  |  |  |-entities
+  |  |  |  |  |  |-seeders
+  |  |  |  |  |  |-services
+  |  |  |  |-permissions
+  |  |  |  |  |-controllers
+  |  |  |  |  |-decorators
+  |  |  |  |  |-dto
+  |  |  |  |  |-entities
+  |  |  |  |  |-services
+  |  |  |  |-role
+  |  |  |  |  |-controllers
+  |  |  |  |  |-decorators
+  |  |  |  |  |-dto
+  |  |  |  |  |-entities
+  |  |  |  |  |-guards
+  |  |  |  |  |-services
+  |  |  |  |-types
+  |  |  |-tests
+  |  |  |-.vscode
