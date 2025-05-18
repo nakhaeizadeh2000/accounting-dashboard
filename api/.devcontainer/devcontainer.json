@@ -53,7 +53,16 @@
         "felipecaputo.git-project-manager",
         "donjayamanne.git-extension-pack",
         "sleistner.vscode-fileutils",
-        "Postman.postman-for-vscode"
+        "Postman.postman-for-vscode",
+        "andys8.jest-snippets",
+        "chris-noring.node-snippets",
+        "ashinzekene.nestjs",
+        "cweijan.dbclient-jdbc",
+        "Orta.vscode-jest",
+        "firsttris.vscode-jest-runner",
+        "imgildev.vscode-nestjs-generator",
+        "ms-ossdata.vscode-pgsql",
+        "cweijan.vscode-redis-client"
       ]
     }
   },
