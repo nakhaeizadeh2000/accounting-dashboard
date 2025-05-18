@@ -23,7 +23,8 @@
         "dsznajder.es7-react-js-snippets",
         "ms-azuretools.vscode-docker",
         "mhutchie.git-graph",
-        "sourcegraph.cody-ai"
+        "sourcegraph.cody-ai",
+        "sleistner.vscode-fileutils"
       ],
       // "postCreateCommand": "npm install && npm run build",
       "remoteUser": "node",

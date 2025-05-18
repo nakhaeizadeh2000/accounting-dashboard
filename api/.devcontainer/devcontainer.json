@@ -52,7 +52,8 @@
         "oderwat.indent-rainbow",
         "felipecaputo.git-project-manager",
         "donjayamanne.git-extension-pack",
-        "sleistner.vscode-fileutils"
+        "sleistner.vscode-fileutils",
+        "Postman.postman-for-vscode"
       ]
     }
   },

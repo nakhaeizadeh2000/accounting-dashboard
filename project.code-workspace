@@ -28,18 +28,22 @@
       "editor.defaultFormatter": "esbenp.prettier-vscode"
     }
   },
-  "extensions": [
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode",
-    "ms-vscode.vscode-typescript-next",
-    "streetsidesoftware.code-spell-checker",
-    "bradlc.vscode-tailwindcss",
-    "eamodio.gitlens",
-    "EditorConfig.EditorConfig",
-    "formulahendry.auto-close-tag",
-    "formulahendry.auto-rename-tag",
-    "dsznajder.es7-react-js-snippets",
-    "ms-azuretools.vscode-docker",
-    "mhutchie.git-graph"
-  ]
+  "extensions": {
+    "recommendations": [
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "ms-vscode.vscode-typescript-next",
+      "streetsidesoftware.code-spell-checker",
+      "bradlc.vscode-tailwindcss",
+      "eamodio.gitlens",
+      "EditorConfig.EditorConfig",
+      "formulahendry.auto-close-tag",
+      "formulahendry.auto-rename-tag",
+      "dsznajder.es7-react-js-snippets",
+      "ms-azuretools.vscode-docker",
+      "mhutchie.git-graph",
+      "sleistner.vscode-fileutils",
+      "sleistner.vscode-fileutils"
+    ]
+  }
 }

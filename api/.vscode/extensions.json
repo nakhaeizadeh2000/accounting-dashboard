@@ -9,7 +9,6 @@
     "tal7aouy.theme",
     "aaron-bond.better-comments",
     "streetsidesoftware.code-spell-checker",
-    "rvest.vs-code-prettier-eslint",
     "mikestead.dotenv",
     "EditorConfig.EditorConfig",
     "waderyan.gitblame",
@@ -42,6 +41,7 @@
     "oderwat.indent-rainbow",
     "felipecaputo.git-project-manager",
     "donjayamanne.git-extension-pack",
-    "sleistner.vscode-fileutils"
+    "sleistner.vscode-fileutils",
+    "postman.postman-for-vscode"
   ]
 }
