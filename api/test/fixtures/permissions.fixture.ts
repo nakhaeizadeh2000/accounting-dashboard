@@ -1,0 +1,112 @@
+export const permissions = [
+  {
+    action: 'create',
+    subject: 'User',
+    inverted: false,
+    reason: 'Allow creating users',
+  },
+  {
+    action: 'read',
+    subject: 'User',
+    inverted: false,
+    reason: 'Allow reading users',
+  },
+  {
+    action: 'update',
+    subject: 'User',
+    inverted: false,
+    reason: 'Allow updating users',
+  },
+  {
+    action: 'delete',
+    subject: 'User',
+    inverted: false,
+    reason: 'Allow deleting users',
+  },
+  {
+    action: 'create',
+    subject: 'Article',
+    inverted: false,
+    reason: 'Allow creating articles',
+  },
+  {
+    action: 'read',
+    subject: 'Article',
+    inverted: false,
+    reason: 'Allow reading articles',
+  },
+  {
+    action: 'update',
+    subject: 'Article',
+    inverted: false,
+    reason: 'Allow updating articles',
+  },
+  {
+    action: 'delete',
+    subject: 'Article',
+    inverted: false,
+    reason: 'Allow deleting articles',
+  },
+  {
+    action: 'create',
+    subject: 'Role',
+    inverted: false,
+    reason: 'Allow creating roles',
+  },
+  {
+    action: 'read',
+    subject: 'Role',
+    inverted: false,
+    reason: 'Allow reading roles',
+  },
+  {
+    action: 'update',
+    subject: 'Role',
+    inverted: false,
+    reason: 'Allow updating roles',
+  },
+  {
+    action: 'delete',
+    subject: 'Role',
+    inverted: false,
+    reason: 'Allow deleting roles',
+  },
+  {
+    action: 'create',
+    subject: 'Permission',
+    inverted: false,
+    reason: 'Allow creating permissions',
+  },
+  {
+    action: 'read',
+    subject: 'Permission',
+    inverted: false,
+    reason: 'Allow reading permissions',
+  },
+  {
+    action: 'update',
+    subject: 'Permission',
+    inverted: false,
+    reason: 'Allow updating permissions',
+  },
+  {
+    action: 'delete',
+    subject: 'Permission',
+    inverted: false,
+    reason: 'Allow deleting permissions',
+  },
+  {
+    action: 'super-modify',
+    subject: 'all',
+    inverted: false,
+    reason: 'Admin permission to do everything',
+  },
+  // Field-level permissions
+  {
+    action: 'read',
+    subject: 'Article',
+    fields: ['title', 'content'],
+    inverted: false,
+    reason: 'Allow reading only title and content of articles',
+  },
+];

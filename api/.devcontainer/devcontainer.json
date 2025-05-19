@@ -67,5 +67,9 @@
     }
   },
   "remoteUser": "node",
-  "containerUser": "node"
+  "containerUser": "node",
+  "forwardPorts": [
+    4000, // Your app port
+    9229 // Node.js debug port
+  ]
 }
