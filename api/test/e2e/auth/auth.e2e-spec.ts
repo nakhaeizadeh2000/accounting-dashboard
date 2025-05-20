@@ -41,7 +41,7 @@ describe('Auth Module (e2e)', () => {
   describe('POST /auth/register', () => {
     it('should register a new user successfully', async () => {
       const newUser = {
-        email: `newuser_${Date.now()}@example.com`,
+        email: `newuser@example.com`,
         password: 'password123',
         firstName: 'New',
         lastName: 'User',
@@ -63,7 +63,7 @@ describe('Auth Module (e2e)', () => {
 
     it('should return 409 when registering with existing email', async () => {
       // First register a user with a unique email
-      const uniqueEmail = `existing_${Date.now()}@example.com`;
+      const uniqueEmail = `existing@example.com`;
       const firstUser = {
         email: uniqueEmail,
         password: 'password123',
@@ -120,7 +120,7 @@ describe('Auth Module (e2e)', () => {
   describe('POST /auth/login', () => {
     it('should log in successfully and set cookies', async () => {
       // First register a user with known credentials
-      const uniqueEmail = `login_${Date.now()}@example.com`;
+      const uniqueEmail = `login@example.com`;
       const password = 'Password123!';
 
       const registerData = {

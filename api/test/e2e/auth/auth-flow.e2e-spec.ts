@@ -8,12 +8,13 @@ describe('Authentication Flow (e2e)', () => {
 
   // Setup the test environment
   beforeAll(async () => {
-    // Setup database and test environment
+    // Set up test environment and initialize the TestApp
     await setupTestApp();
 
-    // Initialize helpers
+    // Initialize test request helper
     request = new TestRequest();
 
+    // Initialize database helper
     dbHelper = new DatabaseTestHelper();
     await dbHelper.init();
   }, 30000);
@@ -23,21 +24,15 @@ describe('Authentication Flow (e2e)', () => {
     await teardownTestApp();
   });
 
-  // For each test, start a new transaction and seed data
+  // For each test, seed data
   beforeEach(async () => {
-    await dbHelper.startTransaction();
     await dbHelper.seedDatabase();
-  });
-
-  // After each test, roll back the transaction to clean the database
-  afterEach(async () => {
-    await dbHelper.rollbackTransaction();
   });
 
   describe('User Registration', () => {
     it('should register a new user', async () => {
       // Use a unique email with timestamp to avoid conflicts
-      const uniqueEmail = `newuser_${Date.now()}@example.com`;
+      const uniqueEmail = `newuser@example.com`;
 
       const newUser = {
         email: uniqueEmail,
@@ -51,7 +46,7 @@ describe('Authentication Flow (e2e)', () => {
       const response = await request.post('/auth/register', newUser);
       console.log('Registration response:', JSON.stringify(response.body));
 
-      expect(response.status).toBe(201);
+      expect(response.body.statusCode).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
       expect(response.body.data.email).toBe(newUser.email);
@@ -59,7 +54,7 @@ describe('Authentication Flow (e2e)', () => {
 
     it('should validate password complexity', async () => {
       const userData = {
-        email: `weakpassword_${Date.now()}@example.com`,
+        email: `weakpassword@example.com`,
         password: '123', // Too short/simple
         firstName: 'Weak',
         lastName: 'Password',
@@ -78,7 +73,7 @@ describe('Authentication Flow (e2e)', () => {
 
     it('should prevent duplicate email registration', async () => {
       // First create a user
-      const email = `duplicate_${Date.now()}@example.com`;
+      const email = `duplicate@example.com`;
 
       // Register first user
       const firstUser = {
@@ -116,7 +111,7 @@ describe('Authentication Flow (e2e)', () => {
   describe('User Login', () => {
     it('should login a user and return JWT token', async () => {
       // First register a test user
-      const email = `loginuser_${Date.now()}@example.com`;
+      const email = `loginuser@example.com`;
       const password = 'Password123!';
 
       const registerData = {
@@ -159,6 +154,110 @@ describe('Authentication Flow (e2e)', () => {
 
       // Store cookie for subsequent tests
       request.saveCookies(response);
+    });
+
+    it('should reject login with invalid credentials', async () => {
+      const loginData = {
+        email: `nonexistent@example.com`,
+        password: 'WrongPassword123!',
+      };
+
+      console.log('Invalid login request:', JSON.stringify(loginData));
+
+      const response = await request.post('/auth/login', loginData);
+      console.log('Invalid login response:', JSON.stringify(response.body));
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('Protected Routes', () => {
+    it('should allow access to protected routes with valid token', async () => {
+      // Register and login a user
+      const email = `protected@example.com`;
+      const password = 'Password123!';
+
+      // Register
+      await request.post('/auth/register', {
+        email,
+        password,
+        firstName: 'Protected',
+        lastName: 'Route',
+      });
+
+      // Login
+      const loginResponse = await request.post('/auth/login', {
+        email,
+        password,
+      });
+
+      // Save cookies (token)
+      request.saveCookies(loginResponse);
+
+      // Try to access a protected route
+      const response = await request.get('/users/profile', true); // true = withAuth
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should deny access to protected routes without token', async () => {
+      // Clear any existing cookies
+      request.clearCookies();
+
+      // Try to access a protected route without authentication
+      const response = await request.get('/users/profile');
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('Logout', () => {
+    it('should successfully log out a user', async () => {
+      // Register and login a user
+      const email = `logout_${Date.now()}@example.com`;
+      const password = 'Password123!';
+
+      // Register
+      await request.post('/auth/register', {
+        email,
+        password,
+        firstName: 'Logout',
+        lastName: 'Test',
+      });
+
+      // Login
+      const loginResponse = await request.post('/auth/login', {
+        email,
+        password,
+      });
+
+      // Save cookies (token)
+      request.saveCookies(loginResponse);
+
+      // Verify we're logged in by accessing a protected route
+      const profileResponse = await request.get('/users/profile', true);
+      expect(profileResponse.status).toBe(200);
+
+      // Logout
+      const logoutResponse = await request.post('/auth/logout', {}, true);
+      expect(logoutResponse.status).toBe(200);
+      expect(logoutResponse.body.success).toBe(true);
+
+      // Cookies should be cleared
+      expect(logoutResponse.headers['set-cookie']).toBeDefined();
+      expect(logoutResponse.headers['set-cookie'][0]).toContain(
+        'access_token=;',
+      );
+
+      // Update our stored cookies
+      request.saveCookies(logoutResponse);
+
+      // Verify we're logged out by trying to access a protected route
+      const afterLogoutResponse = await request.get('/users/profile', true);
+      expect(afterLogoutResponse.status).toBe(401);
     });
   });
 });

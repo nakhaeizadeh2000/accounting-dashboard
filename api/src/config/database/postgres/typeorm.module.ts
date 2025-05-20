@@ -18,7 +18,10 @@ import { Global, Module } from '@nestjs/common';
             database: process.env.POSTGRES_DB,
             username: process.env.POSTGRES_USER,
             password: process.env.POSTGRES_PASSWORD,
-            synchronize: process.env.POSTGRES_SYNC && false,
+            synchronize:
+              process.env.NODE_ENV !== 'production' &&
+              process.env.POSTGRES_SYNC &&
+              false,
             cache: {
               type: 'redis',
               options: {
@@ -45,4 +48,4 @@ import { Global, Module } from '@nestjs/common';
   ],
   exports: [DataSource],
 })
-export class TypeOrmModule { }
+export class TypeOrmModule {}

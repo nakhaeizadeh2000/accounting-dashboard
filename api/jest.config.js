@@ -3,7 +3,12 @@ module.exports = {
   rootDir: './',
   testRegex: '.*\\.(spec|e2e-spec)\\.ts$',
   transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
+    '^.+\\.(t|j)s$': [
+      'ts-jest',
+      {
+        isolatedModules: true, // This can help with some TypeScript errors
+      },
+    ],
   },
   collectCoverageFrom: [
     'src/**/*.ts',
@@ -19,6 +24,10 @@ module.exports = {
     '^src/(.*)$': '<rootDir>/src/$1',
   },
   testTimeout: 30000,
+  // Force setup files to run before tests
+  setupFiles: ['./test/test-environment.ts'],
+  // Setup file that runs after the test environment is set up but before each test
+  setupFilesAfterEnv: ['./test/jest-setup.ts'],
   reporters: [
     'default',
     [
@@ -32,8 +41,6 @@ module.exports = {
         dateFormat: 'yyyy-mm-dd HH:MM:ss',
         executionTimeWarningThreshold: 5,
         executionMode: 'reporter',
-        styleOverridePath: null,
-        customScriptPath: null,
       },
     ],
   ],

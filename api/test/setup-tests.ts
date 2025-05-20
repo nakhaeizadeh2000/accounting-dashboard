@@ -1,11 +1,11 @@
 import './test-environment'; // Load environment variables
 import { Test, TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { DataSource } from 'typeorm';
 import { setupTestDatabase } from './test-environment';
-import { AppModule } from '../src/app.module';
+import { TestApp } from './test-app';
 
-let testingModule: TestingModule;
+// Global variables to track test environment state
 let isInitialized = false;
 
 // Create mock cache manager
@@ -42,81 +42,179 @@ const mockMinioService = {
 };
 
 /**
- * This function prepares the test database
- * It doesn't create a NestJS app instance since we're testing against a running server
+ * This function prepares the test environment and initializes the TestApp
+ * Returns the NestFastifyApplication instance
  */
 export const setupTestApp = async () => {
   if (!isInitialized) {
-    console.log('Setting up test environment...');
+    console.log('🔧 Setting up test environment...');
 
-    // Reset database to clean state
-    await setupTestDatabase();
-    console.log('Test database reset complete');
+    // Force test environment settings
+    process.env.NODE_ENV = 'test';
+    process.env.POSTGRES_DB = 'test_db';
 
-    // We still need a testing module for dependency overrides and database connection
-    testingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    })
-      .overrideProvider(CACHE_MANAGER)
-      .useValue(getCacheManager())
-      // Add any other overrides you need
-      .compile();
+    console.log('📊 Test environment configuration:');
+    console.log(`  NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`  POSTGRES_DB: ${process.env.POSTGRES_DB}`);
+    console.log(`  POSTGRES_HOST: ${process.env.POSTGRES_HOST || 'localhost'}`);
 
-    console.log('Test module compiled');
-
-    // Initialize and sync database
+    // Setup test database from scratch
     try {
-      const dataSource = testingModule.get<DataSource>(DataSource);
-
-      if (!dataSource.isInitialized) {
-        console.log('Initializing database connection...');
-        await dataSource.initialize();
-      }
-
-      console.log('Dropping and recreating database schema...');
-      await dataSource.synchronize(true);
-      console.log('Database schema synchronized successfully');
-      isInitialized = true;
+      await setupTestDatabase();
+      console.log('✅ Test database reset complete');
     } catch (error) {
-      console.error('Database initialization failed:', error);
+      console.error('❌ Failed to setup test database:', error);
       throw error;
     }
-  }
 
-  // Return null or something else if needed
-  return null;
+    // Initialize TestApp instance
+    try {
+      const testApp = TestApp.getInstance();
+      await testApp.init();
+      console.log('✅ Test application initialized successfully');
+
+      // Note: Provider overrides should be done inside TestApp.init(),
+      // not here after the module is compiled
+
+      // Verify database connection is to test_db
+      const dataSource = testApp.getDataSource();
+      const dbName = dataSource.options.database;
+      console.log(`🔍 Verifying database connection to: ${dbName}`);
+
+      if (dbName !== 'test_db') {
+        throw new Error(
+          `CRITICAL ERROR: Test app connected to wrong database: ${dbName}. Tests must use test_db!`,
+        );
+      }
+
+      isInitialized = true;
+      return testApp.getApp();
+    } catch (error) {
+      console.error('❌ Failed to initialize test application:', error);
+      // Try to clean up if initialization failed
+      try {
+        await TestApp.getInstance().close();
+      } catch (cleanupError) {
+        console.error(
+          'Error during cleanup after failed initialization:',
+          cleanupError,
+        );
+      }
+      throw error;
+    }
+  } else {
+    // Already initialized, just return the app
+    console.log('ℹ️ Test app already initialized, reusing instance');
+    return TestApp.getInstance().getApp();
+  }
 };
 
+/**
+ * Tears down the test application and cleans up resources
+ */
 export const teardownTestApp = async () => {
-  if (testingModule) {
-    console.log('Closing test environment...');
+  if (isInitialized) {
+    console.log('🧹 Cleaning up test environment...');
 
     try {
-      // Close database connections
-      const dataSource = testingModule.get<DataSource>(DataSource);
-      if (dataSource && dataSource.isInitialized) {
-        await dataSource.destroy();
-      }
-
-      // Close any other services that need explicit cleanup
-      // For example, if there's a Redis connection:
+      // 1. Try to access and close the Redis client directly
       try {
-        const redisService = testingModule.get('REDIS_CLIENT');
-        if (redisService && typeof redisService.quit === 'function') {
-          await redisService.quit();
+        const cacheManager = getTestingModule().get(CACHE_MANAGER);
+        if (cacheManager && cacheManager.store && cacheManager.store.client) {
+          console.log('Closing Redis client...');
+          if (typeof cacheManager.store.client.quit === 'function') {
+            await cacheManager.store.client.quit();
+          }
+          // Force disconnect if quit doesn't work
+          if (typeof cacheManager.store.client.disconnect === 'function') {
+            await cacheManager.store.client.disconnect();
+          }
         }
-      } catch (error) {
-        // Redis service might not be available, ignore
+      } catch (redisError) {
+        console.log('Failed to close Redis client:', redisError.message);
       }
 
-      await testingModule.close();
-      testingModule = null;
+      // 2. Close the NestJS application
+      await TestApp.getInstance().close();
+
+      // 3. Add a force close fallback using Node's process.exit
+      // We'll set a timeout to ensure this happens if normal shutdown fails
+      const forceExitTimeout = setTimeout(() => {
+        console.log('🔥 Forcing process exit due to lingering connections');
+        process.exit(0); // This will forcibly terminate any hanging connections
+      }, 1000);
+
+      // Allow the timeout to be cleared if normal shutdown works
+      forceExitTimeout.unref();
+
       isInitialized = false;
-      console.log('Test environment closed');
+      console.log('✅ Test environment cleaned up successfully');
     } catch (error) {
-      console.error('Error during teardown:', error);
+      console.error('❌ Error during test environment teardown:', error);
     }
+  } else {
+    console.log('ℹ️ Test environment was not initialized, nothing to clean up');
   }
 };
 
-export const getTestingModule = () => testingModule;
+/**
+ * Resets the test database to a clean state for a test
+ */
+export const resetTestDatabase = async () => {
+  if (!isInitialized) {
+    throw new Error(
+      'Test environment not initialized. Call setupTestApp() first.',
+    );
+  }
+
+  try {
+    await TestApp.getInstance().resetDatabase();
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to reset test database:', error);
+    throw error;
+  }
+};
+
+/**
+ * Returns the TestingModule from the TestApp
+ */
+export const getTestingModule = () => {
+  if (!isInitialized) {
+    throw new Error(
+      'Test environment not initialized. Call setupTestApp() first.',
+    );
+  }
+  return TestApp.getInstance().getTestingModule();
+};
+
+/**
+ * Returns the DataSource from the TestApp
+ */
+export const getTestDataSource = () => {
+  if (!isInitialized) {
+    throw new Error(
+      'Test environment not initialized. Call setupTestApp() first.',
+    );
+  }
+  return TestApp.getInstance().getDataSource();
+};
+
+/**
+ * Returns the base URL for making requests to the test app
+ */
+export const getTestBaseUrl = () => {
+  return TestApp.getInstance().getBaseUrl();
+};
+
+/**
+ * Returns the mocked cache manager
+ */
+export const getCachedManager = getCacheManager;
+
+/**
+ * Check if the test environment is properly initialized
+ */
+export const isTestEnvironmentInitialized = () => {
+  return isInitialized;
+};

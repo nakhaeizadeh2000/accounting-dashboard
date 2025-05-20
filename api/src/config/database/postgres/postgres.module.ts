@@ -9,7 +9,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       type: 'postgres',
       host: process.env.POSTGRES_HOST,
       port: +process.env.POSTGRES_PORT,
-      database: process.env.POSTGRES_DB,
+      database:
+        process.env.NODE_ENV === 'test' ? 'test_db' : process.env.POSTGRES_DB,
       username: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
       synchronize: true,
@@ -28,4 +29,4 @@ import { TypeOrmModule } from '@nestjs/typeorm';
   ],
   exports: [TypeOrmModule],
 })
-export class PostgresModule { }
+export class PostgresModule {}
