@@ -1,71 +1,93 @@
 import { setupTestApp, teardownTestApp } from '../../setup-tests';
 import { TestRequest } from '../../helpers/request.helper';
 import { DatabaseTestHelper } from '../../helpers/database.helper';
+import { AuthTestHelper } from '../../helpers/auth-test.helper';
+import * as fixtures from '../../fixtures';
+import { cacheManagerMockInstance } from '../../mocks/cache-manager.mock';
 
 describe('Authentication Flow (e2e)', () => {
   let request: TestRequest;
   let dbHelper: DatabaseTestHelper;
+  let authHelper: AuthTestHelper;
 
-  // Setup the test environment
   beforeAll(async () => {
-    // Set up test environment and initialize the TestApp
     await setupTestApp();
-
-    // Initialize test request helper
     request = new TestRequest();
-
-    // Initialize database helper
     dbHelper = new DatabaseTestHelper();
     await dbHelper.init();
+    authHelper = new AuthTestHelper(request, dbHelper);
   }, 30000);
 
-  // Clean up after all tests
   afterAll(async () => {
-    await teardownTestApp();
-  });
+    // First clear all Redis mocks
+    if (
+      cacheManagerMockInstance &&
+      typeof cacheManagerMockInstance._reset === 'function'
+    ) {
+      cacheManagerMockInstance._reset();
+    }
 
-  // For each test, seed data
+    // Then teardown with timeout
+    await Promise.race([
+      teardownTestApp(),
+      new Promise((resolve) => setTimeout(resolve, 3000)),
+    ]);
+
+    // Add a small delay to let any queued operations complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }, 10000);
+
+  // Reset between each test for isolation
   beforeEach(async () => {
-    await dbHelper.seedDatabase();
+    // Reset database
+    await dbHelper.resetDatabase();
+    // Reset Redis mock
+    cacheManagerMockInstance._reset();
+    // Clear cookies
+    request.clearCookies();
   });
 
   describe('User Registration', () => {
     it('should register a new user', async () => {
-      // Use a unique email with timestamp to avoid conflicts
-      const uniqueEmail = `newuser@example.com`;
-
-      const newUser = {
-        email: uniqueEmail,
+      // Use the factory function to create test user data
+      const { isAdmin, ...newUser } = fixtures.createUser({
+        email: `newuser@example.com`,
         password: 'Password123!',
-        firstName: 'New',
-        lastName: 'User',
-      };
+      });
 
       console.log('Registration request payload:', JSON.stringify(newUser));
 
       const response = await request.post('/auth/register', newUser);
       console.log('Registration response:', JSON.stringify(response.body));
 
-      expect(response.body.statusCode).toBe(201);
+      expect(response.statusCode).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
       expect(response.body.data.email).toBe(newUser.email);
+      expect(response.body.data.firstName).toBe(newUser.firstName);
+      expect(response.body.data.lastName).toBe(newUser.lastName);
+
+      // Verify user exists in database
+      const userRepo = dbHelper.getUserRepository();
+      const savedUser = await userRepo.findOne({
+        where: { email: newUser.email },
+      });
+      expect(savedUser).toBeDefined();
+      expect(savedUser.email).toBe(newUser.email);
     });
 
     it('should validate password complexity', async () => {
-      const userData = {
+      const userData = fixtures.createUser({
         email: `weakpassword@example.com`,
         password: '123', // Too short/simple
-        firstName: 'Weak',
-        lastName: 'Password',
-      };
+      });
 
       console.log('Weak password request payload:', JSON.stringify(userData));
 
       const response = await request.post('/auth/register', userData);
       console.log('Validation response:', JSON.stringify(response.body));
 
-      expect(response.status).toBe(400);
+      expect(response.statusCode).toBe(400);
       expect(response.body.success).toBe(false);
       // Should contain validation error about password
       expect(response.body.message).toContain('password');
@@ -76,66 +98,60 @@ describe('Authentication Flow (e2e)', () => {
       const email = `duplicate@example.com`;
 
       // Register first user
-      const firstUser = {
+      const firstUser = fixtures.createUser({
         email,
         password: 'Password123!',
-        firstName: 'First',
-        lastName: 'User',
-      };
+      });
 
       console.log('First user request:', JSON.stringify(firstUser));
 
       const firstResponse = await request.post('/auth/register', firstUser);
       console.log('First user response:', JSON.stringify(firstResponse.body));
 
+      expect(firstResponse.statusCode).toBe(201);
+
       // Try to register with the same email
-      const secondUser = {
+      const secondUser = fixtures.createUser({
         email, // Same email as first user
-        password: 'Password123!',
+        password: 'Password456!',
         firstName: 'Duplicate',
         lastName: 'Email',
-      };
+      });
 
       console.log('Duplicate email request:', JSON.stringify(secondUser));
 
       const response = await request.post('/auth/register', secondUser);
       console.log('Duplicate email response:', JSON.stringify(response.body));
 
-      expect(response.status).toBe(409);
+      expect(response.statusCode).toBe(409);
       expect(response.body.success).toBe(false);
       // Should contain error about duplicate email
-      expect(response.body.message).toContain('email');
+      expect(response.body.message.toLowerCase()).toContain('email');
     });
   });
 
   describe('User Login', () => {
     it('should login a user and return JWT token', async () => {
-      // First register a test user
-      const email = `loginuser@example.com`;
-      const password = 'Password123!';
+      // Create a test user using the factory
+      const userData = fixtures.createUser({
+        email: `loginuser@example.com`,
+        password: 'Password123!',
+      });
 
-      const registerData = {
-        email,
-        password,
-        firstName: 'Login',
-        lastName: 'User',
-      };
+      // Use the plaintext password before it gets hashed
+      const plainTextPassword = userData.password;
 
-      console.log(
-        'Register user for login test:',
-        JSON.stringify(registerData),
-      );
-
-      const registerResponse = await request.post(
-        '/auth/register',
-        registerData,
-      );
+      // Register the user
+      console.log('Register user for login test:', JSON.stringify(userData));
+      const registerResponse = await request.post('/auth/register', userData);
       console.log('Register response:', JSON.stringify(registerResponse.body));
+
+      expect(registerResponse.statusCode).toBe(201);
 
       // Now try to login
       const loginData = {
-        email,
-        password,
+        email: userData.email,
+        password: plainTextPassword,
       };
 
       console.log('Login request:', JSON.stringify(loginData));
@@ -143,10 +159,12 @@ describe('Authentication Flow (e2e)', () => {
       const response = await request.post('/auth/login', loginData);
       console.log('Login response:', JSON.stringify(response.body));
 
-      expect(response.status).toBe(201);
+      expect(response.statusCode).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
       expect(response.body.data.accessToken).toBeDefined();
+      expect(response.body.data.user).toBeDefined();
+      expect(response.body.data.user.email).toBe(userData.email);
 
       // Test sets cookie
       expect(response.headers['set-cookie']).toBeDefined();
@@ -167,39 +185,51 @@ describe('Authentication Flow (e2e)', () => {
       const response = await request.post('/auth/login', loginData);
       console.log('Invalid login response:', JSON.stringify(response.body));
 
-      expect(response.status).toBe(401);
+      expect(response.statusCode).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should reject login with correct email but wrong password', async () => {
+      // Create a test user
+      const userData = fixtures.createUser({
+        email: `wrongpass@example.com`,
+        password: 'Password123!',
+      });
+
+      // Register the user
+      await request.post('/auth/register', userData);
+
+      // Try to login with wrong password
+      const loginData = {
+        email: userData.email,
+        password: 'WrongPassword123!',
+      };
+
+      const response = await request.post('/auth/login', loginData);
+
+      expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
     });
   });
 
   describe('Protected Routes', () => {
     it('should allow access to protected routes with valid token', async () => {
-      // Register and login a user
-      const email = `protected@example.com`;
-      const password = 'Password123!';
-
-      // Register
-      await request.post('/auth/register', {
-        email,
-        password,
-        firstName: 'Protected',
-        lastName: 'Route',
+      // Use AuthTestHelper to register and login
+      const userData = fixtures.createUser({
+        email: `protected@example.com`,
+        password: 'Password123!',
       });
 
-      // Login
-      const loginResponse = await request.post('/auth/login', {
-        email,
-        password,
-      });
-
-      // Save cookies (token)
-      request.saveCookies(loginResponse);
+      // Register and login the user
+      await authHelper.registerAndLogin(userData);
 
       // Try to access a protected route
       const response = await request.get('/users/profile', true); // true = withAuth
 
-      expect(response.status).toBe(200);
+      expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.email).toBe(userData.email);
     });
 
     it('should deny access to protected routes without token', async () => {
@@ -209,41 +239,41 @@ describe('Authentication Flow (e2e)', () => {
       // Try to access a protected route without authentication
       const response = await request.get('/users/profile');
 
-      expect(response.status).toBe(401);
+      expect(response.statusCode).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should deny access with an invalid token', async () => {
+      // Set an invalid token cookie
+      request.withHeaders({
+        Authorization: 'Bearer invalid.token.here',
+      });
+
+      // Try to access a protected route with invalid token
+      const response = await request.get('/users/profile', true);
+
+      expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
     });
   });
 
   describe('Logout', () => {
     it('should successfully log out a user', async () => {
-      // Register and login a user
-      const email = `logout_${Date.now()}@example.com`;
-      const password = 'Password123!';
-
-      // Register
-      await request.post('/auth/register', {
-        email,
-        password,
-        firstName: 'Logout',
-        lastName: 'Test',
+      // Use AuthTestHelper to register and login
+      const userData = fixtures.createUser({
+        email: `logout@example.com`,
+        password: 'Password123!',
       });
 
-      // Login
-      const loginResponse = await request.post('/auth/login', {
-        email,
-        password,
-      });
-
-      // Save cookies (token)
-      request.saveCookies(loginResponse);
+      await authHelper.registerAndLogin(userData);
 
       // Verify we're logged in by accessing a protected route
       const profileResponse = await request.get('/users/profile', true);
-      expect(profileResponse.status).toBe(200);
+      expect(profileResponse.statusCode).toBe(200);
 
       // Logout
       const logoutResponse = await request.post('/auth/logout', {}, true);
-      expect(logoutResponse.status).toBe(200);
+      expect(logoutResponse.statusCode).toBe(200);
       expect(logoutResponse.body.success).toBe(true);
 
       // Cookies should be cleared
@@ -257,7 +287,39 @@ describe('Authentication Flow (e2e)', () => {
 
       // Verify we're logged out by trying to access a protected route
       const afterLogoutResponse = await request.get('/users/profile', true);
-      expect(afterLogoutResponse.status).toBe(401);
+      expect(afterLogoutResponse.statusCode).toBe(401);
+    });
+
+    it('should allow re-login after logout', async () => {
+      // Use AuthTestHelper to register and login
+      const userData = fixtures.createUser({
+        email: `relogin@example.com`,
+        password: 'Password123!',
+      });
+
+      // Save password before it gets hashed in the registration process
+      const password = userData.password;
+
+      await authHelper.registerAndLogin(userData);
+
+      // Logout
+      await authHelper.logout();
+
+      // Try to login again
+      const reloginResponse = await request.post('/auth/login', {
+        email: userData.email,
+        password: password,
+      });
+
+      expect(reloginResponse.statusCode).toBe(201);
+      expect(reloginResponse.body.success).toBe(true);
+
+      // Save the new cookies
+      request.saveCookies(reloginResponse);
+
+      // Verify we can access protected routes again
+      const profileResponse = await request.get('/users/profile', true);
+      expect(profileResponse.statusCode).toBe(200);
     });
   });
 });

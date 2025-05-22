@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  api-test:
+    container_name: api-test
+    build:
+      context: .
+      dockerfile: dev-env/api.test.dockerfile
+    environment:
+      - NODE_ENV=test
+      - POSTGRES_DB=test_db
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_pass
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+    volumes:
+      - ./api:/home/app/api
+      - /home/app/api/node_modules
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    networks:
+      - test-network
+
+  postgres-test:
+    container_name: postgres-test
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_pass
+      - POSTGRES_DB=postgres
+    ports:
+      - "5433:5432" # Different port to avoid conflicts
+    volumes:
+      - ./postgres/test-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  redis-test:
+    container_name: redis-test
+    image: redis:7.4.0-alpine
+    ports:
+      - "6380:6379" # Different port to avoid conflicts
+    volumes:
+      - ./redis/test-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge

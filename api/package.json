@@ -18,11 +18,12 @@
     "migration:revert": "npm run build && npm run typeorm -- migration:revert -d ./config/database/postgres/typeorm.ts",
     "seed:run": "npm run build && ts-node -r tsconfig-paths/register src/db/seeders/seed.micro-app.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "pretest:e2e": "ts-node test/test-environment.ts",
-    "test:e2e": "cross-env NODE_ENV=test POSTGRES_DB=test_db jest --config ./jest.config.js --detectOpenHandles",
-    "test:watch": "cross-env NODE_ENV=test POSTGRES_DB=test_db jest --config ./jest.config.js --watch --detectOpenHandles",
+    "test:e2e": "jest --config ./jest.config.js --unhandled-rejections=strict --bail",
+    "test:watch": "jest --config ./jest.config.js --watch --unhandled-rejections=strict --bail",
+    "test:before-deployment": "jest --config ./jest.config.js --unhandled-rejections=strict",
     "open:report": "open ./test-report/report.html || xdg-open ./test-report/report.html || start ./test-report/report.html",
-    "test:debug": "cross-env NODE_ENV=test POSTGRES_DB=test_db node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand --config ./jest.config.js"
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --config ./jest.config.js --runInBand",
+    "test:docker": "docker-compose -f docker-compose.test.yml up --build"
   },
   "dependencies": {
     "@casl/ability": "^6.7.1",

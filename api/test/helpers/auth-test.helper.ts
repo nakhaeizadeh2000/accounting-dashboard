@@ -1,36 +1,38 @@
 import { TestRequest } from './request.helper';
-import { LoginBodyDto } from '../../src/modules/auth/dto/login-body.dto';
+import { DatabaseTestHelper } from './database.helper';
 
 export class AuthTestHelper {
-  constructor(private readonly request: TestRequest) {}
+  private request: TestRequest;
+  private dbHelper: DatabaseTestHelper;
 
-  async login(credentials: LoginBodyDto): Promise<any> {
-    const response = await this.request.post('/auth/login', credentials);
+  constructor(request: TestRequest, dbHelper: DatabaseTestHelper) {
+    this.request = request;
+    this.dbHelper = dbHelper;
+  }
 
-    // Ensure the login was successful
-    if (response.status !== 201) {
-      throw new Error(`Login failed: ${JSON.stringify(response.body)}`);
-    }
+  async registerAndLogin(userData: any): Promise<any> {
+    // Register
+    await this.register(userData);
 
+    // Login with simplified approach - don't keep waiting for slow responses
+    const loginResponse = await this.request.post('/auth/login', {
+      email: userData.email,
+      password: userData.password,
+    });
+
+    // Save cookies
+    this.request.saveCookies(loginResponse);
+
+    return loginResponse.body.data;
+  }
+
+  async register(userData: any): Promise<any> {
+    const response = await this.request.post('/auth/register', userData);
     return response.body.data;
   }
 
   async logout(): Promise<void> {
     await this.request.post('/auth/logout', {}, true);
     this.request.clearCookies();
-  }
-
-  async registerAndLogin(userData: any): Promise<any> {
-    // Register
-    const registerResponse = await this.request.post(
-      '/auth/register',
-      userData,
-    );
-
-    // Login
-    return this.login({
-      email: userData.email,
-      password: userData.password,
-    });
   }
 }

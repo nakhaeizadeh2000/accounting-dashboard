@@ -1,32 +1,29 @@
 module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
-  rootDir: './',
+  rootDir: '.',
+  testEnvironment: 'node',
   testRegex: '.*\\.(spec|e2e-spec)\\.ts$',
   transform: {
-    '^.+\\.(t|j)s$': [
-      'ts-jest',
-      {
-        isolatedModules: true, // This can help with some TypeScript errors
-      },
-    ],
+    '^.+\\.(t|j)s$': 'ts-jest',
   },
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/main.ts',
     '!src/**/*.module.ts',
-    '!src/**/*.entity.ts',
     '!src/**/*.dto.ts',
+    '!src/**/*.entity.ts',
+    '!src/**/*.interface.ts',
   ],
   coverageDirectory: './coverage',
-  testEnvironment: 'node',
-  roots: ['<rootDir>/src/', '<rootDir>/test/'],
   moduleNameMapper: {
-    '^src/(.*)$': '<rootDir>/src/$1',
+    '^src/(.*)': '<rootDir>/src/$1',
+    '^ioredis': '<rootDir>/test/mocks/redis-mock.js',
+    '^@redis/client': '<rootDir>/test/mocks/redis-mock.js',
   },
   testTimeout: 30000,
-  // Force setup files to run before tests
-  setupFiles: ['./test/test-environment.ts'],
-  // Setup file that runs after the test environment is set up but before each test
+  bail: true,
+  // forceExit: true,
+  setupFiles: ['./test/services/test-environment.service.ts'],
   setupFilesAfterEnv: ['./test/jest-setup.ts'],
   reporters: [
     'default',

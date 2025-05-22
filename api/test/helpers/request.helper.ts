@@ -1,5 +1,4 @@
 import * as supertest from 'supertest';
-import { TestApp } from '../test-app';
 import { getTestBaseUrl } from '../setup-tests';
 
 /**
@@ -10,6 +9,7 @@ export class TestRequest {
   private baseUrl: string;
   private cookies: string[] = [];
   private agent: ReturnType<typeof supertest.agent>;
+  private headers: Record<string, string> = {};
 
   /**
    * Create a new TestRequest instance
@@ -19,7 +19,7 @@ export class TestRequest {
     // Use custom URL if provided, otherwise get from TestApp
     this.baseUrl = customBaseUrl || getTestBaseUrl();
 
-    // Create supertest agent - use base URL instead of TestApp instance
+    // Create supertest agent
     this.agent = supertest.agent(this.baseUrl);
 
     console.log(`📡 TestRequest initialized with baseUrl: ${this.baseUrl}`);
@@ -39,6 +39,53 @@ export class TestRequest {
   }
 
   /**
+   * Clear all saved cookies
+   */
+  clearCookies(): TestRequest {
+    this.cookies = [];
+    console.log('🧹 Cookies cleared');
+    return this;
+  }
+
+  /**
+   * Add custom headers to subsequent requests
+   */
+  withHeaders(headers: Record<string, string>): TestRequest {
+    this.headers = { ...this.headers, ...headers };
+    return this;
+  }
+
+  /**
+   * Clear all custom headers
+   */
+  clearHeaders(): TestRequest {
+    this.headers = {};
+    return this;
+  }
+
+  /**
+   * Apply saved cookies and headers to a request
+   * @param request The supertest request
+   * @param withAuth Whether to include auth cookies
+   */
+  private applyHeadersAndCookies(
+    request: supertest.Test,
+    withAuth: boolean = false,
+  ): supertest.Test {
+    // Apply custom headers
+    Object.entries(this.headers).forEach(([key, value]) => {
+      request.set(key, value);
+    });
+
+    // Apply cookies if requested
+    if (withAuth && this.cookies.length > 0) {
+      request.set('Cookie', this.cookies);
+    }
+
+    return request;
+  }
+
+  /**
    * Make a GET request to the API
    * @param url The URL path (without base URL)
    * @param withAuth Whether to include auth cookies
@@ -50,11 +97,7 @@ export class TestRequest {
     console.log(`🔍 GET ${this.baseUrl}${url}`);
 
     const request = this.agent.get(url);
-
-    // Add cookies if requested
-    if (withAuth && this.cookies.length > 0) {
-      request.set('Cookie', this.cookies);
-    }
+    this.applyHeadersAndCookies(request, withAuth);
 
     try {
       const response = await request;
@@ -80,11 +123,7 @@ export class TestRequest {
     console.log(`📦 Request payload:`, JSON.stringify(data, null, 2));
 
     const request = this.agent.post(url).send(data);
-
-    // Add cookies if requested
-    if (withAuth && this.cookies.length > 0) {
-      request.set('Cookie', this.cookies);
-    }
+    this.applyHeadersAndCookies(request, withAuth);
 
     try {
       const response = await request;
@@ -109,47 +148,13 @@ export class TestRequest {
     console.log(`📝 PUT ${this.baseUrl}${url}`);
 
     const request = this.agent.put(url).send(data);
-
-    // Add cookies if requested
-    if (withAuth && this.cookies.length > 0) {
-      request.set('Cookie', this.cookies);
-    }
+    this.applyHeadersAndCookies(request, withAuth);
 
     try {
       const response = await request;
       return response;
     } catch (error) {
       console.error(`❌ PUT request to ${this.baseUrl}${url} failed:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Make a DELETE request to the API
-   * @param url The URL path (without base URL)
-   * @param withAuth Whether to include auth cookies
-   */
-  async delete(
-    url: string,
-    withAuth: boolean = false,
-  ): Promise<supertest.Response> {
-    console.log(`🗑️ DELETE ${this.baseUrl}${url}`);
-
-    const request = this.agent.delete(url);
-
-    // Add cookies if requested
-    if (withAuth && this.cookies.length > 0) {
-      request.set('Cookie', this.cookies);
-    }
-
-    try {
-      const response = await request;
-      return response;
-    } catch (error) {
-      console.error(
-        `❌ DELETE request to ${this.baseUrl}${url} failed:`,
-        error,
-      );
       throw error;
     }
   }
@@ -168,11 +173,7 @@ export class TestRequest {
     console.log(`🩹 PATCH ${this.baseUrl}${url}`);
 
     const request = this.agent.patch(url).send(data);
-
-    // Add cookies if requested
-    if (withAuth && this.cookies.length > 0) {
-      request.set('Cookie', this.cookies);
-    }
+    this.applyHeadersAndCookies(request, withAuth);
 
     try {
       const response = await request;
@@ -184,35 +185,27 @@ export class TestRequest {
   }
 
   /**
-   * Clear all saved cookies
+   * Make a DELETE request to the API
+   * @param url The URL path (without base URL)
+   * @param withAuth Whether to include auth cookies
    */
-  clearCookies(): TestRequest {
-    this.cookies = [];
-    console.log('🧹 Cookies cleared');
-    return this;
-  }
+  async delete(
+    url: string,
+    withAuth: boolean = false,
+  ): Promise<supertest.Response> {
+    console.log(`🗑️ DELETE ${this.baseUrl}${url}`);
 
-  /**
-   * Login with the given credentials and save auth cookies
-   * @param credentials Login credentials (email/password)
-   */
-  async login(credentials: { email: string; password: string }): Promise<any> {
-    console.log(`🔑 Logging in as ${credentials.email}`);
+    const request = this.agent.delete(url);
+    this.applyHeadersAndCookies(request, withAuth);
 
     try {
-      const response = await this.post('/auth/login', credentials);
-
-      if (response.status === 201) {
-        this.saveCookies(response);
-        console.log('✅ Login successful');
-        return response.body.data;
-      } else {
-        console.error(`❌ Login failed with status ${response.status}`);
-        console.error(response.body);
-        throw new Error(`Login failed with status ${response.status}`);
-      }
+      const response = await request;
+      return response;
     } catch (error) {
-      console.error('❌ Login request failed:', error);
+      console.error(
+        `❌ DELETE request to ${this.baseUrl}${url} failed:`,
+        error,
+      );
       throw error;
     }
   }
@@ -233,11 +226,7 @@ export class TestRequest {
     console.log(`📤 Uploading file to ${this.baseUrl}${url}`);
 
     const request = this.agent.post(url).attach(fieldName, filePath);
-
-    // Add cookies if requested
-    if (withAuth && this.cookies.length > 0) {
-      request.set('Cookie', this.cookies);
-    }
+    this.applyHeadersAndCookies(request, withAuth);
 
     try {
       const response = await request;
@@ -249,11 +238,27 @@ export class TestRequest {
   }
 
   /**
-   * Add custom headers to the next request
-   * @param headers Key-value pairs of headers
+   * Login with the given credentials and save auth cookies
+   * @param credentials Login credentials (email/password)
    */
-  withHeaders(headers: Record<string, string>): TestRequest {
-    this.agent.set(headers);
-    return this;
+  async login(credentials: { email: string; password: string }): Promise<any> {
+    console.log(`🔑 Logging in as ${credentials.email}`);
+
+    try {
+      const response = await this.post('/auth/login', credentials);
+
+      if (response.statusCode === 201) {
+        this.saveCookies(response);
+        console.log('✅ Login successful');
+        return response.body.data;
+      } else {
+        console.error(`❌ Login failed with status ${response.statusCode}`);
+        console.error(response.body);
+        throw new Error(`Login failed with status ${response.statusCode}`);
+      }
+    } catch (error) {
+      console.error('❌ Login request failed:', error);
+      throw error;
+    }
   }
 }

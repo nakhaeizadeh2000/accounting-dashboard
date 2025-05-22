@@ -1,114 +1,93 @@
-import { getTestingModule } from '../setup-tests';
-import { DataSource, Repository, QueryRunner } from 'typeorm';
+import { getTestDataSource } from '../setup-tests';
+import { Repository, DataSource } from 'typeorm';
 import { User } from '../../src/modules/users/entities/user.entity';
 import * as bcrypt from 'bcryptjs';
+import * as fixtures from '../fixtures';
 
+/**
+ * Simplified DatabaseTestHelper without transaction management
+ */
 export class DatabaseTestHelper {
   private dataSource: DataSource;
-  private queryRunner: QueryRunner;
-
-  // Repositories
   private userRepository: Repository<User>;
+  private initialized = false;
 
-  // Keep track of original repositories
-  private originalUserRepository: Repository<User>;
-
+  /**
+   * Initialize the database helper
+   */
   async init() {
-    const testingModule = getTestingModule();
-    if (!testingModule) {
-      throw new Error(
-        'Testing module not initialized. Call setupTestApp first.',
-      );
+    if (this.initialized) {
+      return;
     }
 
-    this.dataSource = testingModule.get<DataSource>(DataSource);
+    this.dataSource = getTestDataSource();
     if (!this.dataSource || !this.dataSource.isInitialized) {
       throw new Error('DataSource not initialized in test environment');
     }
 
-    // Store original repositories
-    this.originalUserRepository = this.dataSource.getRepository(User);
-    this.userRepository = this.originalUserRepository;
+    // Initialize repositories directly
+    this.userRepository = this.dataSource.getRepository(User);
+    this.initialized = true;
   }
 
-  async startTransaction() {
-    // Create a new query runner for this test
-    this.queryRunner = this.dataSource.createQueryRunner();
-
-    // Start transaction
-    await this.queryRunner.connect();
-    await this.queryRunner.startTransaction();
-
-    // Replace the standard repositories with transaction-specific ones
-    this.userRepository = this.queryRunner.manager.getRepository(User);
-
-    console.log('Transaction started for test');
-  }
-
-  async rollbackTransaction() {
-    if (this.queryRunner) {
-      try {
-        await this.queryRunner.rollbackTransaction();
-        await this.queryRunner.release();
-
-        // Restore original repositories after rollback
-        this.userRepository = this.originalUserRepository;
-
-        console.log('Transaction rolled back');
-      } catch (error) {
-        console.error('Error rolling back transaction:', error);
-      }
-    }
-  }
-
-  async seedDatabase() {
+  /**
+   * Reset the database between tests
+   */
+  async resetDatabase() {
     try {
-      // Create test users
-      const users = [
-        {
-          email: 'admin@example.com',
-          firstName: 'Admin',
-          lastName: 'User',
-          password: bcrypt.hashSync('admin123', 10),
-          isAdmin: true,
-        },
-        {
-          email: 'user@example.com',
-          firstName: 'Regular',
-          lastName: 'User',
-          password: bcrypt.hashSync('user123', 10),
-          isAdmin: false,
-        },
-      ];
+      console.log('🧹 Resetting database state...');
 
-      // Insert test users within current transaction
-      for (const userData of users) {
-        const user = this.userRepository.create(userData);
-        await this.userRepository.save(user);
-      }
+      // Use TRUNCATE for fast table clearing
+      await this.dataSource.query(
+        'TRUNCATE TABLE "users" RESTART IDENTITY CASCADE',
+      );
+      // Add other tables that need clearing
 
-      console.log('Test database seeded with users');
+      // Re-seed with fresh test data
+      await this.seedTestData();
+
+      console.log('✅ Database reset completed');
+      return true;
     } catch (error) {
-      console.error('Error seeding database:', error);
+      console.error('❌ Database reset failed:', error);
       throw error;
     }
   }
 
-  async cleanDatabase() {
-    // Only clean if connected and not in a transaction
-    // (if in a transaction, rollback will clean everything)
-    if (this.dataSource && this.dataSource.isInitialized && !this.queryRunner) {
-      try {
-        // Order matters - delete related entities first
-        await this.dataSource.query('DELETE FROM "users" CASCADE');
-        console.log('Database cleaned');
-      } catch (error) {
-        console.error('Error cleaning database:', error);
-      }
+  /**
+   * Seed test data
+   */
+  async seedTestData() {
+    try {
+      // Create test users - just what's needed for the test
+      const adminUser = fixtures.users[0];
+      const regularUser = fixtures.users[1];
+
+      await this.userRepository.save([
+        this.userRepository.create(adminUser),
+        this.userRepository.create(regularUser),
+      ]);
+
+      console.log('✅ Test data seeded');
+    } catch (error) {
+      console.error('❌ Seeding test data failed:', error);
+      throw error;
     }
   }
+  // Keep only the essential methods needed by your tests
+  async createUser(userData: Partial<User>): Promise<User> {
+    const defaultData = {
+      email: `test@example.com`,
+      password: bcrypt.hashSync('Password123!', 10),
+      firstName: 'Test',
+      lastName: 'User',
+      isAdmin: false,
+    };
 
-  // Get the user repository (returns transaction-specific repo if in transaction)
+    const user = this.userRepository.create({ ...defaultData, ...userData });
+    return this.userRepository.save(user);
+  }
+
   getUserRepository(): Repository<User> {
     return this.userRepository;
   }
