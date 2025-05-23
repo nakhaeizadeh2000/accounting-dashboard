@@ -3,6 +3,17 @@ module.exports = {
   rootDir: '.',
   testEnvironment: 'node',
   testRegex: '.*\\.(spec|e2e-spec)\\.ts$',
+
+  // Enable parallel execution
+  maxWorkers: '50%', // Use 50% of available cores
+
+  // Each test file gets its own instance
+  maxConcurrency: 5,
+
+  // Other settings...
+  forceExit: true,
+  testTimeout: 30000,
+
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
@@ -20,9 +31,7 @@ module.exports = {
     '^ioredis': '<rootDir>/test/mocks/redis-mock.js',
     '^@redis/client': '<rootDir>/test/mocks/redis-mock.js',
   },
-  testTimeout: 30000,
   bail: true,
-  forceExit: true,
   setupFiles: ['./test/services/test-environment.service.ts'],
   setupFilesAfterEnv: ['./test/jest-setup.ts'],
   reporters: [
