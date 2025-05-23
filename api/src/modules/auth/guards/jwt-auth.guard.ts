@@ -42,21 +42,33 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     request: FastifyRequest,
     response: FastifyReply,
   ): Promise<void> => {
-    const token = request.cookies?.['access_token'];
+    const token =
+      request.cookies?.['access_token'] ||
+      (request.headers.authorization?.startsWith('Bearer ') &&
+        request.headers.authorization.split(' ')[1]);
+
     if (token) {
       try {
         this.jwtService.verify(token, {
           secret: this.configService.get<string>('JWT_SECRET'),
         });
       } catch (error) {
-        await this.reSignToken(
-          await this.jwtService.verifyAsync(token, {
-            ignoreExpiration: true,
-            secret: this.configService.get<string>('JWT_SECRET'),
-          }),
-          request,
-          response,
-        );
+        try {
+          // Only try to refresh if this is a TokenExpiredError, not for malformed tokens
+          if (error.name === 'TokenExpiredError') {
+            const decodedToken = await this.jwtService.verifyAsync(token, {
+              ignoreExpiration: true,
+              secret: this.configService.get<string>('JWT_SECRET'),
+            });
+            await this.reSignToken(decodedToken, request, response);
+          } else {
+            // For other JWT errors, don't try to refresh
+            throw error;
+          }
+        } catch (innerError) {
+          // Just log the error and continue - the JWT strategy will handle the rejection
+          console.error('JWT token handling error:', innerError.message);
+        }
       }
     }
   };

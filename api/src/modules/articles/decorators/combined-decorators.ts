@@ -58,7 +58,21 @@ export function articleCreateEndpointDecorators() {
   );
 }
 
-// findAll
+// findAll wothout checking for permission and just check for token (must have been loged in for test usage)
+export function articleFindAllJustAuthNoPermissionEndpointDecorators() {
+  return applyDecorators(
+    Get('/noPermission'),
+    ApiOperation({ summary: 'Get all articles' }),
+    ApiResponse({
+      status: 200,
+      description:
+        'Return all articles. for test usage (no permission checking and just checks for login)',
+      type: [ArticlePaginatedResponseDto],
+    }),
+    PaginationApiQuery(),
+  );
+}
+
 export function articleFindAllEndpointDecorators() {
   return applyDecorators(
     Get(),

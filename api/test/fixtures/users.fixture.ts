@@ -40,13 +40,12 @@ export const users = [
  * @param overrides Properties to override in the default user
  * @returns A user object with default values merged with overrides
  */
-export const createUser = (overrides: Record<string, any> = {}) => {
+export const createSimpleUser = (overrides: Record<string, any> = {}) => {
   const defaultUser = {
     email: `test@example.com`,
     password: hashSync('Password123!', 10),
     firstName: 'Test',
     lastName: 'User',
-    isAdmin: false,
   };
 
   return { ...defaultUser, ...overrides };
@@ -65,7 +64,7 @@ export const createUsers = (
   return Array(count)
     .fill(null)
     .map((_, index) =>
-      createUser({
+      createSimpleUser({
         email: `test.user${index}@example.com`,
         ...baseProps,
       }),

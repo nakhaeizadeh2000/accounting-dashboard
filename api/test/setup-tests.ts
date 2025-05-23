@@ -71,13 +71,25 @@ export const teardownTestApp = async (): Promise<void> => {
   console.log('🧹 Safe test environment cleanup...');
 
   try {
-    // Close the app (with timeout to prevent hanging)
+    // Close the app with a proper timeout handler
     if (testAppFactory) {
       const closePromise = testAppFactory.close();
-      await Promise.race([
-        closePromise,
-        new Promise((resolve) => setTimeout(resolve, 1000)),
-      ]);
+      // Use a proper timeout with cleanup
+      const timeoutPromise = new Promise((resolve) => {
+        const id = setTimeout(() => {
+          console.log('App close timed out after 1000ms');
+          resolve(null);
+        }, 1000);
+        // Store the timeout ID
+        resolve['timeoutId'] = id;
+      });
+
+      const result = await Promise.race([closePromise, timeoutPromise]);
+
+      // Clean up the timeout
+      if (timeoutPromise['timeoutId']) {
+        clearTimeout(timeoutPromise['timeoutId']);
+      }
     }
 
     isInitialized = false;

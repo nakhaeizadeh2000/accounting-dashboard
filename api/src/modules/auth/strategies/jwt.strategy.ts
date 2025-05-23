@@ -1,9 +1,8 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import {
   Inject,
   Injectable,
-  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -27,18 +26,33 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: cookieExtractor,
       secretOrKey: configService.get<string>('JWT_SECRET'),
+      // Add ignoreExpiration to handle expired tokens explicitly
+      ignoreExpiration: false,
+      // Add passReqToCallback to handle missing tokens
+      passReqToCallback: false,
     });
   }
 
   async validate(payload: AccessTokenPayloadDto) {
     try {
+      // First check if payload exists at all
+      if (!payload) {
+        throw new UnauthorizedException('فرمت توکن نامعتبر است');
+      }
+
       const user = await this.validateUserByRT(payload);
       return user; // returned value will be set as user metadata in request
     } catch (error) {
+      this.logger.debug(`JWT validation error: ${error.message}`);
+
+      // Always throw UnauthorizedException for any JWT-related errors
+      // to ensure 401 is returned instead of 500
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new UnauthorizedException('Invalid access token');
+
+      // Convert any other errors to UnauthorizedException
+      throw new UnauthorizedException('توکن دسترسی (access token) نامعتبر است');
     }
   }
 
@@ -51,7 +65,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     payload: AccessTokenPayloadDto,
   ): Promise<ResponseUserDto> {
     if (!payload || !payload.user_id || !payload.refresh_token_id) {
-      throw new UnauthorizedException('Invalid token payload');
+      throw new UnauthorizedException('محتوای توکن نامعتبر است');
     }
 
     const cacheKey = `refresh_tokens_by_user_id_${payload.user_id}`;
@@ -61,7 +75,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
       // Handle case when no cached tokens found
       if (!cachedRefreshTokens) {
-        throw new UnauthorizedException('No active sessions found');
+        throw new UnauthorizedException('هیچ جلسه (sessions) فعالی یافت نشد');
       }
 
       const refreshTokens = plainToInstance(
@@ -76,7 +90,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         !refreshTokens.refreshTokens ||
         refreshTokens.refreshTokens.length === 0
       ) {
-        throw new UnauthorizedException('No active sessions found');
+        throw new UnauthorizedException('هیچ جلسه (sessions) فعالی یافت نشد');
       }
 
       // Find matching refresh token
@@ -86,7 +100,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
       // Handle case when no matching token found
       if (matchedTokens.length === 0) {
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new UnauthorizedException(
+          'توکن دسترسی (refresh token) نامعتبر است',
+        );
       }
 
       const refreshToken = matchedTokens[0];
@@ -96,12 +112,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       const expirationDate = new Date(refreshToken.expiresAt);
 
       if (currentDate >= expirationDate) {
-        throw new UnauthorizedException('Session expired');
+        throw new UnauthorizedException('جلسه (session) منقضی شده است');
       }
 
       // User validation successful
       if (!refreshToken.user) {
-        throw new UnauthorizedException('Invalid user data');
+        throw new UnauthorizedException('اطلاعات کاربر نامعتبر است');
       }
 
       return refreshToken.user;
@@ -111,12 +127,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         throw error;
       }
 
-      // Handle unexpected errors
+      // Convert all other errors to UnauthorizedException instead of InternalServerErrorException
       this.logger.error(
         `Failed to validate user: ${error.message}`,
         error.stack,
       );
-      throw new InternalServerErrorException('Authentication system error');
+      throw new UnauthorizedException('احراز هویت ناموفق بود');
     }
   }
 }

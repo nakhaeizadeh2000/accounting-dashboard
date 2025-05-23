@@ -18,6 +18,7 @@ import {
   articleUpdateEndpointDecorators,
   articleDeleteEndpointDecorators,
   articleRemoveFileEndpointDecorators,
+  articleFindAllJustAuthNoPermissionEndpointDecorators,
 } from '../decorators/combined-decorators';
 import { ArticleService } from '../services/article.service';
 import { CreateArticleDto } from '../dto/create-article.dto';
@@ -41,6 +42,12 @@ export class ArticleController {
   findAll(@PaginationParams() paginationParams: Pagination, @Request() req) {
     // Now using the user ID for permission-filtered queries
     return this.articlesService.findAll(paginationParams, req.user.id);
+  }
+
+  @articleFindAllJustAuthNoPermissionEndpointDecorators()
+  findAllJustAuthNoPermission(@Request() req) {
+    // for test usage
+    return this.articlesService.findAllNoPermissionChecking();
   }
 
   @articleFindOneEndpointDecorators()

@@ -11,9 +11,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { FastifyRequest, FastifyReply } from 'fastify';
-import {
-  MinioFilesService,
-} from '../services/minio-files.service';
+import { MinioFilesService } from '../services/minio-files.service';
 import { FileMetadataDto } from '../dto/minio-files.dto';
 import {
   filesControllerDecorators,
@@ -44,7 +42,7 @@ import { ValidationException } from 'src/common/exceptions/validation.exception'
 @filesControllerDecorators()
 export class MinioFilesController {
   private readonly logger = new Logger(MinioFilesService.name);
-  constructor(private readonly minioService: MinioFilesService) { }
+  constructor(private readonly minioService: MinioFilesService) {}
 
   @filesUploadEndpointDecorators()
   async uploadFiles(
@@ -54,13 +52,13 @@ export class MinioFilesController {
     try {
       // Validate bucket
       if (!bucket || typeof bucket !== 'string') {
-        throw new BadRequestException('bucket : Valid bucket name is required');
+        throw new BadRequestException('bucket : نام مخزن معتبر الزامی است');
       }
 
       // Ensure the request is multipart
       if (!req.isMultipart()) {
         throw new BadRequestException(
-          'files : Request must be multipart format',
+          'files : درخواست باید در قالب چند بخشی (multipart) باشد',
         );
       }
 
@@ -70,7 +68,7 @@ export class MinioFilesController {
       // Check if there are any files to process
       const firstFile = await files.next();
       if (firstFile.done) {
-        throw new BadRequestException('files : No files were provided');
+        throw new BadRequestException('files : هیچ فایلی ارائه نشده است');
       }
 
       // Reset to process all files
@@ -129,7 +127,7 @@ export class MinioFilesController {
         throw new ValidationException(errorMessages);
       }
       return {
-        message: 'Files uploaded successfully',
+        message: 'فایل‌ها با موفقیت آپلود شدند',
         files: successfulUploads,
         // Don't include failures in success response, they're handled via exceptions
       };
@@ -141,7 +139,7 @@ export class MinioFilesController {
 
       this.logger.error(`Upload failed: ${error.message}`, error.stack);
       throw new InternalServerErrorException(
-        `file : Upload failed - ${error.message}`,
+        `file : آپلود ناموفق بود - ${error.message}`,
       );
     }
   }
@@ -299,7 +297,7 @@ export class MinioFilesController {
             return response.send(fileStream);
           } catch (minioError) {
             throw new NotFoundException(
-              `File "${filename}" not found in bucket "${bucket}"`,
+              `فایل "${filename}" در مخزن "${bucket}" یافت نشد`,
             );
           }
         } else {
@@ -311,7 +309,7 @@ export class MinioFilesController {
       // Error handling
       if (error.code === 'NotFound' || error instanceof NotFoundException) {
         throw new NotFoundException(
-          `File "${filename}" not found in bucket "${bucket}"`,
+          `فایل "${filename}" در مخزن "${bucket}" یافت نشد`,
         );
       }
       this.logger.error(
@@ -319,7 +317,7 @@ export class MinioFilesController {
         error.stack,
       );
       throw new InternalServerErrorException(
-        `Failed to download file: ${error.message}`,
+        `file : آپلود ناموفق بود - ${error.message}`,
       );
     }
   }
@@ -331,7 +329,9 @@ export class MinioFilesController {
     @Query('expiry') expiry?: string,
   ): Promise<BatchDownloadUrlResponseDto> {
     if (!bucket || !filenamesStr) {
-      throw new BadRequestException('Both bucket and filenames are required');
+      throw new BadRequestException(
+        'هر دو پارامتر مخزن و نام فایل‌ها الزامی هستند',
+      );
     }
 
     const filenames = filenamesStr.split(',');
@@ -354,7 +354,7 @@ export class MinioFilesController {
       return { urls: urlsObject };
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to generate batch download URLs: ${error.message}`,
+        `ایجاد لینک‌های دانلود دسته‌ای ناموفق بود: ${error.message}`,
       );
     }
   }
@@ -388,7 +388,7 @@ export class MinioFilesController {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Failed to get file metadata: ${error.message}`,
+        `دریافت متادیتای فایل ناموفق بود: ${error.message}`,
       );
     }
   }
@@ -427,7 +427,7 @@ export class MinioFilesController {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Failed to list files: ${error.message}`,
+        `لیست کردن فایل‌ها ناموفق بود: ${error.message}`,
       );
     }
   }
@@ -440,21 +440,21 @@ export class MinioFilesController {
     try {
       await this.minioService.deleteFile(bucket, filename);
       return {
-        message: `File "${filename}" deleted successfully from bucket "${bucket}"`,
+        message: `فایل "${filename}" با موفقیت از مخزن "${bucket}" حذف شد`,
       };
     } catch (error) {
       // Only rethrow if it's not a NotFound error, since that means the file is already gone
       if (error.code !== 'NotFound' && !(error instanceof NotFoundException)) {
         this.logger.error(`Error deleting file: ${error.message}`, error.stack);
         throw new InternalServerErrorException(
-          `Failed to delete file: ${error.message}`,
+          `حذف فایل ناموفق بود: ${error.message}`,
         );
       }
 
       // If it's a NotFound error, still return a success message
       // since the end goal (file not existing) is achieved
       return {
-        message: `File "${filename}" no longer exists in bucket "${bucket}"`,
+        message: `فایل "${filename}" دیگر در مخزن "${bucket}" وجود ندارد`,
       };
     }
   }
@@ -466,7 +466,7 @@ export class MinioFilesController {
       return { buckets };
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to list buckets: ${error.message}`,
+        `لیست کردن مخزن‌ها ناموفق بود: ${error.message}`,
       );
     }
   }
@@ -485,10 +485,10 @@ export class MinioFilesController {
       };
 
       await this.minioService.createBucket(bucketName, bucketConfig);
-      return { message: `Bucket "${bucketName}" created successfully` };
+      return { message: `مخزن "${bucketName}" با موفقیت ایجاد شد` };
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to create bucket: ${error.message}`,
+        `ایجاد مخزن ناموفق بود: ${error.message}`,
       );
     }
   }
@@ -501,13 +501,13 @@ export class MinioFilesController {
     try {
       const forceDelete = force === 'true';
       await this.minioService.removeBucket(bucketName, forceDelete);
-      return { message: `Bucket "${bucketName}" deleted successfully` };
+      return { message: `مخزن "${bucketName}" با موفقیت حذف شد` };
     } catch (error) {
       if (error.code === 'NoSuchBucket') {
-        throw new NotFoundException(`Bucket "${bucketName}" not found`);
+        throw new NotFoundException(`مخزن "${bucketName}" یافت نشد`);
       }
       throw new InternalServerErrorException(
-        `Failed to delete bucket: ${error.message}`,
+        `حذف مخزن ناموفق بود: ${error.message}`,
       );
     }
   }

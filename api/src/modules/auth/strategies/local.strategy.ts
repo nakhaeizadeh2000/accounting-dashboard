@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { compareSync } from 'bcryptjs';
 import { Strategy } from 'passport-local';
@@ -21,7 +17,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   async validate(email: string, password: string): Promise<User> {
     const user = await this.validateUser(email, password);
     if (!user) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('کاربری با این مشخصات وجود ندارد!');
     }
     return user; // the returned value will set as a metadata for each request in its user property.
   }
@@ -32,7 +28,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
       return user;
     } else {
       if (!user) {
-        throw new NotFoundException(`کاربری با این مشخصات وجود ندارد!`);
+        throw new UnauthorizedException(`کاربری با این مشخصات وجود ندارد!`);
       }
     }
     return null;

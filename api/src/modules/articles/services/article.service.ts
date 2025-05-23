@@ -217,6 +217,20 @@ export class ArticleService {
     }
   }
 
+  // for test (an endpoint that jsut checks for auth (login not permission))
+  async findAllNoPermissionChecking(): Promise<
+    PaginatedResponse<ResponseArticleDto>
+  > {
+    const articles = await this.articleRepository.findAndCount({
+      take: 10,
+      skip: 0,
+    });
+    const response = plainToInstance(ResponseArticleDto, articles[0], {
+      excludeExtraneousValues: true,
+    });
+    return paginateResponse(response, articles[1], 1, 10);
+  }
+
   /**
    * Retrieves a single article by its ID with associated author and files
    * using permission-based filtering if a userId is provided

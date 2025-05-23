@@ -11,7 +11,7 @@ export class ErrorDto {
     description: 'Error message',
     example: 'Not Found',
   })
-  message: string;
+  message: string[];
 
   @ApiProperty({
     description: 'Optional additional error details',

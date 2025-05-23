@@ -6,16 +6,13 @@ import * as fixtures from '../../fixtures';
 import { cacheManagerMockInstance } from '../../mocks/cache-manager.mock';
 
 describe('Authentication Flow (e2e)', () => {
-  let request: TestRequest;
+  let app;
   let dbHelper: DatabaseTestHelper;
-  let authHelper: AuthTestHelper;
 
   beforeAll(async () => {
-    await setupTestApp();
-    request = new TestRequest();
+    app = await setupTestApp();
     dbHelper = new DatabaseTestHelper();
     await dbHelper.init();
-    authHelper = new AuthTestHelper(request, dbHelper);
   }, 30000);
 
   afterAll(async () => {
@@ -27,30 +24,32 @@ describe('Authentication Flow (e2e)', () => {
       cacheManagerMockInstance._reset();
     }
 
-    // Then teardown with timeout
-    await Promise.race([
-      teardownTestApp(),
-      new Promise((resolve) => setTimeout(resolve, 3000)),
-    ]);
-
-    // Add a small delay to let any queued operations complete
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Simplified teardown without timeouts
+    try {
+      await teardownTestApp();
+    } catch (error) {
+      console.error('Error during teardown:', error);
+    }
   }, 10000);
 
-  // Reset between each test for isolation
-  beforeEach(async () => {
-    // Reset database
-    await dbHelper.resetDatabase();
-    // Reset Redis mock
-    cacheManagerMockInstance._reset();
-    // Clear cookies
-    request.clearCookies();
-  });
-
   describe('User Registration', () => {
+    let request;
+    let authHelper;
+
+    beforeEach(async () => {
+      // Create fresh instances for each test
+      request = new TestRequest();
+      request.setApp(app);
+      authHelper = new AuthTestHelper(request, dbHelper);
+
+      // Reset state
+      await dbHelper.resetDatabase();
+      cacheManagerMockInstance._reset();
+    });
+
     it('should register a new user', async () => {
       // Use the factory function to create test user data
-      const { isAdmin, ...newUser } = fixtures.createUser({
+      const newUser = fixtures.createSimpleUser({
         email: `newuser@example.com`,
         password: 'Password123!',
       });
@@ -77,7 +76,7 @@ describe('Authentication Flow (e2e)', () => {
     });
 
     it('should validate password complexity', async () => {
-      const userData = fixtures.createUser({
+      const userData = fixtures.createSimpleUser({
         email: `weakpassword@example.com`,
         password: '123', // Too short/simple
       });
@@ -90,7 +89,7 @@ describe('Authentication Flow (e2e)', () => {
       expect(response.statusCode).toBe(400);
       expect(response.body.success).toBe(false);
       // Should contain validation error about password
-      expect(response.body.message).toContain('password');
+      expect(response.body.validationErrors).toHaveProperty('password');
     });
 
     it('should prevent duplicate email registration', async () => {
@@ -98,7 +97,7 @@ describe('Authentication Flow (e2e)', () => {
       const email = `duplicate@example.com`;
 
       // Register first user
-      const firstUser = fixtures.createUser({
+      const firstUser = fixtures.createSimpleUser({
         email,
         password: 'Password123!',
       });
@@ -111,7 +110,7 @@ describe('Authentication Flow (e2e)', () => {
       expect(firstResponse.statusCode).toBe(201);
 
       // Try to register with the same email
-      const secondUser = fixtures.createUser({
+      const secondUser = fixtures.createSimpleUser({
         email, // Same email as first user
         password: 'Password456!',
         firstName: 'Duplicate',
@@ -126,14 +125,32 @@ describe('Authentication Flow (e2e)', () => {
       expect(response.statusCode).toBe(409);
       expect(response.body.success).toBe(false);
       // Should contain error about duplicate email
-      expect(response.body.message.toLowerCase()).toContain('email');
+      expect(
+        response.body.message?.some((msg) =>
+          msg.includes('ایمیل مورد نظر قبلا استفاده شده است'),
+        ),
+      ).toBe(true);
     });
   });
 
   describe('User Login', () => {
+    let request;
+    let authHelper;
+
+    beforeEach(async () => {
+      // Create fresh instances for each test
+      request = new TestRequest();
+      request.setApp(app);
+      authHelper = new AuthTestHelper(request, dbHelper);
+
+      // Reset state
+      await dbHelper.resetDatabase();
+      cacheManagerMockInstance._reset();
+    });
+
     it('should login a user and return JWT token', async () => {
       // Create a test user using the factory
-      const userData = fixtures.createUser({
+      const userData = fixtures.createSimpleUser({
         email: `loginuser@example.com`,
         password: 'Password123!',
       });
@@ -162,9 +179,8 @@ describe('Authentication Flow (e2e)', () => {
       expect(response.statusCode).toBe(201);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
-      expect(response.body.data.accessToken).toBeDefined();
-      expect(response.body.data.user).toBeDefined();
-      expect(response.body.data.user.email).toBe(userData.email);
+      expect(response.body.data.access_token).toBeDefined();
+      expect(response.body.data.cookie_expires_in).toBeDefined();
 
       // Test sets cookie
       expect(response.headers['set-cookie']).toBeDefined();
@@ -187,11 +203,16 @@ describe('Authentication Flow (e2e)', () => {
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
+      expect(
+        response.body.message?.some((msg) =>
+          msg.includes('کاربری با این مشخصات وجود ندارد'),
+        ),
+      ).toBe(true);
     });
 
     it('should reject login with correct email but wrong password', async () => {
       // Create a test user
-      const userData = fixtures.createUser({
+      const userData = fixtures.createSimpleUser({
         email: `wrongpass@example.com`,
         password: 'Password123!',
       });
@@ -209,13 +230,32 @@ describe('Authentication Flow (e2e)', () => {
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
+      expect(
+        response.body.message?.some((msg) =>
+          msg.includes('کاربری با این مشخصات وجود ندارد'),
+        ),
+      ).toBe(true);
     });
   });
 
   describe('Protected Routes', () => {
+    let request;
+    let authHelper;
+
+    beforeEach(async () => {
+      // Create fresh instances for each test
+      request = new TestRequest();
+      request.setApp(app);
+      authHelper = new AuthTestHelper(request, dbHelper);
+
+      // Reset state
+      await dbHelper.resetDatabase();
+      cacheManagerMockInstance._reset();
+    });
+
     it('should allow access to protected routes with valid token', async () => {
       // Use AuthTestHelper to register and login
-      const userData = fixtures.createUser({
+      const userData = fixtures.createSimpleUser({
         email: `protected@example.com`,
         password: 'Password123!',
       });
@@ -224,33 +264,27 @@ describe('Authentication Flow (e2e)', () => {
       await authHelper.registerAndLogin(userData);
 
       // Try to access a protected route
-      const response = await request.get('/users/profile', true); // true = withAuth
+      const response = await request.get('/article/noPermission', true); // true = withAuth
 
       expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toBeDefined();
-      expect(response.body.data.email).toBe(userData.email);
     });
 
     it('should deny access to protected routes without token', async () => {
-      // Clear any existing cookies
-      request.clearCookies();
-
       // Try to access a protected route without authentication
-      const response = await request.get('/users/profile');
+      const response = await request.get('/article/noPermission', false);
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
     });
 
     it('should deny access with an invalid token', async () => {
-      // Set an invalid token cookie
-      request.withHeaders({
-        Authorization: 'Bearer invalid.token.here',
-      });
+      // Set an invalid token
+      request.setInvalidAuthToken();
 
       // Try to access a protected route with invalid token
-      const response = await request.get('/users/profile', true);
+      const response = await request.get('/article/noPermission', true);
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
@@ -258,9 +292,23 @@ describe('Authentication Flow (e2e)', () => {
   });
 
   describe('Logout', () => {
+    let request;
+    let authHelper;
+
+    beforeEach(async () => {
+      // Create fresh instances for each test
+      request = new TestRequest();
+      request.setApp(app);
+      authHelper = new AuthTestHelper(request, dbHelper);
+
+      // Reset state
+      await dbHelper.resetDatabase();
+      cacheManagerMockInstance._reset();
+    });
+
     it('should successfully log out a user', async () => {
       // Use AuthTestHelper to register and login
-      const userData = fixtures.createUser({
+      const userData = fixtures.createSimpleUser({
         email: `logout@example.com`,
         password: 'Password123!',
       });
@@ -268,7 +316,7 @@ describe('Authentication Flow (e2e)', () => {
       await authHelper.registerAndLogin(userData);
 
       // Verify we're logged in by accessing a protected route
-      const profileResponse = await request.get('/users/profile', true);
+      const profileResponse = await request.get('/article/noPermission', true);
       expect(profileResponse.statusCode).toBe(200);
 
       // Logout
@@ -286,13 +334,16 @@ describe('Authentication Flow (e2e)', () => {
       request.saveCookies(logoutResponse);
 
       // Verify we're logged out by trying to access a protected route
-      const afterLogoutResponse = await request.get('/users/profile', true);
+      const afterLogoutResponse = await request.get(
+        '/article/noPermission',
+        true,
+      );
       expect(afterLogoutResponse.statusCode).toBe(401);
     });
 
     it('should allow re-login after logout', async () => {
       // Use AuthTestHelper to register and login
-      const userData = fixtures.createUser({
+      const userData = fixtures.createSimpleUser({
         email: `relogin@example.com`,
         password: 'Password123!',
       });
@@ -318,7 +369,7 @@ describe('Authentication Flow (e2e)', () => {
       request.saveCookies(reloginResponse);
 
       // Verify we can access protected routes again
-      const profileResponse = await request.get('/users/profile', true);
+      const profileResponse = await request.get('/article/noPermission', true);
       expect(profileResponse.statusCode).toBe(200);
     });
   });

@@ -22,7 +22,7 @@ module.exports = {
   },
   testTimeout: 30000,
   bail: true,
-  // forceExit: true,
+  forceExit: true,
   setupFiles: ['./test/services/test-environment.service.ts'],
   setupFilesAfterEnv: ['./test/jest-setup.ts'],
   reporters: [

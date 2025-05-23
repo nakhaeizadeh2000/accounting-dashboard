@@ -86,7 +86,7 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error(`Failed to login user: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Authentication failed');
+      throw new InternalServerErrorException('احراز هویت ناموفق بود');
     }
   }
 
@@ -253,9 +253,7 @@ export class AuthService {
       this.logger.error(
         `Failed to get sessions for user ${userId}: ${error.message}`,
       );
-      throw new InternalServerErrorException(
-        'Failed to retrieve active sessions',
-      );
+      throw new InternalServerErrorException('خطا در بازیابی نشست‌های فعال');
     }
   }
 
@@ -265,7 +263,7 @@ export class AuthService {
     try {
       const cachedRefreshTokens = await this.cacheManager.get<string>(cacheKey);
       if (!cachedRefreshTokens)
-        return { success: false, message: 'No active sessions' };
+        return { success: false, message: ['هیچ نشست فعالی وجود ندارد'] };
 
       const refreshTokens = plainToInstance(
         RefreshTokenDto,
@@ -278,7 +276,7 @@ export class AuthService {
       );
 
       if (filteredTokens.length === refreshTokens.refreshTokens.length) {
-        return { success: false, message: 'Session not found' };
+        return { success: false, message: ['نشست مورد نظر یافت نشد'] };
       }
 
       await this.cacheManager.set(
@@ -287,12 +285,12 @@ export class AuthService {
         this.refreshTokenExpirationTimeInSeconds,
       );
 
-      return { success: true, message: 'Session terminated successfully' };
+      return { success: true, message: ['نشست با موفقیت خاتمه یافت'] };
     } catch (error) {
       this.logger.error(
         `Failed to terminate session for user ${userId}: ${error.message}`,
       );
-      throw new InternalServerErrorException('Failed to terminate session');
+      throw new InternalServerErrorException('خطا در خاتمه دادن به نشست');
     }
   }
 }

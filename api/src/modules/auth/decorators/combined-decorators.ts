@@ -1,4 +1,11 @@
-import { applyDecorators, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  applyDecorators,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LocalAuthGuard } from 'src/modules/auth/guards/local-auth.guard';
 import { LoginBodyDto } from '../dto/login-body.dto';
@@ -43,6 +50,7 @@ export function registerEndpointDecorators() {
 export function logoutEndpointDecorators() {
   return applyDecorators(
     Post('logout'),
+    HttpCode(HttpStatus.OK),
     ApiOperation({ summary: 'logout' }),
     ApiBody({ type: LogoutBodyDto }),
   );

@@ -12,7 +12,8 @@ import { FastifyReply } from 'fastify';
 
 @Injectable()
 export class ResponseInterceptor<T>
-  implements NestInterceptor<T, ResponseData<T>> {
+  implements NestInterceptor<T, ResponseData<T>>
+{
   // Set a default timeout duration (in milliseconds)
   // private readonly timeoutDuration: number = 5000; // 5 seconds
 
@@ -39,7 +40,7 @@ export class ResponseInterceptor<T>
           const responseData: ResponseData<null> = {
             success: false,
             statusCode: 408, // HTTP status code for Request Timeout
-            message: ['The operation timed out.'],
+            message: ['عملیات با تاخیر زمانی مواجه شد.'],
           };
 
           // Set the correct HTTP status code for errors
