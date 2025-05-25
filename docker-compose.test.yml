@@ -8,11 +8,11 @@ services:
       dockerfile: dev-env/api.test.dockerfile
     environment:
       - NODE_ENV=test
-      - POSTGRES_DB=test_db
       - POSTGRES_HOST=postgres-test
       - POSTGRES_PORT=5432
-      - POSTGRES_USER=test_user
-      - POSTGRES_PASSWORD=test_pass
+      - POSTGRES_USER=develop
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=test_db
       - REDIS_HOST=redis-test
       - REDIS_PORT=6379
     volumes:
@@ -30,15 +30,16 @@ services:
     container_name: postgres-test
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=test_user
-      - POSTGRES_PASSWORD=test_pass
-      - POSTGRES_DB=postgres
+      - POSTGRES_USER=develop
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=test_db
     ports:
       - "5433:5432" # Different port to avoid conflicts
     volumes:
-      - ./postgres/test-data:/var/lib/postgresql/data
+      - postgres-test-data:/var/lib/postgresql/data
+    command: postgres -c 'max_connections=100' -c 'shared_buffers=256MB'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test_user"]
+      test: ["CMD-SHELL", "pg_isready -U develop -d test_db"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -63,3 +64,6 @@ services:
 networks:
   test-network:
     driver: bridge
+
+volumes:
+  postgres-test-data:

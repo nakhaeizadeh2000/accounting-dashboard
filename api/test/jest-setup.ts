@@ -3,28 +3,66 @@ process.env.NODE_ENV = 'test';
 process.env.POSTGRES_DB = 'test_db';
 process.setMaxListeners(20); // Increase max listeners to avoid warnings
 
-// Create global console logger interceptors
-const testLogs: Array<{ type: string; message: string }> = [];
+// Create test-specific console logger interceptors
+const testLogs: Map<
+  string,
+  Array<{ type: string; message: string }>
+> = new Map();
 
 // Remember original console methods
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 
+// Get a unique identifier for the current test
+const getTestIdentifier = () => {
+  const testState = expect.getState();
+  const testName = testState.currentTestName || 'unknown';
+  const testFile = testState.testPath?.split('/').pop() || 'unknown';
+  return `${testFile}:${testName}`;
+};
+
 // Override console methods to capture logs
 console.log = function (...args) {
-  testLogs.push({ type: 'log', message: args.join(' ') });
-  originalConsoleLog.apply(this, args);
+  const testId = getTestIdentifier();
+
+  // Initialize logs array for this test if it doesn't exist
+  if (!testLogs.has(testId)) {
+    testLogs.set(testId, []);
+  }
+
+  // Add log to the test's logs
+  testLogs.get(testId).push({ type: 'log', message: args.join(' ') });
+
+  // Add test identifier prefix to logs
+  const prefix = `[${testId}] `;
+  originalConsoleLog.apply(this, [`${prefix}${args[0]}`, ...args.slice(1)]);
 };
 
 console.warn = function (...args) {
-  testLogs.push({ type: 'warn', message: args.join(' ') });
-  originalConsoleWarn.apply(this, args);
+  const testId = getTestIdentifier();
+
+  if (!testLogs.has(testId)) {
+    testLogs.set(testId, []);
+  }
+
+  testLogs.get(testId).push({ type: 'warn', message: args.join(' ') });
+
+  const prefix = `[${testId}] `;
+  originalConsoleWarn.apply(this, [`${prefix}${args[0]}`, ...args.slice(1)]);
 };
 
 console.error = function (...args) {
-  testLogs.push({ type: 'error', message: args.join(' ') });
-  originalConsoleError.apply(this, args);
+  const testId = getTestIdentifier();
+
+  if (!testLogs.has(testId)) {
+    testLogs.set(testId, []);
+  }
+
+  testLogs.get(testId).push({ type: 'error', message: args.join(' ') });
+
+  const prefix = `[${testId}] `;
+  originalConsoleError.apply(this, [`${prefix}${args[0]}`, ...args.slice(1)]);
 };
 
 // Database safety check
@@ -38,18 +76,20 @@ beforeAll(() => {
 
 // Display test logs after each test
 afterEach(() => {
-  if (testLogs.length > 0) {
-    const testName = expect.getState().currentTestName;
-    originalConsoleLog(`\nConsole output for "${testName}":`);
+  const testId = getTestIdentifier();
+  const logs = testLogs.get(testId) || [];
 
-    testLogs.forEach((log) => {
+  if (logs.length > 0) {
+    originalConsoleLog(`\nConsole output for "${testId}":`);
+
+    logs.forEach((log) => {
       const prefix =
         log.type === 'error' ? '❌' : log.type === 'warn' ? '⚠️' : 'ℹ️';
       originalConsoleLog(`${prefix} [${log.type}] ${log.message}`);
     });
 
-    // Clear logs for next test
-    testLogs.length = 0;
+    // Clear logs for this test
+    testLogs.delete(testId);
   }
 });
 
@@ -86,3 +126,12 @@ process.on('uncaughtException', (err) => {
   // For other errors, log them
   console.error('Uncaught exception:', err);
 });
+
+// Add a global teardown to ensure all resources are released
+afterAll(async () => {
+  // Clean up any remaining test logs
+  testLogs.clear();
+
+  // Give time for any pending operations to complete
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}, 1000);

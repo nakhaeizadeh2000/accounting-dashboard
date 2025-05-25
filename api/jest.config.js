@@ -4,11 +4,11 @@ module.exports = {
   testEnvironment: 'node',
   testRegex: '.*\\.(spec|e2e-spec)\\.ts$',
 
-  // // Enable parallel execution
-  // maxWorkers: '50%', // Use 50% of available cores
+  // Enable parallel execution
+  maxWorkers: '50%', // Use 50% of available cores
 
-  // // Each test file gets its own instance
-  // maxConcurrency: 5,
+  // Each test file gets its own instance
+  maxConcurrency: 5,
 
   // Other settings...
   forceExit: true,
@@ -17,6 +17,7 @@ module.exports = {
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
+
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/main.ts',
@@ -34,6 +35,7 @@ module.exports = {
   bail: true,
   setupFiles: ['./test/services/test-environment.service.ts'],
   setupFilesAfterEnv: ['./test/jest-setup.ts'],
+  collectCoverage: true,
   reporters: [
     'default',
     [

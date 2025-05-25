@@ -1,5 +1,4 @@
 import { DatabaseInitializerService } from './database-initializer.service';
-import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
 import * as path from 'path';
 
@@ -20,6 +19,9 @@ export class TestEnvironmentService {
     this.databaseInitializer = new DatabaseInitializerService();
   }
 
+  /**
+   * Get the singleton instance of TestEnvironmentService
+   */
   public static getInstance(): TestEnvironmentService {
     if (!TestEnvironmentService.instance) {
       TestEnvironmentService.instance = new TestEnvironmentService();
@@ -72,40 +74,5 @@ export class TestEnvironmentService {
       console.error('❌ Failed to initialize test environment:', error);
       throw error;
     }
-  }
-
-  /**
-   * Reset the test environment between test runs
-   */
-  async resetEnvironment(): Promise<void> {
-    if (!this.isInitialized) {
-      throw new Error('Cannot reset environment before initialization');
-    }
-
-    try {
-      // Reset database to clean state
-      await this.databaseInitializer.resetTestDatabase();
-      console.log('✅ Test environment reset successfully');
-    } catch (error) {
-      console.error('❌ Failed to reset test environment:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Clean up resources after tests complete
-   */
-  async teardownEnvironment(): Promise<void> {
-    if (!this.isInitialized) {
-      console.log('Test environment was not initialized, nothing to clean up');
-      return;
-    }
-
-    console.log('🧹 Cleaning up test environment...');
-
-    // Additional cleanup could be added here
-
-    this.isInitialized = false;
-    console.log('✅ Test environment cleaned up successfully');
   }
 }

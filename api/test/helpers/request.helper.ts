@@ -19,7 +19,6 @@ export class TestRequest {
   constructor() {
     this.cookies = {};
     this.headers = {};
-    // Get the base URL from the setup-tests utility
     this.baseUrl = '';
   }
 
@@ -127,6 +126,10 @@ export class TestRequest {
    * @param withAuth Whether to include auth cookies
    */
   public async get(url: string, withAuth = false): Promise<any> {
+    if (!this.app) {
+      throw new Error('App not initialized. Call setApp() first.');
+    }
+
     const options = this.getRequestOptions(withAuth);
     const agent = request(this.app.getHttpServer());
 
@@ -151,6 +154,10 @@ export class TestRequest {
    * @param withAuth Whether to include auth cookies
    */
   public async post(url: string, data: any, withAuth = false): Promise<any> {
+    if (!this.app) {
+      throw new Error('App not initialized. Call setApp() first.');
+    }
+
     const options = this.getRequestOptions(withAuth);
     const agent = request(this.app.getHttpServer());
 
@@ -175,6 +182,10 @@ export class TestRequest {
    * @param withAuth Whether to include auth cookies
    */
   public async put(url: string, data: any, withAuth = false): Promise<any> {
+    if (!this.app) {
+      throw new Error('App not initialized. Call setApp() first.');
+    }
+
     const options = this.getRequestOptions(withAuth);
     const agent = request(this.app.getHttpServer());
 
@@ -198,6 +209,10 @@ export class TestRequest {
    * @param withAuth Whether to include auth cookies
    */
   public async delete(url: string, withAuth = false): Promise<any> {
+    if (!this.app) {
+      throw new Error('App not initialized. Call setApp() first.');
+    }
+
     const options = this.getRequestOptions(withAuth);
     const agent = request(this.app.getHttpServer());
 
@@ -222,6 +237,10 @@ export class TestRequest {
    * @param withAuth Whether to include auth cookies
    */
   public async patch(url: string, data: any, withAuth = false): Promise<any> {
+    if (!this.app) {
+      throw new Error('App not initialized. Call setApp() first.');
+    }
+
     const options = this.getRequestOptions(withAuth);
     const agent = request(this.app.getHttpServer());
 

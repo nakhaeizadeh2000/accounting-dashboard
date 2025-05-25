@@ -1,52 +1,25 @@
-import { setupTestApp, teardownTestApp } from '../../setup-tests';
-import { TestRequest } from '../../helpers/request.helper';
-import { DatabaseTestHelper } from '../../helpers/database.helper';
-import { AuthTestHelper } from '../../helpers/auth-test.helper';
+import { TestContext } from '../../context/test-context';
 import * as fixtures from '../../fixtures';
-import { cacheManagerMockInstance } from '../../mocks/cache-manager.mock';
 
-describe('Authentication Flow (e2e)', () => {
-  let app;
-  let dbHelper: DatabaseTestHelper;
+describe('Authentication Flow with TestContext (e2e)', () => {
+  // Create a test context for this test suite
+  const testContext = new TestContext();
 
+  // Setup and teardown
   beforeAll(async () => {
-    app = await setupTestApp();
-    dbHelper = new DatabaseTestHelper();
-    await dbHelper.init();
+    await testContext.initialize();
   }, 30000);
 
   afterAll(async () => {
-    // First clear all Redis mocks
-    if (
-      cacheManagerMockInstance &&
-      typeof cacheManagerMockInstance._reset === 'function'
-    ) {
-      cacheManagerMockInstance._reset();
-    }
-
-    // Simplified teardown without timeouts
-    try {
-      await teardownTestApp();
-    } catch (error) {
-      console.error('Error during teardown:', error);
-    }
+    await testContext.cleanup();
   }, 10000);
 
+  // Reset between tests
+  beforeEach(async () => {
+    await testContext.reset();
+  });
+
   describe('User Registration', () => {
-    let request;
-    let authHelper;
-
-    beforeEach(async () => {
-      // Create fresh instances for each test
-      request = new TestRequest();
-      request.setApp(app);
-      authHelper = new AuthTestHelper(request, dbHelper);
-
-      // Reset state
-      await dbHelper.resetDatabase();
-      cacheManagerMockInstance._reset();
-    });
-
     it('should register a new user', async () => {
       // Use the factory function to create test user data
       const newUser = fixtures.createSimpleUser({
@@ -56,7 +29,10 @@ describe('Authentication Flow (e2e)', () => {
 
       console.log('Registration request payload:', JSON.stringify(newUser));
 
-      const response = await request.post('/auth/register', newUser);
+      const response = await testContext.request.post(
+        '/auth/register',
+        newUser,
+      );
       console.log('Registration response:', JSON.stringify(response.body));
 
       expect(response.statusCode).toBe(201);
@@ -67,7 +43,7 @@ describe('Authentication Flow (e2e)', () => {
       expect(response.body.data.lastName).toBe(newUser.lastName);
 
       // Verify user exists in database
-      const userRepo = dbHelper.getUserRepository();
+      const userRepo = testContext.dbHelper.getUserRepository();
       const savedUser = await userRepo.findOne({
         where: { email: newUser.email },
       });
@@ -83,7 +59,10 @@ describe('Authentication Flow (e2e)', () => {
 
       console.log('Weak password request payload:', JSON.stringify(userData));
 
-      const response = await request.post('/auth/register', userData);
+      const response = await testContext.request.post(
+        '/auth/register',
+        userData,
+      );
       console.log('Validation response:', JSON.stringify(response.body));
 
       expect(response.statusCode).toBe(400);
@@ -104,7 +83,10 @@ describe('Authentication Flow (e2e)', () => {
 
       console.log('First user request:', JSON.stringify(firstUser));
 
-      const firstResponse = await request.post('/auth/register', firstUser);
+      const firstResponse = await testContext.request.post(
+        '/auth/register',
+        firstUser,
+      );
       console.log('First user response:', JSON.stringify(firstResponse.body));
 
       expect(firstResponse.statusCode).toBe(201);
@@ -119,7 +101,10 @@ describe('Authentication Flow (e2e)', () => {
 
       console.log('Duplicate email request:', JSON.stringify(secondUser));
 
-      const response = await request.post('/auth/register', secondUser);
+      const response = await testContext.request.post(
+        '/auth/register',
+        secondUser,
+      );
       console.log('Duplicate email response:', JSON.stringify(response.body));
 
       expect(response.statusCode).toBe(409);
@@ -134,20 +119,6 @@ describe('Authentication Flow (e2e)', () => {
   });
 
   describe('User Login', () => {
-    let request;
-    let authHelper;
-
-    beforeEach(async () => {
-      // Create fresh instances for each test
-      request = new TestRequest();
-      request.setApp(app);
-      authHelper = new AuthTestHelper(request, dbHelper);
-
-      // Reset state
-      await dbHelper.resetDatabase();
-      cacheManagerMockInstance._reset();
-    });
-
     it('should login a user and return JWT token', async () => {
       // Create a test user using the factory
       const userData = fixtures.createSimpleUser({
@@ -160,7 +131,10 @@ describe('Authentication Flow (e2e)', () => {
 
       // Register the user
       console.log('Register user for login test:', JSON.stringify(userData));
-      const registerResponse = await request.post('/auth/register', userData);
+      const registerResponse = await testContext.request.post(
+        '/auth/register',
+        userData,
+      );
       console.log('Register response:', JSON.stringify(registerResponse.body));
 
       expect(registerResponse.statusCode).toBe(201);
@@ -173,7 +147,7 @@ describe('Authentication Flow (e2e)', () => {
 
       console.log('Login request:', JSON.stringify(loginData));
 
-      const response = await request.post('/auth/login', loginData);
+      const response = await testContext.request.post('/auth/login', loginData);
       console.log('Login response:', JSON.stringify(response.body));
 
       expect(response.statusCode).toBe(201);
@@ -187,7 +161,7 @@ describe('Authentication Flow (e2e)', () => {
       expect(response.headers['set-cookie'][0]).toContain('access_token');
 
       // Store cookie for subsequent tests
-      request.saveCookies(response);
+      testContext.request.saveCookies(response);
     });
 
     it('should reject login with invalid credentials', async () => {
@@ -198,7 +172,7 @@ describe('Authentication Flow (e2e)', () => {
 
       console.log('Invalid login request:', JSON.stringify(loginData));
 
-      const response = await request.post('/auth/login', loginData);
+      const response = await testContext.request.post('/auth/login', loginData);
       console.log('Invalid login response:', JSON.stringify(response.body));
 
       expect(response.statusCode).toBe(401);
@@ -218,7 +192,7 @@ describe('Authentication Flow (e2e)', () => {
       });
 
       // Register the user
-      await request.post('/auth/register', userData);
+      await testContext.request.post('/auth/register', userData);
 
       // Try to login with wrong password
       const loginData = {
@@ -226,7 +200,7 @@ describe('Authentication Flow (e2e)', () => {
         password: 'WrongPassword123!',
       };
 
-      const response = await request.post('/auth/login', loginData);
+      const response = await testContext.request.post('/auth/login', loginData);
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
@@ -239,20 +213,6 @@ describe('Authentication Flow (e2e)', () => {
   });
 
   describe('Protected Routes', () => {
-    let request;
-    let authHelper;
-
-    beforeEach(async () => {
-      // Create fresh instances for each test
-      request = new TestRequest();
-      request.setApp(app);
-      authHelper = new AuthTestHelper(request, dbHelper);
-
-      // Reset state
-      await dbHelper.resetDatabase();
-      cacheManagerMockInstance._reset();
-    });
-
     it('should allow access to protected routes with valid token', async () => {
       // Use AuthTestHelper to register and login
       const userData = fixtures.createSimpleUser({
@@ -261,10 +221,13 @@ describe('Authentication Flow (e2e)', () => {
       });
 
       // Register and login the user
-      await authHelper.registerAndLogin(userData);
+      await testContext.authHelper.registerAndLogin(userData);
 
       // Try to access a protected route
-      const response = await request.get('/article/noPermission', true); // true = withAuth
+      const response = await testContext.request.get(
+        '/article/noPermission',
+        true,
+      ); // true = withAuth
 
       expect(response.statusCode).toBe(200);
       expect(response.body.success).toBe(true);
@@ -273,7 +236,10 @@ describe('Authentication Flow (e2e)', () => {
 
     it('should deny access to protected routes without token', async () => {
       // Try to access a protected route without authentication
-      const response = await request.get('/article/noPermission', false);
+      const response = await testContext.request.get(
+        '/article/noPermission',
+        false,
+      );
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
@@ -281,10 +247,13 @@ describe('Authentication Flow (e2e)', () => {
 
     it('should deny access with an invalid token', async () => {
       // Set an invalid token
-      request.setInvalidAuthToken();
+      testContext.request.setInvalidAuthToken();
 
       // Try to access a protected route with invalid token
-      const response = await request.get('/article/noPermission', true);
+      const response = await testContext.request.get(
+        '/article/noPermission',
+        true,
+      );
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
@@ -292,20 +261,6 @@ describe('Authentication Flow (e2e)', () => {
   });
 
   describe('Logout', () => {
-    let request;
-    let authHelper;
-
-    beforeEach(async () => {
-      // Create fresh instances for each test
-      request = new TestRequest();
-      request.setApp(app);
-      authHelper = new AuthTestHelper(request, dbHelper);
-
-      // Reset state
-      await dbHelper.resetDatabase();
-      cacheManagerMockInstance._reset();
-    });
-
     it('should successfully log out a user', async () => {
       // Use AuthTestHelper to register and login
       const userData = fixtures.createSimpleUser({
@@ -313,14 +268,21 @@ describe('Authentication Flow (e2e)', () => {
         password: 'Password123!',
       });
 
-      await authHelper.registerAndLogin(userData);
+      await testContext.authHelper.registerAndLogin(userData);
 
       // Verify we're logged in by accessing a protected route
-      const profileResponse = await request.get('/article/noPermission', true);
+      const profileResponse = await testContext.request.get(
+        '/article/noPermission',
+        true,
+      );
       expect(profileResponse.statusCode).toBe(200);
 
       // Logout
-      const logoutResponse = await request.post('/auth/logout', {}, true);
+      const logoutResponse = await testContext.request.post(
+        '/auth/logout',
+        {},
+        true,
+      );
       expect(logoutResponse.statusCode).toBe(200);
       expect(logoutResponse.body.success).toBe(true);
 
@@ -331,10 +293,10 @@ describe('Authentication Flow (e2e)', () => {
       );
 
       // Update our stored cookies
-      request.saveCookies(logoutResponse);
+      testContext.request.saveCookies(logoutResponse);
 
       // Verify we're logged out by trying to access a protected route
-      const afterLogoutResponse = await request.get(
+      const afterLogoutResponse = await testContext.request.get(
         '/article/noPermission',
         true,
       );
@@ -351,13 +313,13 @@ describe('Authentication Flow (e2e)', () => {
       // Save password before it gets hashed in the registration process
       const password = userData.password;
 
-      await authHelper.registerAndLogin(userData);
+      await testContext.authHelper.registerAndLogin(userData);
 
       // Logout
-      await authHelper.logout();
+      await testContext.authHelper.logout();
 
       // Try to login again
-      const reloginResponse = await request.post('/auth/login', {
+      const reloginResponse = await testContext.request.post('/auth/login', {
         email: userData.email,
         password: password,
       });
@@ -366,10 +328,13 @@ describe('Authentication Flow (e2e)', () => {
       expect(reloginResponse.body.success).toBe(true);
 
       // Save the new cookies
-      request.saveCookies(reloginResponse);
+      testContext.request.saveCookies(reloginResponse);
 
       // Verify we can access protected routes again
-      const profileResponse = await request.get('/article/noPermission', true);
+      const profileResponse = await testContext.request.get(
+        '/article/noPermission',
+        true,
+      );
       expect(profileResponse.statusCode).toBe(200);
     });
   });

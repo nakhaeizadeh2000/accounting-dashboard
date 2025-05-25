@@ -18,6 +18,7 @@ COPY ./api/package*.json ./
 
 # Install nestjs command-line tool
 RUN npm install -g @nestjs/cli
+RUN npm install -g @sourcegraph/amp	
 
 # Check if node_modules exist and delete it, else just ignore
 # RUN rm -rf node_modules || true

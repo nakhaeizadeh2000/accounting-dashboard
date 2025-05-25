@@ -1,9 +1,9 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import * as path from 'path';
 
 // Create a function that returns the test database configuration
 export const getTestDbConfig = (
+  schema?: string,
   configService?: ConfigService,
 ): TypeOrmModuleOptions => {
   return {
@@ -13,10 +13,10 @@ export const getTestDbConfig = (
     username: process.env.POSTGRES_USER || 'develop',
     password: process.env.POSTGRES_PASSWORD || '123456',
     database: 'test_db',
-    entities: [__dirname + '/**/*.entity{.ts,.js}'],
-    // migrations: [__dirname + '/**/*.migration{.ts,.js}'],
+    schema: schema || 'public',
+    entities: [__dirname + '/../../src/**/*.entity{.ts,.js}'],
     synchronize: true,
-    dropSchema: true,
+    dropSchema: false, // We'll manage schemas manually
     logging: process.env.DB_LOGGING === 'true' ? ['error', 'warn'] : false,
     // Disable cache for tests to ensure isolation
     cache: false,

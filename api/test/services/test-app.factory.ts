@@ -12,10 +12,7 @@ import { ResponseInterceptor } from '../../src/common/interceptors/response/resp
 import { HttpExceptionFilter } from '../../src/common/exceptions/http-exception-filter';
 import { fastifyBootstrap } from '../../src/config/fastify/fastify-bootstrap';
 import { swaggerBootstrap } from '../../src/config/swagger/swagger-bootstrap';
-import {
-  createCacheManagerMock,
-  cacheManagerMockInstance,
-} from '../mocks/cache-manager.mock';
+import { createCacheManagerMock } from '../mocks/cache-manager.mock';
 
 export class TestAppFactory {
   private static instance: TestAppFactory;
@@ -28,6 +25,9 @@ export class TestAppFactory {
 
   private constructor() {}
 
+  /**
+   * Get the singleton instance of TestAppFactory
+   */
   public static getInstance(): TestAppFactory {
     if (!TestAppFactory.instance) {
       TestAppFactory.instance = new TestAppFactory();
