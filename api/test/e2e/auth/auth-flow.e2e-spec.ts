@@ -1,24 +1,44 @@
 import { TestContext } from '../../context/test-context';
 import * as fixtures from '../../fixtures';
 
-describe('Authentication Flow with TestContext (e2e)', () => {
-  // Create a test context for this test suite
+/**
+ * Authentication Flow E2E Tests
+ *
+ * This file tests the complete authentication flow including:
+ * - User registration
+ * - Login
+ * - Protected routes access
+ * - Logout
+ *
+ * Each test file gets its own isolated database schema and Redis database
+ * for true parallel execution at the file level.
+ */
+describe('Authentication Flow (e2e)', () => {
+  // Create a single test context for this entire test file
   const testContext = new TestContext();
 
-  // Setup and teardown
+  // Setup and teardown for the entire test file
   beforeAll(async () => {
+    // Initialize the test context - this creates an isolated app instance
+    // with its own database schema and Redis database
     await testContext.initialize();
-  }, 30000);
+    console.log(`Test running with schema: ${testContext.getSchemaName()}`);
+  }, 60000); // Increased timeout for container startup
 
   afterAll(async () => {
+    // Clean up all resources used by this test file
+    console.log(`Cleaning up test schema: ${testContext.getSchemaName()}`);
     await testContext.cleanup();
-  }, 10000);
+  }, 15000);
 
-  // Reset between tests
+  // Reset database state before each test
   beforeEach(async () => {
     await testContext.reset();
   });
 
+  /**
+   * User Registration Tests
+   */
   describe('User Registration', () => {
     it('should register a new user', async () => {
       // Use the factory function to create test user data
@@ -118,6 +138,9 @@ describe('Authentication Flow with TestContext (e2e)', () => {
     });
   });
 
+  /**
+   * User Login Tests
+   */
   describe('User Login', () => {
     it('should login a user and return JWT token', async () => {
       // Create a test user using the factory
@@ -212,6 +235,9 @@ describe('Authentication Flow with TestContext (e2e)', () => {
     });
   });
 
+  /**
+   * Protected Routes Tests
+   */
   describe('Protected Routes', () => {
     it('should allow access to protected routes with valid token', async () => {
       // Use AuthTestHelper to register and login
@@ -260,6 +286,9 @@ describe('Authentication Flow with TestContext (e2e)', () => {
     });
   });
 
+  /**
+   * Logout Tests
+   */
   describe('Logout', () => {
     it('should successfully log out a user', async () => {
       // Use AuthTestHelper to register and login

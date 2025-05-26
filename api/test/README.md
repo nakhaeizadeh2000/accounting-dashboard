@@ -1,14 +1,14 @@
 # Test System Documentation
 
-This document describes the test system architecture and how to use it effectively.
+This document describes the refactored test system architecture and how to use it effectively.
 
 ## Key Features
 
 - **Isolated Test Contexts**: Each test suite runs in its own isolated database schema
 - **Parallel Test Execution**: Tests can run in parallel without interfering with each other
-- **Dynamic Table Management**: Tables are truncated dynamically based on entity metadata
+- **Dynamic Port Assignment**: Each test app gets a unique port to avoid conflicts
 - **Resource Cleanup**: Proper cleanup of resources after tests complete
-- **Docker Support**: Tests can run in Docker containers
+- **Simplified Mocks**: Streamlined mocking system for external dependencies
 
 ## Running Tests
 
@@ -24,73 +24,44 @@ npm run test:e2e
 npm run test:parallel
 ```
 
-### Running Tests in Docker
-
-```bash
-npm run test:docker
-```
-
-### Clean Docker Environment and Run Tests
-
-```bash
-npm run test:docker:clean
-```
-
 ## Test Architecture
 
 The test system uses a context-based approach where each test suite gets its own:
 
-1. Isolated database schema
-2. NestJS application instance
-3. HTTP server on a unique port
-4. Redis cache mock
-
-This ensures that tests can run in parallel without interfering with each other.
+1. **TestContext**: A class that encapsulates all test resources
+2. **Isolated Database Schema**: Each test suite gets its own PostgreSQL schema
+3. **NestJS Application**: Each test suite gets its own NestJS app instance
+4. **HTTP Server**: Each test app runs on a unique port
+5. **Mocked Redis Cache**: Redis operations are mocked for testing
 
 ## Writing Tests
 
 Here's an example of how to write a test:
 
 ```typescript
-import {
-  createTestContext,
-  setupTestApp,
-  teardownTestApp,
-  resetTestDatabase,
-} from '../setup-tests';
-import { TestRequest } from '../helpers/request.helper';
-import { DatabaseTestHelper } from '../helpers/database.helper';
 import { TestContext } from '../test-context';
 
 describe('My Feature (e2e)', () => {
-  let context: TestContext;
-  let dbHelper: DatabaseTestHelper;
-  let request: TestRequest;
+  // Create a test context for this test suite
+  const testContext = new TestContext();
 
-  // Set up test context
+  // Setup and teardown
   beforeAll(async () => {
-    context = createTestContext();
-    await setupTestApp(context);
+    await testContext.initialize();
+  }, 30000);
 
-    dbHelper = new DatabaseTestHelper(context);
-    await dbHelper.init();
-
-    request = new TestRequest(context);
-  });
-
-  // Clean up after tests
   afterAll(async () => {
-    await teardownTestApp(context);
-  });
+    await testContext.cleanup();
+  }, 10000);
 
-  // Reset database before each test
+  // Reset between tests
   beforeEach(async () => {
-    await resetTestDatabase(context);
+    await testContext.reset();
   });
 
   it('should do something', async () => {
-    // Your test code here
-    const response = await request.get('/some-endpoint');
+    // Your test code here using testContext.request
+    const response = await testContext.request.get('/some-endpoint');
     expect(response.statusCode).toBe(200);
   });
 });
@@ -98,8 +69,7 @@ describe('My Feature (e2e)', () => {
 
 ## Best Practices
 
-1. Always create a new context for each test suite
-2. Reset the database before each test
-3. Clean up resources after all tests
-4. Use the provided helpers for database operations and HTTP requests
-5. Avoid global state
+1. Always create a new TestContext for each test suite
+2. Reset the database before each test with testContext.reset()
+3. Clean up resources after all tests with testContext.cleanup()
+4. Use the provided helpers for

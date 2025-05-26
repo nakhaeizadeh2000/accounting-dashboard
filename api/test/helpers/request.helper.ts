@@ -1,40 +1,20 @@
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { parse as parseCookieString } from 'cookie';
-import { getTestBaseUrl } from '../setup-tests';
 
 /**
  * TestRequest class for making HTTP requests to the test API
- * Uses supertest to make requests to the TestApp instance
  */
 export class TestRequest {
   private app: INestApplication;
-  private cookies: Record<string, string>;
-  private headers: Record<string, string>;
-  private baseUrl: string;
-
-  /**
-   * Create a new TestRequest instance
-   */
-  constructor() {
-    this.cookies = {};
-    this.headers = {};
-    this.baseUrl = '';
-  }
+  private cookies: Record<string, string> = {};
+  private headers: Record<string, string> = {};
 
   /**
    * Set the NestJS application for testing
    */
   public setApp(app: INestApplication): void {
     this.app = app;
-    try {
-      // Try to get the base URL from the setup-tests utility
-      this.baseUrl = getTestBaseUrl();
-      console.log(`Using base URL: ${this.baseUrl}`);
-    } catch (error) {
-      console.warn(`Could not get baseUrl from setup-tests, using default`);
-      this.baseUrl = 'http://localhost:4001/api';
-    }
   }
 
   /**
@@ -82,7 +62,6 @@ export class TestRequest {
         const parsed = parseCookieString(cookieStr);
         const cookieName = Object.keys(parsed)[0];
         const cookieValue = parsed[cookieName];
-
         if (cookieValue === '') {
           // Cookie is being cleared
           delete this.cookies[cookieName];

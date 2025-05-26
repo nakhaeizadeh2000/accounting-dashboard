@@ -37,6 +37,10 @@ export class TestEnvironmentService {
     console.log(`  NODE_ENV: ${process.env.NODE_ENV}`);
     console.log(`  POSTGRES_DB: ${process.env.POSTGRES_DB}`);
     console.log(`  POSTGRES_HOST: ${process.env.POSTGRES_HOST || 'localhost'}`);
+    console.log(`  POSTGRES_USER: ${process.env.POSTGRES_USER || 'develop'}`);
+    console.log(`  POSTGRES_PORT: ${process.env.POSTGRES_PORT || '5432'}`);
+    console.log(`  REDIS_HOST: ${process.env.REDIS_HOST || 'localhost'}`);
+    console.log(`  REDIS_PORT: ${process.env.REDIS_PORT || '6379'}`);
 
     // Prevent accidental production database usage
     if (

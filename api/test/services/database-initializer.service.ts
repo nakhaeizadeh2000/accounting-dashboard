@@ -176,6 +176,7 @@ export class DatabaseInitializerService {
    * Sets up necessary PostgreSQL extensions for the test database
    */
   private async setupDatabaseExtensions(): Promise<void> {
+    // Connect directly to test_db
     const testDbClient = new Client({
       ...this.connectionConfig,
       database: 'test_db',
@@ -213,13 +214,13 @@ export class DatabaseInitializerService {
 
       // Drop all tables (safer than dropping the database)
       await testDbClient.query(`
-        DO $ DECLARE
+        DO $$ DECLARE
           r RECORD;
         BEGIN
           FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
             EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
           END LOOP;
-        END $;
+        END $$;
       `);
 
       console.log('✅ All tables dropped successfully');

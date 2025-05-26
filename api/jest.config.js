@@ -4,15 +4,11 @@ module.exports = {
   testEnvironment: 'node',
   testRegex: '.*\\.(spec|e2e-spec)\\.ts$',
 
-  // Enable parallel execution
-  maxWorkers: '50%', // Use 50% of available cores
+  // Enable parallel execution with controlled concurrency
+  maxWorkers: '4', // Use 4 workers for parallel tests
 
-  // Each test file gets its own instance
-  maxConcurrency: 5,
-
-  // Other settings...
-  forceExit: true,
-  testTimeout: 30000,
+  // Increase timeout for tests that use containers
+  testTimeout: 60000, // 60 seconds
 
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
@@ -27,15 +23,26 @@ module.exports = {
     '!src/**/*.interface.ts',
   ],
   coverageDirectory: './coverage',
+
+  // Module name mappings
   moduleNameMapper: {
     '^src/(.*)': '<rootDir>/src/$1',
-    '^ioredis': '<rootDir>/test/mocks/redis-mock.js',
-    '^@redis/client': '<rootDir>/test/mocks/redis-mock.js',
   },
+
+  // Fail fast on first error
   bail: true,
-  setupFiles: ['./test/services/test-environment.service.ts'],
+
+  // Setup files
   setupFilesAfterEnv: ['./test/jest-setup.ts'],
+
+  // Global setup/teardown hooks for container management
+  globalSetup: './test/global-setup.ts',
+  globalTeardown: './test/global-teardown.ts',
+
+  // Enable coverage collection
   collectCoverage: true,
+
+  // Configure reporters
   reporters: [
     'default',
     [
@@ -52,4 +59,13 @@ module.exports = {
       },
     ],
   ],
+
+  // Verbose output for better debugging
+  verbose: true,
+
+  // Force exit after tests complete to avoid hanging
+  forceExit: true,
+
+  // Detect open handles (like database connections) that weren't closed
+  detectOpenHandles: true,
 };

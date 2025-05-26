@@ -1,3 +1,10 @@
+import { TestEnvironmentService } from './services/test-environment.service';
+import { ProcessExitHandler } from './process-exit-handler';
+import { TestContainers } from './containers/test-containers';
+
+// Register process exit handler to clean up test schemas
+ProcessExitHandler.register();
+
 // Force test environment
 process.env.NODE_ENV = 'test';
 process.env.POSTGRES_DB = 'test_db';
@@ -134,4 +141,53 @@ afterAll(async () => {
 
   // Give time for any pending operations to complete
   await new Promise((resolve) => setTimeout(resolve, 100));
-}, 1000);
+
+  // Clean up any test schemas that might have been left behind
+  try {
+    await ProcessExitHandler.cleanupTestSchemas();
+  } catch (error) {
+    console.error('Error cleaning up test schemas in afterAll:', error);
+  }
+}, 5000);
+
+// Global setup and teardown functions for Jest
+export async function setup() {
+  console.log('🚀 Global test setup starting...');
+
+  try {
+    // Clean up any leftover test schemas from previous runs
+    await ProcessExitHandler.cleanupTestSchemas();
+
+    // Initialize test environment
+    const environmentService = TestEnvironmentService.getInstance();
+    await environmentService.initializeEnvironment();
+
+    // Initialize test containers if needed
+    await TestContainers.initialize();
+
+    console.log('✅ Global test setup completed successfully');
+  } catch (error) {
+    console.error('❌ Global test setup failed:', error);
+    throw error;
+  }
+}
+
+export async function teardown() {
+  console.log('🧹 Global test teardown starting...');
+
+  try {
+    // Clean up all test schemas
+    await ProcessExitHandler.cleanupTestSchemas();
+
+    // Stop test containers if needed
+    await TestContainers.cleanup();
+
+    console.log('✅ Global test teardown completed successfully');
+
+    // Force exit after cleanup to ensure no hanging connections
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Global test teardown failed:', error);
+    process.exit(1);
+  }
+}

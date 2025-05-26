@@ -1,6 +1,5 @@
 import { TestRequest } from './request.helper';
 import { DatabaseTestHelper } from './database.helper';
-import * as fixtures from '../fixtures';
 
 export class AuthTestHelper {
   private request: TestRequest;

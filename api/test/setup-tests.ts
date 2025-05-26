@@ -3,14 +3,28 @@ import { TestAppFactory } from './services/test-app.factory';
 import { DatabaseInitializerService } from './services/database-initializer.service';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DataSource } from 'typeorm';
-import { TestingModule } from '@nestjs/testing';
+import { TestingModule, Test } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { createCacheManagerMock } from './mocks/cache-manager.mock';
+import { FastifyAdapter } from '@nestjs/platform-fastify';
+import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { AppModule } from '../src/app.module';
+import { ResponseInterceptor } from '../src/common/interceptors/response/response.interceptor';
+import { HttpExceptionFilter } from '../src/common/exceptions/http-exception-filter';
+import { ConfigService, ConfigModule } from '@nestjs/config';
+import { fastifyBootstrap } from '../src/config/fastify/fastify-bootstrap';
+import { swaggerBootstrap } from '../src/config/swagger/swagger-bootstrap';
+import { TestContainers } from './containers/test-containers';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Global variables to track test environment state
 let isInitialized = false;
 let testAppFactory: TestAppFactory;
 let environmentService: TestEnvironmentService;
+let dataSource: DataSource;
 
 /**
  * Initialize the entire test environment and application
@@ -47,6 +61,9 @@ export const setupTestApp = async (): Promise<NestFastifyApplication> => {
     testAppFactory = TestAppFactory.getInstance();
     const app = await testAppFactory.init();
 
+    // Get the DataSource for later use
+    dataSource = testAppFactory.getDataSource();
+
     isInitialized = true;
     console.log('✅ Test environment and application initialized successfully');
 
@@ -75,21 +92,19 @@ export const teardownTestApp = async (): Promise<void> => {
     if (testAppFactory) {
       const closePromise = testAppFactory.close();
       // Use a proper timeout with cleanup
-      const timeoutPromise = new Promise((resolve) => {
+      const timeoutPromise = new Promise<void>((resolve) => {
         const id = setTimeout(() => {
-          console.log('App close timed out after 1000ms');
-          resolve(null);
-        }, 1000);
-        // Store the timeout ID
-        resolve['timeoutId'] = id;
+          console.log('⚠️ App close timed out after 5000ms');
+          resolve();
+        }, 5000);
+
+        closePromise.then(() => {
+          clearTimeout(id);
+          resolve();
+        });
       });
 
-      const result = await Promise.race([closePromise, timeoutPromise]);
-
-      // Clean up the timeout
-      if (timeoutPromise['timeoutId']) {
-        clearTimeout(timeoutPromise['timeoutId']);
-      }
+      await timeoutPromise;
     }
 
     isInitialized = false;
@@ -149,8 +164,14 @@ export const getTestingModule = (): TestingModule => {
 
 /**
  * Get the base URL for API requests
+ * @param port Optional port number for isolated test apps
+ * @returns The base URL for API requests
  */
-export const getTestBaseUrl = (): string => {
+export const getTestBaseUrl = (port?: number): string => {
+  if (port) {
+    return `http://localhost:${port}/api`;
+  }
+
   if (!isInitialized) {
     throw new Error(
       'Test environment not initialized. Call setupTestApp() first.',
@@ -191,3 +212,151 @@ export const validateTestDatabaseConnection = (): boolean => {
 
   return true;
 };
+
+// Track port usage to avoid conflicts in parallel tests
+const usedPorts = new Set<number>();
+const getAvailablePort = (): number => {
+  // Start from 4001 and find an unused port
+  let port = 4001;
+  while (usedPorts.has(port)) {
+    port++;
+  }
+  usedPorts.add(port);
+  return port;
+};
+
+/**
+ * Release a port when a test app is closed
+ */
+export function releasePort(port: number): void {
+  usedPorts.delete(port);
+}
+
+/**
+ * Create a test app with an isolated database schema and Redis database
+ */
+export async function createIsolatedTestApp(schemaName: string): Promise<{
+  app: NestFastifyApplication;
+  dataSource: DataSource;
+  testingModule: TestingModule;
+}> {
+  console.log(`🚀 Creating test app with schema: ${schemaName}`);
+
+  // Ensure test database exists
+  const dbInitializer = new DatabaseInitializerService();
+  await dbInitializer.createTestDatabase();
+
+  // Create schema if it doesn't exist
+  await dbInitializer.createSchema(schemaName);
+
+  // Create a unique port for this test app
+  const port = getAvailablePort();
+  console.log(`📡 Test app will use port: ${port}`);
+
+  // Get Redis connection settings
+  const redis = await TestContainers.initialize();
+
+  // Generate a unique Redis database number for this test (0-15)
+  const redisDbNumber = Math.floor(Math.random() * 15) + 1;
+  console.log(`📊 Test app will use Redis database: ${redisDbNumber}`);
+
+  // Create a dynamic module for Redis cache with isolated database
+  const TestCacheModule = CacheModule.registerAsync({
+    isGlobal: true,
+    useFactory: async () => ({
+      store: await redisStore({
+        socket: {
+          host: redis.host,
+          port: redis.port,
+        },
+        database: redisDbNumber, // Use a unique Redis database for isolation
+      }),
+    }),
+  });
+
+  // Create custom TypeORM module with schema
+  const TestTypeOrmModule = TypeOrmModule.forRootAsync({
+    imports: [ConfigModule],
+    inject: [ConfigService],
+    useFactory: (configService: ConfigService) => ({
+      type: 'postgres',
+      host: process.env.POSTGRES_HOST || 'localhost',
+      port: parseInt(process.env.POSTGRES_PORT) || 5432,
+      username: process.env.POSTGRES_USER || 'develop',
+      password: process.env.POSTGRES_PASSWORD || '123456',
+      database: 'test_db',
+      schema: schemaName, // Set the schema explicitly
+      entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+      synchronize: true,
+      logging: false,
+      autoLoadEntities: true,
+    }),
+  });
+
+  // Override TypeORM config to use the test schema
+  const testingModule = await Test.createTestingModule({
+    imports: [
+      ConfigModule.forRoot({ isGlobal: true }),
+      TestCacheModule,
+      TestTypeOrmModule,
+      AppModule,
+    ],
+  })
+    // Remove the original CacheModule to avoid conflicts
+    .overrideModule(CacheModule)
+    .useModule(TestCacheModule)
+    .compile();
+
+  // Create app with Fastify adapter
+  const app = testingModule.createNestApplication<NestFastifyApplication>(
+    new FastifyAdapter({}),
+  );
+
+  // Get config service
+  const configService = app.get(ConfigService);
+  const prefix = configService.get<string>('GLOBAL_PREFIX') || 'api';
+
+  // Set global prefix
+  app.setGlobalPrefix(prefix);
+
+  // Configure fastify
+  await fastifyBootstrap(app as any);
+
+  // Configure swagger
+  await swaggerBootstrap(app);
+
+  // Apply global pipes, filters, and interceptors
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(app.get(Reflector)),
+    new ResponseInterceptor(),
+  );
+
+  // Get DataSource
+  const dataSource = testingModule.get<DataSource>(DataSource);
+
+  // CRITICAL: Set search path for all connections in this DataSource
+  await dataSource.query(`SET search_path TO "${schemaName}",public`);
+
+  // Create a query transformer to ensure schema is used
+  dataSource.driver.afterConnect = async () => {
+    await dataSource.query(`SET search_path TO "${schemaName}",public`);
+  };
+
+  // Initialize app
+  await app.init();
+  await app.listen(port, '0.0.0.0');
+
+  console.log(`✅ Test app created and listening on port ${port}`);
+
+  return { app, dataSource, testingModule };
+}
