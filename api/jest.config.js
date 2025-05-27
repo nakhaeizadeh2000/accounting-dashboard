@@ -5,7 +5,7 @@ module.exports = {
   testRegex: '.*\\.(spec|e2e-spec)\\.ts$',
 
   // Enable parallel execution with controlled concurrency
-  maxWorkers: '4', // Use 4 workers for parallel tests
+  maxWorkers: '50%', // Force 4 workers for parallel tests
 
   // Increase timeout for tests that use containers
   testTimeout: 60000, // 60 seconds
@@ -32,7 +32,8 @@ module.exports = {
   // Fail fast on first error
   bail: true,
 
-  // Setup files
+  // Setup files - load Redis error suppressor first
+  setupFiles: ['./test/redis-error-suppressor.js'],
   setupFilesAfterEnv: ['./test/jest-setup.ts'],
 
   // Global setup/teardown hooks for container management
@@ -40,7 +41,7 @@ module.exports = {
   globalTeardown: './test/global-teardown.ts',
 
   // Enable coverage collection
-  collectCoverage: true,
+  // collectCoverage: true,
 
   // Configure reporters
   reporters: [

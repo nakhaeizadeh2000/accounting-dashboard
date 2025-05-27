@@ -28,12 +28,14 @@ describe('Authentication Flow (e2e)', () => {
   afterAll(async () => {
     // Clean up all resources used by this test file
     console.log(`Cleaning up test schema: ${testContext.getSchemaName()}`);
+    await testContext.flushRedis();
     await testContext.cleanup();
   }, 15000);
 
   // Reset database state before each test
   beforeEach(async () => {
     await testContext.reset();
+    await testContext.flushRedis();
   });
 
   /**

@@ -239,6 +239,7 @@ export async function createIsolatedTestApp(schemaName: string): Promise<{
   app: NestFastifyApplication;
   dataSource: DataSource;
   testingModule: TestingModule;
+  redisDbNumber: number;
 }> {
   console.log(`🚀 Creating test app with schema: ${schemaName}`);
 
@@ -358,5 +359,5 @@ export async function createIsolatedTestApp(schemaName: string): Promise<{
 
   console.log(`✅ Test app created and listening on port ${port}`);
 
-  return { app, dataSource, testingModule };
+  return { app, dataSource, testingModule, redisDbNumber };
 }

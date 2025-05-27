@@ -27,7 +27,6 @@
     "test:cov": "jest --config ./jest.config.js --coverage",
     "test:cov:report": "jest --config ./jest.config.js --coverage && open-cli coverage/lcov-report/index.html",
     "test:auth": "jest --config ./jest.config.js auth",
-    "test:users": "jest --config ./jest.config.js users",
     "test:report": "jest --config ./jest.config.js --reporters=default --reporters=jest-html-reporter",
     "test:report:open": "npm run test:report && open-cli test-report/report.html",
     "test:ci": "jest --config ./jest.config.js --ci --runInBand --forceExit",

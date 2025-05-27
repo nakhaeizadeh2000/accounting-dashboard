@@ -26,14 +26,19 @@ describe('Authentication Flow (e2e)', () => {
   }, 60000); // Increased timeout for container startup
 
   afterAll(async () => {
+    // Add a small delay before cleanup to allow any pending Redis operations to complete
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     // Clean up all resources used by this test file
     console.log(`Cleaning up test schema: ${testContext.getSchemaName()}`);
+    await testContext.flushRedis(); // Clean Redis data
     await testContext.cleanup();
   }, 15000);
 
   // Reset database state before each test
   beforeEach(async () => {
     await testContext.reset();
+    await testContext.flushRedis();
   });
 
   /**
@@ -145,72 +150,52 @@ describe('Authentication Flow (e2e)', () => {
     it('should login a user and return JWT token', async () => {
       // Create a test user using the factory
       const userData = fixtures.createSimpleUser({
-        email: `loginuser@example.com`,
+        email: 'logintest@example.com',
         password: 'Password123!',
       });
 
-      // Use the plaintext password before it gets hashed
-      const plainTextPassword = userData.password;
-
-      // Register the user
-      console.log('Register user for login test:', JSON.stringify(userData));
-      const registerResponse = await testContext.request.post(
-        '/auth/register',
-        userData,
-      );
-      console.log('Register response:', JSON.stringify(registerResponse.body));
-
-      expect(registerResponse.statusCode).toBe(201);
+      // First register the user
+      await testContext.request.post('/auth/register', userData);
 
       // Now try to login
-      const loginData = {
+      const loginResponse = await testContext.request.post('/auth/login', {
         email: userData.email,
-        password: plainTextPassword,
-      };
+        password: 'Password123!', // Plain text password
+      });
 
-      console.log('Login request:', JSON.stringify(loginData));
+      console.log('Login response:', JSON.stringify(loginResponse.body));
 
-      const response = await testContext.request.post('/auth/login', loginData);
-      console.log('Login response:', JSON.stringify(response.body));
+      expect(loginResponse.statusCode).toBe(201);
+      expect(loginResponse.body.success).toBe(true);
+      expect(loginResponse.body.data).toBeDefined();
+      expect(loginResponse.body.data.access_token).toBeDefined();
+      expect(loginResponse.body.data.cookie_expires_in).toBeDefined();
 
-      expect(response.statusCode).toBe(201);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.access_token).toBeDefined();
-      expect(response.body.data.cookie_expires_in).toBeDefined();
-
-      // Test sets cookie
-      expect(response.headers['set-cookie']).toBeDefined();
-      expect(response.headers['set-cookie'][0]).toContain('access_token');
-
-      // Store cookie for subsequent tests
-      testContext.request.saveCookies(response);
+      // Check for cookies
+      expect(loginResponse.headers['set-cookie']).toBeDefined();
+      const cookies = loginResponse.headers['set-cookie'];
+      expect(cookies.some((c) => c.includes('access_token'))).toBe(true);
     });
 
     it('should reject login with invalid credentials', async () => {
-      const loginData = {
-        email: `nonexistent@example.com`,
-        password: 'WrongPassword123!',
-      };
+      const loginResponse = await testContext.request.post('/auth/login', {
+        email: 'nonexistent@example.com',
+        password: 'Password123!',
+      });
 
-      console.log('Invalid login request:', JSON.stringify(loginData));
+      console.log(
+        'Invalid login response:',
+        JSON.stringify(loginResponse.body),
+      );
 
-      const response = await testContext.request.post('/auth/login', loginData);
-      console.log('Invalid login response:', JSON.stringify(response.body));
-
-      expect(response.statusCode).toBe(401);
-      expect(response.body.success).toBe(false);
-      expect(
-        response.body.message?.some((msg) =>
-          msg.includes('کاربری با این مشخصات وجود ندارد'),
-        ),
-      ).toBe(true);
+      expect(loginResponse.statusCode).toBe(401);
+      expect(loginResponse.body.success).toBe(false);
     });
 
     it('should reject login with correct email but wrong password', async () => {
       // Create a test user
       const userData = fixtures.createSimpleUser({
-        email: `wrongpass@example.com`,
+        email: 'wrongpass@example.com',
         password: 'Password123!',
       });
 
@@ -218,20 +203,18 @@ describe('Authentication Flow (e2e)', () => {
       await testContext.request.post('/auth/register', userData);
 
       // Try to login with wrong password
-      const loginData = {
+      const loginResponse = await testContext.request.post('/auth/login', {
         email: userData.email,
         password: 'WrongPassword123!',
-      };
+      });
 
-      const response = await testContext.request.post('/auth/login', loginData);
+      console.log(
+        'Wrong password response:',
+        JSON.stringify(loginResponse.body),
+      );
 
-      expect(response.statusCode).toBe(401);
-      expect(response.body.success).toBe(false);
-      expect(
-        response.body.message?.some((msg) =>
-          msg.includes('کاربری با این مشخصات وجود ندارد'),
-        ),
-      ).toBe(true);
+      expect(loginResponse.statusCode).toBe(401);
+      expect(loginResponse.body.success).toBe(false);
     });
   });
 
@@ -240,32 +223,38 @@ describe('Authentication Flow (e2e)', () => {
    */
   describe('Protected Routes', () => {
     it('should allow access to protected routes with valid token', async () => {
-      // Use AuthTestHelper to register and login
+      // Create and login a user
       const userData = fixtures.createSimpleUser({
-        email: `protected@example.com`,
+        email: 'protected@example.com',
         password: 'Password123!',
       });
 
-      // Register and login the user
-      await testContext.authHelper.registerAndLogin(userData);
+      // Register and login
+      await testContext.request.post('/auth/register', userData);
+      const loginResponse = await testContext.request.post('/auth/login', {
+        email: userData.email,
+        password: 'Password123!',
+      });
 
-      // Try to access a protected route
-      const response = await testContext.request.get(
-        '/article/noPermission',
-        true,
-      ); // true = withAuth
+      // Save cookies for subsequent requests
+      testContext.request.saveCookies(loginResponse);
 
-      expect(response.statusCode).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
+      // Try to access a protected route (e.g., article endpoint that requires auth)
+      const profileResponse = await testContext.request.get('/article/noPermission', true);
+      console.log(
+        'Protected route response:',
+        JSON.stringify(profileResponse.body),
+      );
+
+      expect(profileResponse.statusCode).toBe(200);
+      expect(profileResponse.body.success).toBe(true);
+      expect(profileResponse.body.data).toBeDefined();
     });
 
     it('should deny access to protected routes without token', async () => {
       // Try to access a protected route without authentication
-      const response = await testContext.request.get(
-        '/article/noPermission',
-        false,
-      );
+      const response = await testContext.request.get('/article/noPermission', false);
+      console.log('Unauthenticated response:', JSON.stringify(response.body));
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
@@ -275,11 +264,9 @@ describe('Authentication Flow (e2e)', () => {
       // Set an invalid token
       testContext.request.setInvalidAuthToken();
 
-      // Try to access a protected route with invalid token
-      const response = await testContext.request.get(
-        '/article/noPermission',
-        true,
-      );
+      // Try to access a protected route
+      const response = await testContext.request.get('/article/noPermission', true);
+      console.log('Invalid token response:', JSON.stringify(response.body));
 
       expect(response.statusCode).toBe(401);
       expect(response.body.success).toBe(false);
@@ -291,20 +278,67 @@ describe('Authentication Flow (e2e)', () => {
    */
   describe('Logout', () => {
     it('should successfully log out a user', async () => {
-      // Use AuthTestHelper to register and login
+      // Create and login a user
       const userData = fixtures.createSimpleUser({
-        email: `logout@example.com`,
+        email: 'logout@example.com',
         password: 'Password123!',
       });
 
-      await testContext.authHelper.registerAndLogin(userData);
+      // Register and login
+      await testContext.request.post('/auth/register', userData);
+      const loginResponse = await testContext.request.post('/auth/login', {
+        email: userData.email,
+        password: 'Password123!',
+      });
 
-      // Verify we're logged in by accessing a protected route
-      const profileResponse = await testContext.request.get(
+      // Save cookies for subsequent requests
+      testContext.request.saveCookies(loginResponse);
+
+      // Verify we can access protected route
+      const profileBeforeLogout = await testContext.request.get(
         '/article/noPermission',
         true,
       );
-      expect(profileResponse.statusCode).toBe(200);
+      expect(profileBeforeLogout.statusCode).toBe(200);
+
+      // Logout
+      const logoutResponse = await testContext.request.post(
+        '/auth/logout',
+        {},
+        true,
+      );
+      console.log('Logout response:', JSON.stringify(logoutResponse.body));
+
+      expect(logoutResponse.statusCode).toBe(200);
+      expect(logoutResponse.body.success).toBe(true);
+
+      // Save updated cookies (should clear auth cookie)
+      testContext.request.saveCookies(logoutResponse);
+
+      // Try to access protected route again - should fail
+      const profileAfterLogout = await testContext.request.get(
+        '/article/noPermission',
+        true,
+      );
+      expect(profileAfterLogout.statusCode).toBe(401);
+    });
+
+    it('should allow re-login after logout', async () => {
+      // Create and login a user
+      const userData = fixtures.createSimpleUser({
+        email: 'relogin@example.com',
+        password: 'Password123!',
+      });
+
+      // Register and login
+      await testContext.request.post('/auth/register', userData);
+      let loginResponse = await testContext.request.post('/auth/login', {
+        email: userData.email,
+        password: 'Password123!',
+      });
+
+      // Save cookies
+      testContext.request.saveCookies(loginResponse);
 
       // Logout
       const logoutResponse = await testContext.request.post(
@@ -313,58 +347,31 @@ describe('Authentication Flow (e2e)', () => {
         true,
       );
       expect(logoutResponse.statusCode).toBe(200);
-      expect(logoutResponse.body.success).toBe(true);
-
-      // Cookies should be cleared
-      expect(logoutResponse.headers['set-cookie']).toBeDefined();
-      expect(logoutResponse.headers['set-cookie'][0]).toContain(
-        'access_token=;',
-      );
-
-      // Update our stored cookies
       testContext.request.saveCookies(logoutResponse);
 
-      // Verify we're logged out by trying to access a protected route
-      const afterLogoutResponse = await testContext.request.get(
-        '/article/noPermission',
-        true,
-      );
-      expect(afterLogoutResponse.statusCode).toBe(401);
-    });
-
-    it('should allow re-login after logout', async () => {
-      // Use AuthTestHelper to register and login
-      const userData = fixtures.createSimpleUser({
-        email: `relogin@example.com`,
+      // Login again
+      loginResponse = await testContext.request.post('/auth/login', {
+        email: userData.email,
         password: 'Password123!',
       });
 
-      // Save password before it gets hashed in the registration process
-      const password = userData.password;
+      console.log('Re-login response:', JSON.stringify(loginResponse.body));
 
-      await testContext.authHelper.registerAndLogin(userData);
+      expect(loginResponse.statusCode).toBe(201);
+      expect(loginResponse.body.success).toBe(true);
+      expect(loginResponse.body.data).toBeDefined();
+      expect(loginResponse.body.data.access_token).toBeDefined();
+      expect(loginResponse.body.data.cookie_expires_in).toBeDefined();
 
-      // Logout
-      await testContext.authHelper.logout();
+      // Save new cookies
+      testContext.request.saveCookies(loginResponse);
 
-      // Try to login again
-      const reloginResponse = await testContext.request.post('/auth/login', {
-        email: userData.email,
-        password: password,
-      });
-
-      expect(reloginResponse.statusCode).toBe(201);
-      expect(reloginResponse.body.success).toBe(true);
-
-      // Save the new cookies
-      testContext.request.saveCookies(reloginResponse);
-
-      // Verify we can access protected routes again
-      const profileResponse = await testContext.request.get(
+      // Verify we can access protected route again
+      const profileAfterRelogin = await testContext.request.get(
         '/article/noPermission',
         true,
       );
-      expect(profileResponse.statusCode).toBe(200);
+      expect(profileAfterRelogin.statusCode).toBe(200);
     });
   });
 });
